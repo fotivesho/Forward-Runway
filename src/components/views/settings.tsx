@@ -24,7 +24,7 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
           <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
-        <Card title="What Runway remembers" id="memory">
+        <Card title="What Runway Tomorrow remembers" id="memory">
           <p className="mb-3 text-sm text-muted">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</p>
           <h3 className="text-sm font-semibold">Event cost corrections</h3>
           {corrections.length === 0 ? (

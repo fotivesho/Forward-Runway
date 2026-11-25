@@ -11,7 +11,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
       <Link href="/" className="mb-6 flex items-center gap-2 font-bold">
-        <img src="/icon.svg" alt="" width={28} height={28} /> Forward Runway
+        <img src="/icon.svg" alt="" width={28} height={28} /> Runway Tomorrow
       </Link>
       {!isSupabaseConfigured() ? (
         <div role="alert" className="card p-5">

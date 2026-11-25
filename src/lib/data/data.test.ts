@@ -106,3 +106,13 @@ describe("demo dashboard", () => {
     }
   });
 });
+
+describe("export format rename", () => {
+  it("writes the new format and still imports files made before the rename", () => {
+    const snap = demoSnapshot("2026-03-10", "2026-03-10T15:00:00Z");
+    const file = buildExport(snap, "2026-03-10T15:00:00Z");
+    expect(file.format).toBe("runway-tomorrow");
+    const legacy = JSON.stringify({ ...file, format: "forward-runway" });
+    expect(parseImport(legacy, () => crypto.randomUUID()).ok).toBe(true);
+  });
+});

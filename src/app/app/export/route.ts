@@ -13,7 +13,7 @@ export async function GET() {
   return new NextResponse(body, {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="forward-runway-${now.slice(0, 10)}.json"`,
+      "Content-Disposition": `attachment; filename="runway-tomorrow-${now.slice(0, 10)}.json"`,
       "Cache-Control": "private, no-store",
     },
   });

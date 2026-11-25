@@ -1,7 +1,7 @@
 /**
  * Date-only local calendar arithmetic.
  *
- * Every date in Forward Runway is a plain calendar day written "YYYY-MM-DD".
+ * Every date in Runway Tomorrow is a plain calendar day written "YYYY-MM-DD".
  * There are no times and no time zones inside the engine: a bill due on the
  * 31st is due on the 31st wherever the user is. Internally we convert to a
  * day number (days since 1970-01-01, computed with UTC math so DST never

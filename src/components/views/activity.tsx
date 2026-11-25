@@ -19,7 +19,7 @@ export function ActivityView({ snapshot, today, demo = false }: ViewProps) {
         <Card title="Add a transfer or card payment"><TransferForm accounts={snapshot.accounts} today={today} /></Card>
         <Card title="Transactions" className="lg:col-span-2">
           {txns.length === 0 ? (
-            <EmptyState title="Nothing logged yet">Logging spending lets Runway learn your pattern and recalculate today's cap.</EmptyState>
+            <EmptyState title="Nothing logged yet">Logging spending lets Runway Tomorrow learn your pattern and recalculate today's cap.</EmptyState>
           ) : (
             <ul className="divide-y divide-line">
               {txns.map((t) => (

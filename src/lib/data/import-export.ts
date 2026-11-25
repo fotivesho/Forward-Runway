@@ -2,7 +2,9 @@ import { z } from "zod";
 import { isISODate } from "../dates";
 import type { Snapshot } from "./snapshot";
 
-export const EXPORT_FORMAT = "forward-runway";
+export const EXPORT_FORMAT = "runway-tomorrow";
+/** Files exported before the rename still import. */
+export const LEGACY_EXPORT_FORMATS = ["forward-runway"] as const;
 export const EXPORT_VERSION = 1;
 export const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 const MAX_ROWS = 5_000;
@@ -167,7 +169,7 @@ const decisionZ = z.object({
 const scenarioZ = z.object({ id, name: z.string().min(1).max(60), adjustments: z.array(z.record(z.unknown())).max(200) });
 
 export const exportFileSchema = z.object({
-  format: z.literal(EXPORT_FORMAT, { errorMap: () => ({ message: "This isn't a Forward Runway export file." }) }),
+  format: z.enum([EXPORT_FORMAT, ...LEGACY_EXPORT_FORMATS], { errorMap: () => ({ message: "This isn't a Runway Tomorrow export file." }) }),
   version: z.literal(EXPORT_VERSION, { errorMap: () => ({ message: "This export was made by an unsupported version." }) }),
   profile: z.object({ displayName: z.string().max(80).nullable().optional(), timezone: z.string().max(64).optional(), hideAmounts: z.boolean().optional(), theme: z.enum(["system", "light", "dark"]).optional() }).optional(),
   settings: z

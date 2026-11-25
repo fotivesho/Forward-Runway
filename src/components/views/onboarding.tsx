@@ -31,7 +31,7 @@ export function OnboardingView({ snapshot, today, demo = false }: ViewProps) {
   return (
     <div className="mx-auto max-w-3xl">
       <h1 className="text-2xl font-bold tracking-tight">Set up your runway</h1>
-      <p className="mb-4 mt-1 text-muted">About five minutes. Use real numbers where you know them and tick “estimate” where you don't — Runway keeps facts and estimates separate. Everything can be changed later.</p>
+      <p className="mb-4 mt-1 text-muted">About five minutes. Use real numbers where you know them and tick “estimate” where you don't — Runway Tomorrow keeps facts and estimates separate. Everything can be changed later.</p>
       <div className="flex flex-col gap-4">
         <Step n={1} title="About you" done={!!snapshot.profile.onboardedAt || !!snapshot.profile.displayName} optional why="Your time zone decides what “today” is.">
           <ProfileForm snapshot={snapshot} detectTimezone />

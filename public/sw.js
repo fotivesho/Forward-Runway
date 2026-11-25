@@ -1,4 +1,4 @@
-/* Forward Runway service worker.
+/* Runway Tomorrow service worker.
  * Privacy rule: financial pages (/app/*) and API responses are NEVER cached —
  * they're always fetched fresh, and an offline page is shown when the network is down.
  * Only static, non-personal assets are cached. */

@@ -58,7 +58,7 @@ export function SettingsForm({ snapshot }: { snapshot: Snapshot }) {
 export function ImportForm() {
   return (
     <ActionForm action={importData} className="grid gap-3" encType="multipart/form-data" aria-label="Import data">
-      <FileField name="file" label="Forward Runway export (.json)" accept="application/json,.json" />
+      <FileField name="file" label="Runway Tomorrow export (.json)" accept="application/json,.json" />
       <Field name="confirm" label='Type REPLACE to confirm' hint="Importing replaces all of your current data." autoComplete="off" />
       <Submit variant="danger" pendingLabel="Importing…">Import and replace</Submit>
     </ActionForm>

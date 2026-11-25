@@ -191,7 +191,7 @@ export function EventCard({ view, accounts }: { view: EventView; accounts: Accou
                     label="Decision"
                     defaultValue={event.decision ?? ""}
                     options={[
-                      { value: "", label: "Let Runway suggest" },
+                      { value: "", label: "Let Runway Tomorrow suggest" },
                       { value: "proceed", label: "Go ahead" },
                       { value: "cheaper", label: "Do a cheaper version" },
                       { value: "postpone", label: "Postpone" },

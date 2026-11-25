@@ -1,6 +1,6 @@
 {
-  "name": "Forward Runway",
-  "short_name": "Runway",
+  "name": "Runway Tomorrow",
+  "short_name": "Runway Tmrw",
   "description": "Personal cash-flow forecast: what's coming up and what you can safely spend today.",
   "start_url": "/app",
   "scope": "/",

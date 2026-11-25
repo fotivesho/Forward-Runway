@@ -6,7 +6,7 @@ import { PrivacyProvider } from "@/components/privacy";
 import { ThemeToggle } from "@/components/theme";
 import { formatLong, todayInZone } from "@/lib/dates";
 
-export const metadata: Metadata = { title: { default: "Demo", template: "%s · Demo · Forward Runway" } };
+export const metadata: Metadata = { title: { default: "Demo", template: "%s · Demo · Runway Tomorrow" } };
 export const dynamic = "force-dynamic";
 
 /** Public demo shell. Every page under /demo uses ONLY fictional data generated in code. */
@@ -25,7 +25,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
           <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <Link href="/" className="flex items-center gap-2 font-bold text-ink">
               <img src="/icon.svg" alt="" width={28} height={28} />
-              Forward Runway
+              Runway Tomorrow
             </Link>
             <div className="flex items-center gap-3">
               <span className="hidden text-sm text-muted sm:inline">{formatLong(todayInZone("America/New_York"))}</span>

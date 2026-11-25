@@ -1,4 +1,4 @@
--- Forward Runway 1.0 schema
+-- Runway Tomorrow 1.0 schema
 -- Every user-owned table:
 --   * has user_id defaulting to auth.uid()
 --   * has row-level security enabled with policies restricted to user_id = auth.uid()

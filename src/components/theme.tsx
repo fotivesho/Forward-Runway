@@ -43,7 +43,7 @@ export function useResolvedTheme(): "light" | "dark" {
 const OPTIONS: Array<{ value: ThemePref; label: string; icon: string }> = [
   { value: "light", label: "Light", icon: "☀" },
   { value: "dark", label: "Dark", icon: "☾" },
-  { value: "system", label: "Auto", icon: "◐" },
+  { value: "system", label: "Auto", icon: "A" },
 ];
 
 /**

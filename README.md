@@ -1,4 +1,4 @@
-# Forward Runway
+# Runway Tomorrow
 
 A mobile-first personal cash-flow forecasting PWA. It shows what you've spent, what's coming up, and what you can safely spend each day while still paying every bill, paying credit-card statements in full, reducing debt and saving for goals like a wedding.
 
@@ -80,8 +80,8 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
 1. **Create a Supabase project.** Note the Project URL, the `anon` key and the `service_role` key (Project Settings → API).
 2. **Apply the migration** (see above).
 3. **Configure Auth** (Authentication → URL Configuration):
-   - Site URL: `https://your-domain`
-   - Redirect URLs: `https://your-domain/auth/callback`
+   - Site URL: `https://runwaytomorrow.com`
+   - Redirect URLs: `https://runwaytomorrow.com/auth/callback` (add your `*.vercel.app` preview address too while testing)
    - Email confirmations: on (recommended). Optionally set a custom SMTP provider for production email volume.
    - For email templates that use token hashes, link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/app`. The default PKCE links work as-is.
 4. **Deploy to Vercel**: import the repository and set these environment variables:
@@ -90,8 +90,9 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
    | `NEXT_PUBLIC_SUPABASE_URL` | Project URL | yes |
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key | yes (safe: RLS protects data) |
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (optional; enables "Delete my account") | **no, server only** |
-   | `NEXT_PUBLIC_SITE_URL` | `https://your-domain` | yes |
-5. Visit `/login`, create an account and complete onboarding. Install it as an app from the browser menu ("Add to Home Screen").
+   | `NEXT_PUBLIC_SITE_URL` | `https://runwaytomorrow.com` | yes |
+5. **Connect the domain** (runwaytomorrow.com): in Vercel → Project → Settings → Domains, add `runwaytomorrow.com` and `www.runwaytomorrow.com`. Vercel shows the DNS records to add at the registrar where you bought the domain (usually an `A` record for the bare domain and a `CNAME` for `www`). HTTPS is issued automatically once DNS resolves.
+6. Visit `/login`, create an account and complete onboarding. Install it as an app from the browser menu ("Add to Home Screen").
 
 Any Node host works: `npm run build && npm start` behind HTTPS. Calendar sync needs outbound HTTPS to calendar providers.
 
