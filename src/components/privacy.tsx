@@ -17,12 +17,15 @@ export function Money({
   compact,
   className = "",
   tone,
+  whole,
 }: {
   cents: number;
   sign?: boolean;
   compact?: boolean;
   className?: string;
   tone?: "auto" | "in" | "out";
+  /** Whole dollars, rounded toward zero (never overstates a cap). */
+  whole?: boolean;
 }) {
   const hide = useHideAmounts();
   const color =
@@ -33,6 +36,11 @@ export function Money({
         $•••
       </span>
     );
+  }
+  if (whole) {
+    const dollars = Math.trunc(cents / 100);
+    const text = (dollars < 0 ? "−$" : "$") + Math.abs(dollars).toLocaleString("en-US");
+    return <span className={`tabular ${color} ${className}`}>{text}</span>;
   }
   return <span className={`tabular ${color} ${className}`}>{formatCents(cents, { sign, compact })}</span>;
 }

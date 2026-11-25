@@ -98,12 +98,12 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                 </Notice>
               </div>
             )}
-            <h3 className="mb-2 text-sm font-semibold text-ink">Daily caps this week</h3>
-            <ol className="grid grid-cols-7 gap-1 text-center" aria-label="Daily spending caps">
+            <h3 className="mb-2 text-sm font-semibold text-ink">Daily caps until payday{plan.days.length > 7 ? " (next 7 days)" : ""}</h3>
+            <ol className="grid gap-1 text-center" style={{ gridTemplateColumns: "repeat(" + Math.max(weekCaps.length, 4) + ", minmax(0, 1fr))" }} aria-label="Daily spending caps">
               {weekCaps.map((d) => (
                 <li key={d.date} className={`rounded-lg border p-1.5 ${d.date === today ? "border-brand bg-brand/10" : "border-line"}`}>
                   <span className="block text-[11px] text-faint">{d.date === today ? "Today" : formatWeekday(d.date)}</span>
-                  <Money cents={d.capCents} compact className="block text-xs font-semibold sm:text-sm" />
+                  <Money cents={d.capCents} whole className="block text-sm font-semibold" />
                   {d.eventIds.length > 0 && <span className="block text-[10px] text-info" aria-label={`${d.eventIds.length} plan`}>● plan</span>}
                 </li>
               ))}
