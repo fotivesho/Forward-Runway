@@ -7,6 +7,8 @@ import { parseDollars } from "@/lib/money";
 import { compareScenario, nextOccurrence, planPurchase, ruleOccurrences, type Adjustment } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
+import { AFFORD_PRESETS, AffordIt, type AffordPreset } from "./landing/afford-it";
+import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Money } from "./privacy";
 import { Badge, Card, EmptyState, Notice } from "./ui";
@@ -18,10 +20,41 @@ const VERDICT = {
   not_covered: { tone: "bad", label: "Not covered" },
 } as const;
 
-export function WhatIf({ snapshot, today }: { snapshot: Snapshot; today: ISODate }) {
+export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
   const input = useMemo(() => toEngineInput(snapshot, today), [snapshot, today]);
+  // The same advisor view the Today screen uses, so "safe to spend today" matches exactly.
+  const model = useMemo(() => buildDashboard(snapshot, today, 30, new Date(nowIso)), [snapshot, today, nowIso]);
+  const presets = useMemo<AffordPreset[]>(() => {
+    const plans: AffordPreset[] = model.events
+      .filter((v) => !v.duplicate && v.plannedCents > 0 && v.event.date >= today && v.event.decision !== "skip")
+      .slice(0, 4)
+      .map((v) => ({ label: v.event.title, short: v.event.title, cents: v.plannedCents, emoji: "📅", date: v.event.date, reservedCents: v.advice?.capCents ?? 0 }));
+    return [...plans, ...AFFORD_PRESETS].slice(0, 4);
+  }, [model, today]);
+  const hasAccounts = snapshot.accounts.some((a) => !a.archived && a.isSpendable);
+
   return (
     <div className="grid gap-4">
+      <section className="card p-4 sm:p-5" aria-labelledby="afford-card-title">
+        <h2 id="afford-card-title" className="text-base font-semibold text-ink">Can I afford it?</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">
+          Pick one of your upcoming plans or type any amount. The answer uses the same “safe to spend today” number as your Today screen.
+        </p>
+        {hasAccounts ? (
+          <AffordIt
+            snapshot={snapshot}
+            today={today}
+            nextPayday={model.nextPayday}
+            events={model.planned}
+            calendarIncomplete={model.coverage.incomplete}
+            presets={presets}
+            cta={demo ? { href: "/login?mode=signup", label: "Create your own →" } : null}
+            note={demo ? "Sample budget. Protected goals are never suggested." : "Uses your real balances, bills and calendar. Protected goals are never suggested."}
+          />
+        ) : (
+          <EmptyState title="Add a cash account first">The checker needs a checking balance to work from.</EmptyState>
+        )}
+      </section>
       <PurchasePlanner snapshot={snapshot} input={input} today={today} />
       <ScenarioBuilder snapshot={snapshot} input={input} today={today} />
     </div>
@@ -44,7 +77,7 @@ function PurchasePlanner({ snapshot, input, today }: { snapshot: Snapshot; input
   const payOptions = snapshot.accounts.filter((a) => !a.archived && (a.isSpendable || a.kind === "credit_card"));
 
   return (
-    <Card title="Plan a big purchase" id="purchase">
+    <Card title="Plan a big purchase in detail" id="purchase">
       <p className="mb-3 text-sm text-muted">See if it fits, how much “savings ammo” it would take, where it comes from, and how long it takes to rebuild. Nothing is saved until you choose to.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">

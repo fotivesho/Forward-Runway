@@ -99,3 +99,23 @@ describe("a yes means today's number stays close to normal", () => {
     expect(checkAffordability(ctx, { amountCents: 210_000, date: addDays(today, 3) }).verdict).not.toBe("yes");
   });
 });
+
+describe("checking a plan that's already on the calendar", () => {
+  const today = "2026-11-25";
+  const d = buildLanding(today, `${today}T15:00:00Z`);
+  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
+
+  it("doesn't count money already set aside for it", () => {
+    const r = checkAffordability(ctx, { amountCents: 6_000, date: "2026-11-30", reservedCents: 6_000 });
+    expect(r.verdict).toBe("yes");
+    expect(r.safeToday.after).toBe(r.safeToday.before);
+    expect(r.safeToday.before).toBe(d.hero.safeTodayCents);
+    expect(r.action.detail).toMatch(/already set aside/);
+  });
+
+  it("only tests the extra when spending more than the cap", () => {
+    const withCap = checkAffordability(ctx, { amountCents: 9_000, date: "2026-11-30", reservedCents: 6_000 });
+    const extraOnly = checkAffordability(ctx, { amountCents: 3_000, date: "2026-11-30" });
+    expect(withCap.safeToday.after).toBe(extraOnly.safeToday.after);
+  });
+});

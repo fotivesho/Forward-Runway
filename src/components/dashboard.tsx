@@ -116,6 +116,11 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                 ))}
               </ul>
             )}
+            <div className="mt-3">
+              <Link href={base + "/what-if#afford"} className="btn btn-secondary btn-sm">
+                Can I afford it? →
+              </Link>
+            </div>
             {!demo && (
               <div className="mt-3">
                 <QuickLog accounts={accounts} today={today} />

@@ -116,6 +116,18 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
   check(res.status >= 300 && res.status < 400 && /\/login\?mode=reset/.test(res.headers.get("location") ?? ""), "/auth/confirm handles a bad reset link");
 }
 
+// The checker is also in the app's What-if page, answering in Today's number, with calendar plans as presets
+{
+  const { page, errors } = await visit("/demo/what-if", 390);
+  check(errors.length === 0, `what-if checker loads without errors ${errors.join(" | ")}`);
+  const todayText = await (await visit("/demo", 390)).page.locator("text=Safe to spend today").first().locator("xpath=ancestor::section").innerText();
+  const safe = todayText.match(/\$[\d,]+\.\d\d/)?.[0];
+  const answer = await page.locator("#afford-result").innerText();
+  check(!!safe && answer.includes(safe), `what-if checker uses the Today screen's number (${safe})`);
+  check((await page.locator("#afford button[aria-pressed]").filter({ hasText: "·" }).count()) > 0, "calendar plans appear as presets with their dates");
+  await page.close();
+}
+
 // Signed-in area is protected
 {
   const { page } = await visit("/app");

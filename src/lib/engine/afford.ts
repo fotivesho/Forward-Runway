@@ -35,6 +35,11 @@ export interface AffordRequest {
   amountCents: Cents;
   date: ISODate;
   paymentAccountId?: string | null;
+  /**
+   * Checking one of the user's own calendar plans: the amount its cap already sets aside in the
+   * daily caps. Only spending above it is new money (so the plan is never counted twice).
+   */
+  reservedCents?: Cents | null;
 }
 
 /** A purchase is a plain "yes" while today's safe-to-spend keeps at least this share of its value. */
@@ -47,16 +52,30 @@ export const KEEP_SHARE = 0.8;
  */
 export function checkAffordability(ctx: AffordContext, req: AffordRequest): AffordCheck {
   const { input } = ctx;
-  const plan = planPurchase(input, { label: "Purchase", amountCents: req.amountCents, date: req.date, paymentAccountId: req.paymentAccountId });
+  const reserved = Math.max(0, req.reservedCents ?? 0);
+  /** New money this purchase needs beyond what's already set aside for it. */
+  const amt = Math.max(0, req.amountCents - reserved);
+  const plan = planPurchase(input, { label: "Purchase", amountCents: Math.max(1, amt), date: req.date, paymentAccountId: req.paymentAccountId });
   const run = (extra: ForecastItem[]) => {
     const f = buildForecast(input, 90, { extraItems: extra });
     return { cap: planDailySpending(input, f, ctx.events, { calendarIncomplete: ctx.calendarIncomplete }).todayCap.capCents, lowest: f.lowest, belowFloor: f.lowest.cents < input.settings.cashFloorCents };
   };
   const buy = (cents: Cents, date: ISODate) => purchaseItem(input, { label: "Purchase", amountCents: cents, date, paymentAccountId: req.paymentAccountId });
   const base = run([]);
+  if (reserved > 0 && amt === 0) {
+    return {
+      verdict: "yes",
+      headline: "Yes, it's already planned.",
+      safeToday: { before: base.cap, after: base.cap },
+      lowest: { before: base.lowest, after: base.lowest },
+      action: { kind: "go", title: "Go ahead", detail: `Its ${formatCents(reserved)} cap is already set aside in your daily caps, so nothing else changes.` },
+      alternatives: [],
+      plan,
+    };
+  }
   const target = Math.floor(base.cap * KEEP_SHARE);
   const ok = (r: ReturnType<typeof run>) => !r.belowFloor && r.cap >= target;
-  const item = buy(req.amountCents, req.date);
+  const item = buy(amt, req.date);
   const plain = run([item]);
 
   // Savings that may be suggested: unprotected only (the wedding fund never is).
@@ -96,10 +115,10 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   // Computed alternatives.
   const alternatives: AffordAction[] = [];
   const waitDate = ctx.nextPayday && ctx.nextPayday > req.date ? ctx.nextPayday : null;
-  const waitOk = waitDate ? ok(run([buy(req.amountCents, waitDate)])) : false;
+  const waitOk = waitDate ? ok(run([buy(amt, waitDate)])) : false;
   const cheaperMax = (() => {
     let lo = 0;
-    let hi = req.amountCents;
+    let hi = amt;
     for (let i = 0; i < 12 && hi - lo > 1_000; i++) {
       const mid = Math.floor((lo + hi) / 2);
       if (ok(run([buy(mid, req.date)]))) lo = mid;
@@ -119,8 +138,9 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     action = {
       kind: "go",
       title: "Go ahead",
-      detail:
-        plain.cap < base.cap
+      detail: reserved > 0
+        ? `${formatCents(reserved)} is already set aside for it; the extra ${formatCents(amt)} ${plain.cap < base.cap ? `dips today's safe-to-spend to ${formatCents(plain.cap)}` : "fits easily"}.`
+        : plain.cap < base.cap
           ? `Today's safe-to-spend dips from ${formatCents(base.cap)} to ${formatCents(plain.cap)}. Every bill still clears.`
           : "Every bill, card payment and savings transfer still clears.",
     };
@@ -129,7 +149,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     let move: Cents | null = null;
     if (cash && available > 0) {
       const capAt = (total: Cents) => run([item, ...transfers(total)]);
-      let hi = Math.min(available, req.amountCents + Math.max(0, plan.shortfallCents));
+      let hi = Math.min(available, amt + Math.max(0, plan.shortfallCents));
       if (ok(capAt(hi))) {
         let lo = 0;
         for (let i = 0; i < 12 && hi - lo > 1_000; i++) {
@@ -149,7 +169,13 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       });
     }
     const cheaper = cheaperMax();
-    if (cheaper >= 500) alternatives.push({ kind: "cheaper", title: `Go cheaper: up to ${formatCents(cheaper)}`, detail: "That's a plain yes today." });
+    if (reserved + cheaper >= 500) {
+      alternatives.push({
+        kind: "cheaper",
+        title: `Go cheaper: up to ${formatCents(reserved + cheaper)}`,
+        detail: reserved > 0 ? `That's ${formatCents(reserved)} already set aside plus ${formatCents(cheaper)} more, a plain yes today.` : "That's a plain yes today.",
+      });
+    }
 
     if (move != null) {
       verdict = "yes_with_plan";
@@ -165,7 +191,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       verdict = "yes_with_plan";
       headline = "Yes, with a plan.";
       action = alternatives.shift()!;
-      if (action.kind === "wait") after = run([buy(req.amountCents, waitDate!)]);
+      if (action.kind === "wait") after = run([buy(amt, waitDate!)]);
     } else {
       verdict = "not_yet";
       headline = "Not yet.";

@@ -8,7 +8,18 @@ import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 
 export const AFFORD_EVENT = "fr-afford";
-export const AFFORD_PRESETS = [
+export interface AffordPreset {
+  label: string;
+  short?: string;
+  cents: number;
+  emoji: string;
+  /** A calendar plan's own date: picking it also sets "when". */
+  date?: ISODate;
+  /** Amount already set aside for this calendar plan in the daily caps (never counted twice). */
+  reservedCents?: number;
+}
+
+export const AFFORD_PRESETS: AffordPreset[] = [
   { label: "Concert tickets", short: "Concert", cents: 18_000, emoji: "🎟️" },
   { label: "Weekend trip", short: "Weekend trip", cents: 65_000, emoji: "🏕️" },
   { label: "New laptop", short: "Laptop", cents: 240_000, emoji: "💻" },
@@ -53,23 +64,43 @@ export function AffordIt({
   nextPayday,
   events,
   calendarIncomplete,
+  presets = AFFORD_PRESETS,
+  cta = { href: "/demo", label: "See the full picture in the demo →" },
+  note = "Sample budget. The wedding fund is protected and never suggested.",
 }: {
   snapshot: Snapshot;
   today: ISODate;
   nextPayday: ISODate | null;
   events: PlannedEvent[];
   calendarIncomplete: boolean;
+  presets?: AffordPreset[];
+  cta?: { href: string; label: string } | null;
+  note?: string;
 }) {
   const ctx = useMemo(() => ({ input: toEngineInput(snapshot, today), events, calendarIncomplete, nextPayday }), [snapshot, today, events, calendarIncomplete, nextPayday]);
   const card = snapshot.accounts.find((a) => a.kind === "credit_card");
   const saturday = addDays(today, (6 - dayOfWeek(today) + 7) % 7 || 7);
+  const [amount, setAmount] = useState(String((presets[0] ?? AFFORD_PRESETS[0]!).cents / 100));
+  const [planDate, setPlanDate] = useState<ISODate | null>(presets[0]?.date ?? null);
+  const [reservedCents, setReservedCents] = useState<number>(presets[0]?.reservedCents ?? 0);
+  const [when, setWhen] = useState(presets[0]?.date ? "plan" : "weekend");
   const whenOptions: Array<{ id: string; label: string; date: ISODate }> = [
+    ...(planDate ? [{ id: "plan", label: `${formatShort(planDate)} (the plan)`, date: planDate }] : []),
     { id: "today", label: "Today", date: today },
     { id: "weekend", label: `Sat ${formatShort(saturday)}`, date: saturday },
     ...(nextPayday && nextPayday > today ? [{ id: "payday", label: `Payday ${formatShort(nextPayday)}`, date: nextPayday }] : []),
   ];
-  const [amount, setAmount] = useState(String(AFFORD_PRESETS[0]!.cents / 100));
-  const [when, setWhen] = useState("weekend");
+  const pick = (p: AffordPreset) => {
+    setAmount(String(p.cents / 100));
+    setReservedCents(p.reservedCents ?? 0);
+    if (p.date) {
+      setPlanDate(p.date);
+      setWhen("plan");
+    } else {
+      setPlanDate(null);
+      if (when === "plan") setWhen("weekend");
+    }
+  };
   const [onCard, setOnCard] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -87,8 +118,8 @@ export function AffordIt({
   const valid = cents != null && cents > 0 && cents <= 5_000_000;
   const date = whenOptions.find((w) => w.id === when)?.date ?? today;
   const result = useMemo(
-    () => (valid ? checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: onCard ? card?.id : null }) : null),
-    [ctx, valid, cents, date, onCard, card?.id],
+    () => (valid ? checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: onCard ? card?.id : null, reservedCents: when === "plan" ? reservedCents : 0 }) : null),
+    [ctx, valid, cents, date, onCard, card?.id, reservedCents, when],
   );
   const safeAfter = useTween(result?.safeToday.after ?? 0);
   const lowAfter = useTween(result?.lowest.after.cents ?? 0);
@@ -102,20 +133,20 @@ export function AffordIt({
       <div className="card p-4 sm:p-5">
         <p className="text-sm font-medium text-ink">What do you want to buy?</p>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {AFFORD_PRESETS.map((p) => {
-            const active = cents === p.cents;
+          {presets.map((p) => {
+            const active = cents === p.cents && (!p.date || (when === "plan" && planDate === p.date));
             return (
               <button
-                key={p.label}
+                key={p.label + (p.date ?? "")}
                 type="button"
-                onClick={() => setAmount(String(p.cents / 100))}
+                onClick={() => pick(p)}
                 aria-pressed={active}
                 className={`flex min-h-14 items-center gap-2 rounded-xl border px-3 text-left text-sm transition ${active ? "border-brand bg-brand/10 ring-1 ring-brand" : "border-line bg-surface-2/60 hover:border-brand/60"}`}
               >
                 <span aria-hidden className="text-xl">{p.emoji}</span>
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-ink">{p.label}</span>
-                  <span className="tabular text-muted">{formatCents(p.cents)}</span>
+                  <span className="tabular text-muted">{formatCents(p.cents)}{p.date ? ` · ${formatShort(p.date)}` : ""}</span>
                 </span>
               </button>
             );
@@ -194,8 +225,8 @@ export function AffordIt({
             </div>
 
             <div className="mt-5 flex flex-wrap items-center gap-3">
-              <Link href="/demo" className="btn btn-primary">See the full picture in the demo →</Link>
-              <span className="text-xs text-faint">Sample budget. The wedding fund is protected and never suggested.</span>
+              {cta && <Link href={cta.href} className="btn btn-primary">{cta.label}</Link>}
+              <span className="text-xs text-faint">{note}</span>
             </div>
           </div>
         )}

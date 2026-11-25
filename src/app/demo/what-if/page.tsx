@@ -9,7 +9,7 @@ export default function Page() {
   return (
     <>
       <PageHeader title="What if…" subtitle="Test a big purchase or a change to your plan before you commit. Your real data isn't changed." />
-      <WhatIf snapshot={s.snapshot} today={s.today} />
+      <WhatIf snapshot={s.snapshot} today={s.today} nowIso={s.nowIso} demo />
     </>
   );
 }
