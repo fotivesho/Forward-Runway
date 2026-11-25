@@ -68,6 +68,8 @@ export interface DashboardModel {
   forecast: Forecast;
   forecast90: Forecast;
   plan: DailyPlan;
+  /** Calendar events as the advisor saw them (for re-running the plan with a hypothetical purchase). */
+  planned: PlannedEvent[];
   coverage: Coverage;
   events: EventView[];
   question: Question | null;
@@ -254,6 +256,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     forecast,
     forecast90,
     plan,
+    planned,
     coverage,
     events: events.filter((v) => v.event.date <= addDays(today, 30)),
     question: pickQuestion(forecast90.issues, events, today),

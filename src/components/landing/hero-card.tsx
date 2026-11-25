@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import { formatShort, type ISODate } from "@/lib/dates";
 import type { LandingData } from "@/lib/view/landing";
 import { useCountUp, usePrefersReducedMotion } from "./motion";
+import { AFFORD_EVENT, AFFORD_PRESETS } from "./afford-it";
 
 const W = 320;
 const H = 120;
@@ -29,7 +30,7 @@ export function HeroCard({ hero }: { hero: LandingData["hero"] }) {
   const label = (date: ISODate) => formatShort(date);
 
   return (
-    <div className="glow relative mx-auto w-full max-w-sm rounded-[2rem] border border-white/10 bg-[#fffcf4] p-5 text-[#1d3324] shadow-2xl" aria-label="Example: the Today screen, with fictional data" role="img">
+    <div className="glow relative mx-auto w-full max-w-sm rounded-[2rem] border border-white/10 bg-[#fffcf4] p-5 text-[#1d3324] shadow-2xl" aria-label="Example Today screen with sample data" role="group">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4f6455]">Safe to spend today</span>
         <span className="rounded-full border border-[#2e7346]/40 px-2 py-0.5 text-[11px] font-semibold text-[#2e7346]">On track</span>
@@ -70,7 +71,7 @@ export function HeroCard({ hero }: { hero: LandingData["hero"] }) {
       </svg>
 
       <ul className="mt-4 space-y-1.5 text-xs">
-        {hero.upcoming.map((u) => (
+        {hero.upcoming.slice(0, 3).map((u) => (
           <li key={u.date + u.label} className="flex justify-between gap-2">
             <span className="truncate text-[#4f6455]">
               <span className="mr-1.5 font-semibold text-[#1d3324] tabular">{label(u.date)}</span>
@@ -82,6 +83,26 @@ export function HeroCard({ hero }: { hero: LandingData["hero"] }) {
           </li>
         ))}
       </ul>
+
+      <div className="mt-4 border-t border-[#ddd3bb] pt-3">
+        <p className="text-xs font-semibold text-[#1d3324]">Can I afford…</p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {AFFORD_PRESETS.slice(0, 3).map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent(AFFORD_EVENT, { detail: p.cents }));
+                document.getElementById(window.innerWidth < 1024 ? "afford-result" : "afford")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+              }}
+              className="min-h-9 rounded-full border border-[#2e7346]/40 bg-[#e4eedc] px-3 text-xs font-semibold text-[#1d3324] transition hover:bg-[#2e7346] hover:text-white"
+            >
+              <span aria-hidden>{p.emoji} </span>
+              {p.short} {formatCents(p.cents)}?
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

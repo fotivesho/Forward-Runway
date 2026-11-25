@@ -13,19 +13,14 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
   return (
     <div ref={ref} className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-center">
       <div>
-        <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">The problem with your balance</p>
-        <h2 className="font-display mt-3 text-4xl leading-tight text-ink sm:text-5xl">
+        <h2 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
           Your bank says <span className="tabular text-brand">{formatCents(data.startCents)}</span>.
           <br />
-          It isn't telling you the rest.
+          That's not the full story.
         </h2>
-        <p className="mt-4 text-lg text-muted">
-          Rent, card statements, savings transfers and next week's plans are already spoken for. Runway Tomorrow walks every dollar forward, day
-          by day, so the number you see is the number you can actually spend.
-        </p>
-        <p className="mt-6 text-sm text-muted">
-          What's truly safe to spend today:{" "}
-          <span className="font-display text-3xl text-ink tabular">{formatCents(data.safeTodayCents)}</span>
+        <p className="mt-3 text-base text-muted sm:text-lg">
+          Rent, the card statement and savings transfers are already spoken for. Walk the money forward and what's truly safe to spend today is{" "}
+          <span className="font-semibold text-ink tabular">{formatCents(data.safeTodayCents)}</span>.
         </p>
       </div>
       <ol className="card space-y-1 p-4 sm:p-5" aria-label="How the balance changes over the next three weeks (example)">
@@ -36,11 +31,11 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
         <li aria-hidden className="h-2.5 rounded-full bg-surface-3">
           <span className="block h-2.5 rounded-full bg-brand" style={{ width: pct(data.startCents) }} />
         </li>
-        {data.steps.map((s, i) => (
+        {data.steps.slice(0, 6).map((s, i) => (
           <li
             key={s.date + s.label + i}
             className="pt-2 transition-all duration-700"
-            style={{ opacity: inView ? 1 : 0, transform: inView ? "none" : "translateX(16px)", transitionDelay: `${250 + i * 220}ms` }}
+            style={{ opacity: inView ? 1 : 0, transform: inView ? "none" : "translateX(16px)", transitionDelay: `${150 + i * 140}ms` }}
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="min-w-0 truncate text-muted">
@@ -52,7 +47,7 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
             <div aria-hidden className="mt-1 h-2.5 rounded-full bg-surface-3">
               <span
                 className={`block h-2.5 rounded-full transition-[width] duration-700 ${s.amountCents > 0 ? "bg-brand" : "bg-out/80"}`}
-                style={{ width: inView ? pct(s.balanceAfterCents) : pct(data.startCents), transitionDelay: `${350 + i * 220}ms` }}
+                style={{ width: inView ? pct(s.balanceAfterCents) : pct(data.startCents), transitionDelay: `${220 + i * 140}ms` }}
               />
             </div>
             <span className="sr-only">Balance after: {formatCents(s.balanceAfterCents)}</span>

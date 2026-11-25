@@ -6,6 +6,7 @@ import { addDays, diffDays, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { demoSnapshot } from "../data/demo";
 import type { Snapshot } from "../data/snapshot";
+import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard } from "./dashboard";
 
 export interface LandingStep {
@@ -19,6 +20,8 @@ export interface LandingStep {
 export interface LandingData {
   today: ISODate;
   snapshot: Snapshot;
+  /** What the advisor needs to re-run Today's number with a hypothetical purchase. */
+  afford: { events: PlannedEvent[]; calendarIncomplete: boolean };
   hero: {
     safeTodayCents: Cents;
     poolCents: Cents;
@@ -60,6 +63,7 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
   return {
     today,
     snapshot,
+    afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,
       poolCents: m.plan.poolCents,
