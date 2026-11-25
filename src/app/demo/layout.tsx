@@ -4,6 +4,7 @@ import { AppNav } from "@/components/app-nav";
 import { DemoProvider } from "@/components/form";
 import { PrivacyProvider } from "@/components/privacy";
 import { ThemeToggle } from "@/components/theme";
+import { DemoNudge } from "@/components/demo-nudge";
 import { formatLong, todayInZone } from "@/lib/dates";
 import { APP_NAME } from "@/lib/brand";
 import { Logo } from "@/components/logo";
@@ -37,6 +38,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
             <AppNav base="/demo" />
             <main id="main">{children}</main>
           </div>
+          <DemoNudge />
         </div>
       </DemoProvider>
     </PrivacyProvider>

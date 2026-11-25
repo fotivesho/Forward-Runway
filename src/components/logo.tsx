@@ -15,16 +15,19 @@ export function LogoMark({ size = 32, className = "" }: { size?: number; classNa
 }
 
 /** Mark + "runway." wordmark with "TOMORROW" beneath. The accessible name is the full app name. */
-export function Logo({ size = "md" }: { size?: "md" | "lg" }) {
+export function Logo({ size = "md", inverse = false }: { size?: "md" | "lg"; inverse?: boolean }) {
   const mark = size === "lg" ? 44 : 32;
+  const ink = inverse ? "text-[#f1f6ea]" : "text-ink";
+  const dot = inverse ? "text-[#ddefbf]" : "text-brand";
+  const sub = inverse ? "text-[#b9cbb4]" : "text-muted";
   return (
     <span className="inline-flex items-center gap-2" aria-label={APP_NAME} role="img">
       <LogoMark size={mark} />
       <span className="flex flex-col leading-none" aria-hidden="true">
-        <span className={`font-semibold tracking-tight text-ink ${size === "lg" ? "text-2xl" : "text-lg"}`}>
-          runway<span className="text-brand">.</span>
+        <span className={`font-semibold tracking-tight ${ink} ${size === "lg" ? "text-2xl" : "text-lg"}`}>
+          runway<span className={dot}>.</span>
         </span>
-        <span className={`font-semibold uppercase tracking-[0.28em] text-muted ${size === "lg" ? "text-[11px]" : "text-[9px]"}`}>tomorrow</span>
+        <span className={`font-semibold uppercase tracking-[0.28em] ${sub} ${size === "lg" ? "text-[11px]" : "text-[9px]"}`}>tomorrow</span>
       </span>
     </span>
   );

@@ -39,6 +39,22 @@ async function unlabeled(page) {
   await page.close();
 }
 
+// Landing page: phone layout and the live "Can I afford it?" calculator
+{
+  const { page, errors } = await visit("/", 390);
+  check(errors.length === 0, `landing has no console errors at 390px ${errors.join(" | ")}`);
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), "landing has no horizontal scroll at 390px");
+  check((await unlabeled(page)) === 0, "landing inputs are labelled");
+  await page.getByRole("button", { name: /New laptop/ }).click();
+  await page.waitForTimeout(300);
+  const verdict = await page.locator("[aria-live=polite]").first().innerText();
+  check(/\$2,400\.00/.test(verdict) && /(fits|savings|Not this month)/i.test(verdict), "affordability calculator answers the laptop preset");
+  await page.fill("#afford-amount", "25");
+  await page.waitForTimeout(200);
+  check(/Yes, it fits/.test(await page.locator("[aria-live=polite]").first().innerText()), "a small purchase fits");
+  await page.close();
+}
+
 // Demo (fictional data) at phone and desktop widths
 for (const width of [390, 1280]) {
   const { page, res, errors } = await visit("/demo", width);
