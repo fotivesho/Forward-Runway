@@ -29,10 +29,11 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
   const { plan, forecast } = m;
   const allowance = plan.allowance;
   const accounts = snapshot.accounts;
+  const base = demo ? "/demo" : "/app";
 
   if (accounts.length === 0) {
     return (
-      <EmptyState title="Let's set up your runway" action={<Link className="btn btn-primary" href="/app/onboarding">Start setup</Link>}>
+      <EmptyState title="Let's set up your runway" action={<Link className="btn btn-primary" href={base + "/onboarding"}>Start setup</Link>}>
         Add your checking balance, payday and main bills to see your forecast and what you can safely spend.
       </EmptyState>
     );
@@ -92,7 +93,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               <div className="mb-3">
                 <Notice tone="bad" title="Bills come before flexible spending">
                   {allowance.explanation[1]}{" "}
-                  <Link href="/app/what-if" className="font-semibold text-brand underline">
+                  <Link href={base + "/what-if"} className="font-semibold text-brand underline">
                     See how savings could cover it
                   </Link>
                 </Notice>
@@ -156,7 +157,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           <ForecastChart days={forecast.days} floorCents={forecast.floorCents} lowest={forecast.lowest} allowanceByDay={allowanceByDay} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {incomplete ? <Badge tone="warn">Incomplete — see below</Badge> : <Badge tone="good">Inputs complete and fresh</Badge>}
-            <Link href={demo ? "#forecast" : "/app/forecast"} className="btn btn-ghost btn-sm">
+            <Link href={base + "/forecast"} className="btn btn-ghost btn-sm">
               Daily timeline →
             </Link>
           </div>
@@ -189,7 +190,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           id="plans"
           title="Plans on your calendar"
           action={
-            <Link href={demo ? "#plans" : "/app/calendar"} className="btn btn-ghost btn-sm">
+            <Link href={base + "/calendar"} className="btn btn-ghost btn-sm">
               Calendars →
             </Link>
           }
@@ -232,7 +233,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         </Card>
 
         {/* Snapshot */}
-        <Card title="Snapshot" action={<Link href={demo ? "#" : "/app/accounts"} className="btn btn-ghost btn-sm">Accounts →</Link>}>
+        <Card title="Snapshot" action={<Link href={base + "/accounts"} className="btn btn-ghost btn-sm">Accounts →</Link>}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Spendable cash</h3>
           <AccountList views={m.cash.accounts} nowMs={now.getTime()} />
           <p className="mt-1 flex justify-between border-t border-line pt-2 text-sm">
@@ -392,7 +393,7 @@ function SpendingBars({ title, totals, total }: { title: string; totals: { categ
             <li key={t.category} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-2 text-xs">
               <span className="truncate text-muted">{t.category}</span>
               <span className="h-2 rounded-full bg-surface-3" aria-hidden>
-                <span className="block h-2 rounded-full" style={{ width: `${(t.cents / max) * 100}%`, background: "#2bb36a" }} />
+                <span className="block h-2 rounded-full" style={{ width: `${(t.cents / max) * 100}%`, background: "#2e8a52" }} />
               </span>
               <Money cents={t.cents} className="text-ink" />
             </li>

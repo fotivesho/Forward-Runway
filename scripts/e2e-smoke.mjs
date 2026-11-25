@@ -55,6 +55,16 @@ for (const width of [390, 1280]) {
   await page.close();
 }
 
+// Every other demo page renders cleanly and stays read-only
+for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/activity", "/demo/settings", "/demo/onboarding"]) {
+  const { page, res, errors } = await visit(path);
+  check(res.status() === 200 && errors.length === 0, `${path} loads without errors ${errors.join(" | ")}`);
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), `${path} has no horizontal scroll at 390px`);
+  check((await unlabeled(page)) === 0, `${path} inputs are labelled`);
+  check((await page.locator("form fieldset:enabled").count()) === 0, `${path} forms are read-only`);
+  await page.close();
+}
+
 // Signed-in area is protected
 {
   const { page } = await visit("/app");

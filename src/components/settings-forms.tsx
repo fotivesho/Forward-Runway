@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { deleteAllData, deleteMyAccount, importData, saveProfile, saveSettings } from "@/app/app/actions";
 import type { Snapshot } from "@/lib/data/snapshot";
 import { centsToInput } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
-import { ActionForm, CheckboxField, Field, FileField, MoneyField, SelectField, Submit } from "./form";
+import { ActionForm, CheckboxField, DemoCtx, Field, FileField, MoneyField, SelectField, Submit } from "./form";
 
 function zones(current: string): string[] {
   let list: string[] = [];
@@ -87,6 +87,7 @@ export function PasswordForm() {
   const [pw, setPw] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const demo = useContext(DemoCtx);
   return (
     <form
       id="password"
@@ -106,7 +107,7 @@ export function PasswordForm() {
         <label htmlFor="new-password" className="text-sm font-medium">New password</label>
         <input id="new-password" type="password" autoComplete="new-password" className="input" value={pw} onChange={(e) => setPw(e.target.value)} aria-invalid={msg && !msg.ok ? true : undefined} aria-describedby="pw-msg" />
       </div>
-      <button className="btn btn-secondary" disabled={busy}>{busy ? "Saving…" : "Change password"}</button>
+      <button className="btn btn-secondary" disabled={busy || demo}>{busy ? "Saving…" : "Change password"}</button>
       <p id="pw-msg" aria-live="polite" className={`text-xs sm:col-span-2 ${msg?.ok ? "text-brand" : "text-danger"}`}>{msg?.text}</p>
     </form>
   );

@@ -7,12 +7,12 @@ export const metadata: Metadata = {
   description: "See what's coming up, what you can safely spend today, and keep bills, cards and savings on track.",
   manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
-  appleWebApp: { capable: true, title: "Runway", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Runway", statusBarStyle: "default" },
   robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#06130d",
+  themeColor: "#f6f1e4",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",

@@ -26,6 +26,7 @@ const SOURCE_LABEL: Record<string, string> = {
 };
 
 export function QuestionCard({ question, accounts, today }: { question: Question; accounts: Account[]; today: ISODate }) {
+  const base = useContext(DemoCtx) ? "/demo" : "/app";
   const account = accounts.find((a) => a.id === question.accountId);
   const cash = accounts.find((a) => a.isSpendable && a.kind !== "credit_card" && a.kind !== "loan");
   return (
@@ -77,7 +78,7 @@ export function QuestionCard({ question, accounts, today }: { question: Question
           </ActionForm>
         )}
         {(question.kind === "card" || question.kind === "statement" || question.kind === "goal" || question.kind === "other" || (question.kind === "balance" && !account) || (question.kind === "income" && !cash)) && (
-          <Link className="btn btn-primary" href={question.kind === "income" ? "/app/plans" : "/app/accounts"}>
+          <Link className="btn btn-primary" href={base + (question.kind === "income" ? "/plans" : "/accounts")}>
             Answer this
           </Link>
         )}

@@ -6,10 +6,14 @@ import { formatCents } from "@/lib/money";
 import type { ForecastDay } from "@/lib/engine";
 import { useHideAmounts } from "./privacy";
 
-// Validated with the dataviz palette checker on the dark surface (#0b1f16).
-const SERIES_BALANCE = "#2bb36a";
-const SERIES_ALLOWANCE = "#5f9fe0";
-const FLOOR = "#f5c451";
+// Validated with the dataviz palette checker on the cream surface (#fffcf4).
+const SERIES_BALANCE = "#2e8a52";
+const SERIES_ALLOWANCE = "#3a78c2";
+const FLOOR = "#b8860b";
+const GRID = "#e6dcc6";
+const TICK = "#4f6455";
+const LABEL = "#1d3324";
+const RING = "#fffcf4";
 
 interface Point {
   date: string;
@@ -75,22 +79,22 @@ export function ForecastChart({
           >
             <defs>
               <linearGradient id="fr-balance" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={SERIES_BALANCE} stopOpacity={0.28} />
+                <stop offset="0%" stopColor={SERIES_BALANCE} stopOpacity={0.22} />
                 <stop offset="100%" stopColor={SERIES_BALANCE} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="#224434" strokeOpacity={0.5} vertical={false} />
+            <CartesianGrid stroke={GRID} strokeOpacity={0.5} vertical={false} />
             <XAxis
               dataKey="date"
               tickFormatter={formatShort}
-              tick={{ fill: "#a3bfb1", fontSize: 11 }}
-              axisLine={{ stroke: "#224434" }}
+              tick={{ fill: TICK, fontSize: 11 }}
+              axisLine={{ stroke: GRID }}
               tickLine={false}
               minTickGap={24}
             />
-            <YAxis tickFormatter={fmtAxis} tick={{ fill: "#a3bfb1", fontSize: 11 }} axisLine={false} tickLine={false} width={hide ? 8 : 52} />
+            <YAxis tickFormatter={fmtAxis} tick={{ fill: TICK, fontSize: 11 }} axisLine={false} tickLine={false} width={hide ? 8 : 52} />
             <Tooltip
-              cursor={{ stroke: "#a3bfb1", strokeWidth: 1 }}
+              cursor={{ stroke: TICK, strokeWidth: 1 }}
               content={({ active, payload }) => {
                 if (!active || !payload?.length) return null;
                 const p = payload[0]!.payload as Point;
@@ -120,20 +124,20 @@ export function ForecastChart({
               y={floorCents / 100}
               stroke={FLOOR}
               strokeDasharray="4 4"
-              label={{ value: hide ? "Floor" : `Floor ${formatCents(floorCents, { compact: true })}`, fill: "#e8f4ee", fontSize: 11, position: "insideBottomRight" }}
+              label={{ value: hide ? "Floor" : `Floor ${formatCents(floorCents, { compact: true })}`, fill: LABEL, fontSize: 11, position: "insideBottomRight" }}
             />
-            <Area type="stepAfter" dataKey="closing" stroke={SERIES_BALANCE} strokeWidth={2} fill="url(#fr-balance)" isAnimationActive={false} activeDot={{ r: 5, stroke: "#0b1f16", strokeWidth: 2 }} />
+            <Area type="stepAfter" dataKey="closing" stroke={SERIES_BALANCE} strokeWidth={2} fill="url(#fr-balance)" isAnimationActive={false} activeDot={{ r: 5, stroke: RING, strokeWidth: 2 }} />
             {allowanceByDay && (
-              <Line type="stepAfter" dataKey="afterAllowance" stroke={SERIES_ALLOWANCE} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} activeDot={{ r: 4, stroke: "#0b1f16", strokeWidth: 2 }} />
+              <Line type="stepAfter" dataKey="afterAllowance" stroke={SERIES_ALLOWANCE} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} activeDot={{ r: 4, stroke: RING, strokeWidth: 2 }} />
             )}
             <ReferenceDot
               x={lowest.date}
               y={lowest.cents / 100}
               r={5}
               fill={SERIES_BALANCE}
-              stroke="#0b1f16"
+              stroke={RING}
               strokeWidth={2}
-              label={{ value: "Lowest", position: "top", fill: "#e8f4ee", fontSize: 11 }}
+              label={{ value: "Lowest", position: "top", fill: LABEL, fontSize: 11 }}
             />
           </ComposedChart>
         </ResponsiveContainer>

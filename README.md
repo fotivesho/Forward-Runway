@@ -9,7 +9,7 @@ Version 1.0 has **no bank connections and no AI**. All numbers come from what yo
 - **Calendars**: any number of iCal feeds (Google, iCloud, Outlook, including shared calendars) or uploaded `.ics` files. Estimated cost and suggested cap per event, likely duplicates detected, corrections remembered for similar events. A missing, failed, stale or suspiciously empty calendar is **never** treated as "no plans".
 - **Advice**: for each event, *go ahead within a cap*, *cheaper version*, *postpone* or *skip*, with the effect on cash, card payments, debt interest and savings goals.
 - **Big purchases ("savings ammo")**: whether it fits, how much to move from which savings account (protected goals like the wedding fund only with explicit opt-in), when to move it, and 3/6/12-month rebuild plans.
-- **What-if scenarios**, **transaction CRUD**, **JSON import/export**, **privacy controls** (hide amounts, wipe data, delete account), **onboarding**, and a **public demo with fictional data**.
+- **What-if scenarios**, **transaction CRUD**, **JSON import/export**, **privacy controls** (hide amounts, wipe data, delete account), **onboarding**, and a **public demo of every page with fictional data** at `/demo`.
 
 ## Financial correctness rules
 
@@ -47,7 +47,7 @@ supabase/tests/      RLS test suite (runs against real Postgres)
 - All queries run with the signed-in user's session. The service-role key is used for exactly one call (deleting your own auth user), only if configured.
 - Calendar feed URLs are secrets. They are read only on the server, shown back only as a host name, and excluded from exports. Fetching is https-only with private-network (SSRF) protection rechecked on every redirect, a 10 s timeout and a 5 MB limit.
 - The service worker never caches `/app` pages or API responses. `/app/*` responses are sent `Cache-Control: private, no-store`. Security headers include HSTS, `X-Frame-Options: DENY` and `nosniff`.
-- The public `/demo` renders data generated in code (`src/lib/data/demo.ts`); it never queries the database.
+- The public `/demo` pages render data generated in code (`src/lib/data/demo.ts`); it never queries the database.
 
 ## Running locally
 

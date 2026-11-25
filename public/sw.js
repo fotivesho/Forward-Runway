@@ -2,7 +2,7 @@
  * Privacy rule: financial pages (/app/*) and API responses are NEVER cached —
  * they're always fetched fresh, and an offline page is shown when the network is down.
  * Only static, non-personal assets are cached. */
-const CACHE = "fr-static-v1";
+const CACHE = "fr-static-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

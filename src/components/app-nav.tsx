@@ -14,9 +14,10 @@ const LINKS = [
 ];
 const MOBILE = ["/app", "/app/forecast", "/app/plans", "/app/calendar", "/app/what-if"];
 
-export function AppNav() {
+export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();
-  const active = (href: string) => (href === "/app" ? path === "/app" : path.startsWith(href));
+  const to = (href: string) => base + href.slice(4);
+  const active = (href: string) => (href === "/app" ? path === base : path.startsWith(to(href)));
   return (
     <>
       <nav aria-label="Main" className="hidden lg:block">
@@ -24,7 +25,7 @@ export function AppNav() {
           {LINKS.map((l) => (
             <li key={l.href}>
               <Link
-                href={l.href}
+                href={to(l.href)}
                 aria-current={active(l.href) ? "page" : undefined}
                 className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${active(l.href) ? "bg-surface-3 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"}`}
               >
@@ -40,7 +41,7 @@ export function AppNav() {
           {LINKS.filter((l) => MOBILE.includes(l.href)).map((l) => (
             <li key={l.href}>
               <Link
-                href={l.href}
+                href={to(l.href)}
                 aria-current={active(l.href) ? "page" : undefined}
                 className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active(l.href) ? "text-brand" : "text-muted"}`}
               >
