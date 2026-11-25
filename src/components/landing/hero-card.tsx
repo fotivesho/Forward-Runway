@@ -93,7 +93,7 @@ export function HeroCard({ hero }: { hero: LandingData["hero"] }) {
               type="button"
               onClick={() => {
                 window.dispatchEvent(new CustomEvent(AFFORD_EVENT, { detail: p.cents }));
-                document.getElementById(window.innerWidth < 1024 ? "afford-result" : "afford")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+                document.getElementById("afford-title")?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
               }}
               className="min-h-9 rounded-full border border-[#2e7346]/40 bg-[#e4eedc] px-3 text-xs font-semibold text-[#1d3324] transition hover:bg-[#2e7346] hover:text-white"
             >

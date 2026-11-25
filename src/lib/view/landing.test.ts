@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addDays } from "../dates";
+import { addDays, formatShort } from "../dates";
 import { buildLanding } from "./landing";
 
 describe("landing page data", () => {
@@ -117,5 +117,34 @@ describe("checking a plan that's already on the calendar", () => {
     const withCap = checkAffordability(ctx, { amountCents: 9_000, date: "2026-11-30", reservedCents: 6_000 });
     const extraOnly = checkAffordability(ctx, { amountCents: 3_000, date: "2026-11-30" });
     expect(withCap.safeToday.after).toBe(extraOnly.safeToday.after);
+  });
+});
+
+describe("paying by card", () => {
+  const today = "2026-11-25";
+  const d = buildLanding(today, `${today}T15:00:00Z`);
+  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
+  const visa = d.snapshot.accounts.find((a) => a.kind === "credit_card")!.id;
+
+  it("cash leaves on the statement due date, which the 90-day answer already includes", () => {
+    const card = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28", paymentAccountId: visa });
+    const debit = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28" });
+    expect(card.cash.viaCard).toBeTruthy();
+    expect(card.cash.date > "2026-11-28").toBe(true);
+    expect(card.cash.statementCloses! >= "2026-11-28").toBe(true);
+    expect(card.cash.beyondHorizon).toBe(false);
+    // A card doesn't create money: today's number moves the same as paying by debit.
+    expect(card.safeToday.after).toBe(debit.safeToday.after);
+    expect(debit.cash.date).toBe("2026-11-28");
+  });
+
+  it("times any savings move to when the cash leaves, not the purchase date", () => {
+    const card = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28", paymentAccountId: visa });
+    if (card.action.kind === "move") expect(card.action.title).toContain(formatShort(card.cash.date));
+  });
+
+  it("flags a statement that falls beyond the 90-day window", () => {
+    const far = checkAffordability(ctx, { amountCents: 50_000, date: addDays(today, 80), paymentAccountId: visa });
+    expect(far.cash.beyondHorizon).toBe(true);
   });
 });

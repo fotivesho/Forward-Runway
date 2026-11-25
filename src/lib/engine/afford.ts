@@ -21,6 +21,11 @@ export interface AffordCheck {
   lowest: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
   action: AffordAction;
   alternatives: AffordAction[];
+  /**
+   * When the money actually leaves your cash. Paid by card, that's the statement due date,
+   * not the purchase date (the 90-day forecast already includes that payment).
+   */
+  cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
   plan: PurchasePlan;
 }
 
@@ -56,12 +61,26 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   /** New money this purchase needs beyond what's already set aside for it. */
   const amt = Math.max(0, req.amountCents - reserved);
   const plan = planPurchase(input, { label: "Purchase", amountCents: Math.max(1, amt), date: req.date, paymentAccountId: req.paymentAccountId });
+  const buy = (cents: Cents, date: ISODate) => purchaseItem(input, { label: "Purchase", amountCents: cents, date, paymentAccountId: req.paymentAccountId });
   const run = (extra: ForecastItem[]) => {
     const f = buildForecast(input, 90, { extraItems: extra });
     return { cap: planDailySpending(input, f, ctx.events, { calendarIncomplete: ctx.calendarIncomplete }).todayCap.capCents, lowest: f.lowest, belowFloor: f.lowest.cents < input.settings.cashFloorCents };
   };
-  const buy = (cents: Cents, date: ISODate) => purchaseItem(input, { label: "Purchase", amountCents: cents, date, paymentAccountId: req.paymentAccountId });
   const base = run([]);
+
+  // When does the cash actually leave? By card: on the statement due date.
+  const payAcct = req.paymentAccountId ? input.accounts.find((a) => a.id === req.paymentAccountId) : undefined;
+  const cashOut: AffordCheck["cash"] = { date: req.date, viaCard: null, statementCloses: null, beyondHorizon: false };
+  if (payAcct?.kind === "credit_card") {
+    const f = buildForecast(input, 90, { extraItems: [buy(Math.max(1, amt), req.date)] });
+    const stmt = f.cards.find((c) => c.accountId === payAcct.id)?.statements.find((st) => st.closingDate >= req.date);
+    cashOut.viaCard = payAcct.name;
+    if (stmt) {
+      cashOut.date = stmt.dueDate;
+      cashOut.statementCloses = stmt.closingDate;
+      cashOut.beyondHorizon = stmt.dueDate > f.endDate;
+    } else cashOut.beyondHorizon = true;
+  }
   if (reserved > 0 && amt === 0) {
     return {
       verdict: "yes",
@@ -70,6 +89,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       lowest: { before: base.lowest, after: base.lowest },
       action: { kind: "go", title: "Go ahead", detail: `Its ${formatCents(reserved)} cap is already set aside in your daily caps, so nothing else changes.` },
       alternatives: [],
+      cash: cashOut,
       plan,
     };
   }
@@ -82,7 +102,8 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   const cash = input.accounts.find((a) => a.isSpendable && a.kind !== "credit_card" && a.kind !== "loan");
   const unprotected = plan.sources.filter((s) => !s.protected && s.availableCents > 0);
   const available = unprotected.reduce((t, s) => t + s.availableCents, 0);
-  const moveDate = plan.transferDate ?? req.date;
+  // Savings only need to arrive by the time the cash leaves (for a card: the statement due date).
+  const moveDate = cashOut.viaCard && !cashOut.beyondHorizon ? cashOut.date : (plan.transferDate ?? req.date);
   const movesFor = (total: Cents) => {
     const out: Array<{ accountId: string; name: string; cents: Cents }> = [];
     let left = total;
@@ -211,6 +232,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     lowest: { before: base.lowest, after: after.lowest },
     action,
     alternatives,
+    cash: cashOut,
     plan,
   };
 }

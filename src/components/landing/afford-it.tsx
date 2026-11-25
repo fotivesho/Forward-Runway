@@ -212,7 +212,14 @@ export function AffordIt({
           <div className={`rounded-2xl border-2 p-3.5 transition-colors duration-300 sm:p-6 ${look.panel}`}>
             <p className="text-xs text-muted sm:text-sm">
               <span className="font-semibold text-ink tabular">{formatCents(cents!)}</span> on {formatShort(date)}
-              {onCard && card ? ` with ${card.name}` : ""}
+              {result.cash.viaCard ? (
+                <>
+                  {" "}with {result.cash.viaCard} ·{" "}
+                  <span className="whitespace-nowrap font-semibold text-ink">
+                    {result.cash.beyondHorizon ? "cash leaves after the next 90 days" : `cash leaves ${formatShort(result.cash.date)}`}
+                  </span>
+                </>
+              ) : null}
             </p>
             <p className={`font-display flex items-center gap-2 text-3xl leading-tight sm:mt-1 sm:text-5xl ${look.word}`}>
               <span aria-hidden className="text-2xl sm:text-3xl">{look.icon}</span>
@@ -227,7 +234,7 @@ export function AffordIt({
               </div>
               <div className="rounded-xl bg-surface/80 px-2.5 py-2 sm:p-3">
                 <p className="text-[11px] text-faint sm:text-xs">
-                  Lowest<span className="hidden sm:inline"> balance</span> ahead · {formatShort(result.lowest.after.date)}
+                  Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}
                 </p>
                 <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.lowest.before.cents)}</p>
                 <p className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(lowAfter)}</p>
@@ -238,6 +245,11 @@ export function AffordIt({
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint sm:text-xs">Suggested move</p>
               <p className="text-base font-semibold leading-snug text-ink sm:mt-1 sm:text-lg">{result.action.title}</p>
               <p className="text-[13px] leading-snug text-muted sm:text-sm">{result.action.detail}</p>
+              {result.cash.beyondHorizon && (
+                <p className="mt-1.5 text-[13px] leading-snug text-warn sm:text-sm">
+                  Its card statement is paid after the next 90 days, so that payment isn't in this answer yet. Keep {formatCents(cents!)} in mind for then.
+                </p>
+              )}
               {extrasCount > 0 && (
                 <>
                   <ul className="mt-3 hidden space-y-1 border-t border-line pt-3 text-sm sm:block">{extras}</ul>

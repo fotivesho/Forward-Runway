@@ -82,8 +82,8 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         {/* ---------------------------------------------- the proof */}
         <section className="scroll-mt-4 pb-16 sm:pb-24" aria-labelledby="afford-title">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Try it right here</p>
-          <h2 id="afford-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-ink sm:mt-2 sm:text-5xl">Can I afford it?</h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted sm:mt-3 sm:text-lg">Pick something and watch today's number, your lowest point, and what to do about it.</p>
+          <h2 id="afford-title" className="font-display mt-1 max-w-3xl scroll-mt-12 sm:scroll-mt-6 text-3xl leading-tight text-ink sm:mt-2 sm:text-5xl">Can I afford it?</h2>
+          <p className="mt-1 hidden max-w-2xl text-sm text-muted sm:mt-3 sm:block sm:text-lg">Pick something and watch today's number, your lowest point, and what to do about it.</p>
           <div className="mt-3 sm:mt-8">
             <AffordIt snapshot={d.snapshot} today={d.today} nextPayday={d.hero.nextPayday} events={d.afford.events} calendarIncomplete={d.afford.calendarIncomplete} />
           </div>
