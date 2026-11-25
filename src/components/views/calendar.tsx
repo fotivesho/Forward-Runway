@@ -1,5 +1,5 @@
 import { EventCard } from "@/components/advisor";
-import { AddCalendarForm, AddPlanButton, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
+import { AddCalendarForm, AddPlanButton, PlanProvider, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
 import { QuickAction } from "@/components/form";
 import { Badge, Card, Disclosure, EmptyState, Notice, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
@@ -37,7 +37,9 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
             title="Your plans"
             action={<AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} />}
           >
-            <PlanCalendar views={m.allEvents} marks={marks} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} />
+            <PlanProvider value={{ snapshot, today, nextPayday: m.nextPayday, events: m.planned, calendarIncomplete: m.coverage.incomplete }}>
+              <PlanCalendar views={m.allEvents} marks={marks} baseline={m.baselineByDay} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} />
+            </PlanProvider>
             {!demo && m.duplicates.length > 0 && (
               <div className="mt-4">
                 <Disclosure summary={`${m.duplicates.length} hidden duplicate${m.duplicates.length === 1 ? "" : "s"} (counted once)`}>

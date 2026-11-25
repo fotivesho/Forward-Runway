@@ -1,15 +1,18 @@
 "use client";
 
-import { addCalendarSource, addManualEvent, syncCalendar, uploadIcs } from "@/app/app/actions";
+import { addCalendarSource, addManualEvent, correctEvent, syncCalendar, uploadIcs } from "@/app/app/actions";
 import Link from "next/link";
-import { useContext, useDeferredValue, useMemo, useState } from "react";
+import { createContext, useContext, useDeferredValue, useMemo, useState } from "react";
 import { addDays, isISODate, type ISODate } from "@/lib/dates";
-import { parseDollars } from "@/lib/money";
+import { centsToInput, parseDollars } from "@/lib/money";
+import type { EventView } from "@/lib/view/dashboard";
+import { APP_NAME } from "@/lib/brand";
+import { Money } from "./privacy";
 import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { PlanImpact } from "./afford-result";
 import { Modal } from "./modal";
-import { ActionForm, DemoCtx, Field, FileField, MoneyField, Submit } from "./form";
+import { ActionForm, CheckboxField, DemoCtx, Field, FileField, MoneyField, Submit } from "./form";
 
 export function AddCalendarForm() {
   return (
@@ -32,44 +35,53 @@ export function UploadIcsForm() {
   );
 }
 
-/**
- * Add a plan that isn't on a calendar. While you type, it answers "can I afford it?"
- * the same way the What-if checker does. In the demo you can try it; only saving is off.
- */
-export function AddPlanForm({
-  snapshot,
-  today,
-  nextPayday,
-  events,
-  calendarIncomplete,
-  onDone,
-}: {
+export interface PlanContext {
   snapshot: Snapshot;
   today: ISODate;
   nextPayday: ISODate | null;
   events: PlannedEvent[];
   calendarIncomplete: boolean;
-  onDone?: () => void;
-}) {
+}
+
+/** What a plan form needs to answer "can I afford it?" live. Provided by Today and Calendar. */
+export const PlanCtx = createContext<PlanContext | null>(null);
+
+/**
+ * Add a plan, or change one. While you type, it answers "can I afford it?" the same way the
+ * What-if checker does. The cap is always worked out from your numbers when you save.
+ * In the demo you can try it; only saving is off.
+ */
+export function PlanForm({ snapshot, today, nextPayday, events, calendarIncomplete, view, onDone }: PlanContext & { view?: EventView; onDone?: () => void }) {
   const demo = useContext(DemoCtx);
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState(addDays(today, 7));
-  const [amount, setAmount] = useState("");
-  const [payWith, setPayWith] = useState("");
+  const ev = view?.event;
+  const [title, setTitle] = useState(ev?.title ?? "");
+  const [date, setDate] = useState(ev?.date ?? addDays(today, 7));
+  const [amount, setAmount] = useState(view && !view.estimate.needsInput && view.estimate.cents > 0 ? centsToInput(view.estimate.cents) : "");
+  const [payWith, setPayWith] = useState(ev?.paymentAccountId ?? "");
+  const [decision, setDecision] = useState(ev?.decision ?? "");
+  const [notSpending, setNotSpending] = useState(view?.estimate.source === "not_spending");
   const cards = snapshot.accounts.filter((a) => !a.archived && a.kind === "credit_card");
-  const ctx = useMemo(() => ({ input: toEngineInput(snapshot, today), events, calendarIncomplete, nextPayday }), [snapshot, today, events, calendarIncomplete, nextPayday]);
+  // When changing a plan, check it as if it were new: leave its current version out.
+  const others = useMemo(() => (ev ? events.filter((e) => e.id !== ev.id) : events), [events, ev]);
+  const ctx = useMemo(() => ({ input: toEngineInput(snapshot, today), events: others, calendarIncomplete, nextPayday }), [snapshot, today, others, calendarIncomplete, nextPayday]);
   const cents = parseDollars(useDeferredValue(amount));
   const validDate = isISODate(date) && date >= today;
+  const skipping = decision === "skip" || decision === "postpone";
   const check = useMemo(
-    () => (cents && cents > 0 && cents <= 5_000_000 && validDate ? checkAffordability(ctx, { amountCents: cents, date, paymentAccountId: payWith || null }) : null),
-    [ctx, cents, date, payWith, validDate],
+    () =>
+      !notSpending && !skipping && cents && cents > 0 && cents <= 5_000_000 && validDate
+        ? checkAffordability(ctx, { amountCents: cents, date, paymentAccountId: payWith || null })
+        : null,
+    [ctx, cents, date, payWith, validDate, notSpending, skipping],
   );
+  const short = title.length > 24 ? title.slice(0, 24) + "…" : title;
   return (
-    <ActionForm action={addManualEvent} demoPreview onSuccess={onDone} className="grid gap-3" aria-label="Add a plan">
+    <ActionForm action={ev ? correctEvent : addManualEvent} demoPreview onSuccess={onDone} className="grid gap-3" aria-label={ev ? `Change ${ev.title}` : "Add a plan"}>
+      {ev && <input type="hidden" name="eventId" value={ev.id} />}
       <Field name="title" label="What's the plan?" placeholder="Birthday dinner, concert, weekend away…" maxLength={200} required value={title} onChange={(e) => setTitle(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
         <Field name="date" type="date" label="When" min={today} required value={date} onChange={(e) => setDate(e.target.value)} />
-        <MoneyField name="estimate" label="About how much?" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <MoneyField name="estimate" label="About how much?" value={notSpending ? "0" : amount} disabled={notSpending} onChange={(e) => setAmount(e.target.value)} />
       </div>
       {cards.length > 0 && (
         <div role="group" aria-label="Pay with" className="flex flex-wrap items-center gap-2">
@@ -88,19 +100,85 @@ export function AddPlanForm({
           ))}
         </div>
       )}
+      {ev && (
+        <>
+          <div role="group" aria-label="Your call" className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium text-ink">Your call</span>
+            <input type="hidden" name="decision" value={decision} />
+            {[
+              ["", "Auto"],
+              ["proceed", "Go"],
+              ["cheaper", "Cheaper"],
+              ["postpone", "Later"],
+              ["skip", "Skip"],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setDecision(id!)}
+                aria-pressed={decision === id}
+                className={`min-h-9 rounded-full border px-3 text-sm font-medium transition ${decision === id ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:border-brand/60"}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <CheckboxField name="essential" label="Can't skip this" defaultChecked={ev.essential} />
+            <label className="flex items-start gap-3 text-sm">
+              <input type="checkbox" name="notSpending" className="mt-0.5 h-5 w-5 accent-[var(--color-brand)]" checked={notSpending} onChange={(e) => setNotSpending(e.target.checked)} />
+              <span>Not a spending event</span>
+            </label>
+          </div>
+          <CheckboxField name="rememberForSimilar" label="Remember this for similar events" defaultChecked />
+        </>
+      )}
       <div aria-live="polite">
         {check ? (
           <PlanImpact check={check} />
+        ) : notSpending ? (
+          <p className="rounded-xl border border-dashed border-line p-3 text-sm text-muted">Nothing is set aside for it, so your everyday money stays as it is.</p>
+        ) : skipping ? (
+          <p className="rounded-xl border border-dashed border-line p-3 text-sm text-muted">Nothing is set aside for it{decision === "postpone" ? " on this date" : ""}; that money goes back into your daily caps.</p>
         ) : (
           <p className="rounded-xl border border-dashed border-line p-3 text-sm text-muted">Add an amount to see if it fits before you save it.</p>
         )}
       </div>
+      {view?.advice && view.advice.capCents > 0 && (
+        <p className="text-xs text-muted">
+          Cap now <Money cents={view.advice.capCents} className="font-semibold text-ink" />. It's worked out from your numbers and updates when you save.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-3">
-        <Submit>{title ? `Add “${title.length > 24 ? title.slice(0, 24) + "…" : title}”` : "Add plan"}</Submit>
+        <Submit>{ev ? "Save changes" : title ? `Add “${short}”` : "Add plan"}</Submit>
         {demo && <span className="text-xs text-muted">Demo: try it freely. <Link href="/login?mode=signup" className="font-semibold text-brand underline">Create your own</Link> to save plans.</span>}
       </div>
     </ActionForm>
   );
+}
+
+export const AddPlanForm = PlanForm;
+
+/** "Change" on a plan card: opens the plan in a pop-up with the live answer. */
+export function EditPlanButton({ view }: { view: EventView }) {
+  const ctx = useContext(PlanCtx);
+  const [open, setOpen] = useState(false);
+  if (!ctx) return null;
+  return (
+    <>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setOpen(true)}>
+        Change
+      </button>
+      <Modal open={open} onClose={() => setOpen(false)} icon="📅" title={view.event.title} subtitle="Change the amount, date or how you'll pay, and see the answer before you save.">
+        <PlanForm {...ctx} view={view} onDone={() => setOpen(false)} />
+      </Modal>
+    </>
+  );
+}
+
+/** Makes plan pop-ups available to every plan card inside. */
+export function PlanProvider({ value, children }: { value: PlanContext; children: React.ReactNode }) {
+  return <PlanCtx.Provider value={value}>{children}</PlanCtx.Provider>;
 }
 
 export function SyncButton({ id, label = "Sync now" }: { id?: string; label?: string }) {

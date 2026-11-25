@@ -11,6 +11,7 @@ import { ActionForm, CheckboxField, DemoCtx, Field, MoneyField, QuickAction, Sel
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
+import { EditPlanButton } from "./calendar-forms";
 import { APP_NAME } from "@/lib/brand";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
@@ -187,45 +188,9 @@ export function EventCard({ view, accounts }: { view: EventView; accounts: Accou
               ))}
             </ul>
           )}
-          {!demo && (
-            <div className="mt-3">
-              <Disclosure summary="Correct or decide">
-                <ActionForm action={correctEvent} className="grid gap-3 sm:grid-cols-2" aria-label={`Correct ${event.title}`}>
-                  <input type="hidden" name="eventId" value={event.id} />
-                  <Field name="title" label="Event" defaultValue={event.title} maxLength={200} />
-                  <Field name="date" type="date" label="Date" defaultValue={event.date} />
-                  <MoneyField name="estimate" label="Expected cost" defaultValue={estimate.needsInput ? "" : centsToInput(estimate.cents)} />
-                  <MoneyField name="cap" label="My cap (optional)" defaultValue={centsToInput(event.capCents)} hint="Overrides the suggested cap." />
-                  <SelectField
-                    name="decision"
-                    label="Decision"
-                    defaultValue={event.decision ?? ""}
-                    options={[
-                      { value: "", label: `Let ${APP_NAME} suggest` },
-                      { value: "proceed", label: "Go ahead" },
-                      { value: "cheaper", label: "Do a cheaper version" },
-                      { value: "postpone", label: "Postpone" },
-                      { value: "skip", label: "Skip" },
-                    ]}
-                  />
-                  <SelectField
-                    name="paymentAccountId"
-                    label="Paying with"
-                    defaultValue={event.paymentAccountId ?? ""}
-                    options={[{ value: "", label: "Cash / debit" }, ...payWith.map((a) => ({ value: a.id, label: a.name }))]}
-                  />
-                  <CheckboxField name="essential" label="Can't skip this" defaultChecked={event.essential} />
-                  <CheckboxField name="notSpending" label="Not a spending event" defaultChecked={estimate.source === "not_spending" && estimate.cents === 0 && !estimate.needsInput} />
-                  <div className="sm:col-span-2">
-                    <CheckboxField name="rememberForSimilar" label="Remember this for similar events" defaultChecked />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Submit>Save</Submit>
-                  </div>
-                </ActionForm>
-              </Disclosure>
-            </div>
-          )}
+          <div className="mt-2 flex justify-end">
+            <EditPlanButton view={view} />
+          </div>
         </>
       )}
     </li>

@@ -91,6 +91,12 @@ export interface DashboardModel {
   spending: { month: CategoryTotal[]; monthTotal: Cents; period: CategoryTotal[]; periodTotal: Cents; periodStart: ISODate };
   upcoming: ForecastItem[];
   nextPayday: ISODate | null;
+  /**
+   * Everyday safe-to-spend for each day of the forecast, before any plan that day: what's left in
+   * its pay period after bills, savings and plans, spread over the days. This pay period uses the
+   * daily caps (weekday pattern, today's spending); later periods spread their free money evenly.
+   */
+  baselineByDay: Record<ISODate, Cents>;
 }
 
 export function monthlyEquivalent(rule: RecurringRule): Cents {
@@ -271,6 +277,18 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     .filter((d) => d.date <= upcomingEnd)
     .flatMap((d) => [...d.items, ...d.nonCashItems]);
 
+  const baselineByDay: Record<ISODate, Cents> = {};
+  const pct = coverage.incomplete ? Math.min(50, Math.max(0, s.settings.unseenPlansBufferPct)) : 0;
+  const capOf = new Map(plan.advice.map((a) => [a.eventId, a.capCents]));
+  plan.allowance.periods.forEach((p, i) => {
+    if (i === 0) return;
+    const pool = p.budgetCents - Math.round((p.budgetCents * pct) / 100);
+    const reserved = planned.filter((e) => !e.duplicateOf && e.date >= p.start && e.date <= p.end).reduce((t, e) => t + (capOf.get(e.id) ?? 0), 0);
+    const perDay = Math.max(0, Math.floor((pool - reserved) / Math.max(1, p.days)));
+    for (let d = p.start; d <= p.end && d <= forecast90.endDate; d = addDays(d, 1)) baselineByDay[d] = perDay;
+  });
+  for (const d of plan.days) baselineByDay[d.date] = d.baseCents;
+
   return {
     today,
     horizon,
@@ -298,6 +316,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     },
     upcoming,
     nextPayday,
+    baselineByDay,
   };
 }
 

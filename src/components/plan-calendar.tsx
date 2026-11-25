@@ -25,7 +25,22 @@ const DOT = { yes: "bg-brand", yes_with_plan: "bg-warn", not_yet: "bg-danger" } 
  * A month calendar of your plans, paydays and bills. Tap a day to see just that day;
  * every plan card below carries the same answer as "Can I afford it?".
  */
-export function PlanCalendar({ views, marks, today, end, accounts }: { views: EventView[]; marks: DayMark[]; today: ISODate; end: ISODate; accounts: Account[] }) {
+export function PlanCalendar({
+  views,
+  marks,
+  baseline,
+  today,
+  end,
+  accounts,
+}: {
+  views: EventView[];
+  marks: DayMark[];
+  /** Everyday safe-to-spend per day (before plans). */
+  baseline: Record<ISODate, number>;
+  today: ISODate;
+  end: ISODate;
+  accounts: Account[];
+}) {
   const months = useMemo(() => {
     const out: ISODate[] = [];
     for (let m = startOfMonth(today); m <= end; m = addMonths(m, 1)) out.push(m);
@@ -88,11 +103,15 @@ export function PlanCalendar({ views, marks, today, end, accounts }: { views: Ev
                   } ${past || outside ? "opacity-35" : ""} ${plans.length ? "bg-surface-2/70" : ""}`}
                 >
                   <span className={`tabular ${d === today ? "font-bold text-brand" : "text-ink"}`}>{Number(d.slice(8))}</span>
-                  <span className="mt-0.5 flex items-center gap-0.5">
-                    {plans.slice(0, 3).map((v) => (
-                      <span key={v.event.id} className={`h-1.5 w-1.5 rounded-full ${v.check ? DOT[v.check.verdict] : "bg-info"}`} />
-                    ))}
-                  </span>
+                  {plans.length > 0 ? (
+                    <span className="mt-0.5 flex items-center gap-0.5">
+                      {plans.slice(0, 3).map((v) => (
+                        <span key={v.event.id} className={`h-1.5 w-1.5 rounded-full ${v.check ? DOT[v.check.verdict] : "bg-info"}`} />
+                      ))}
+                    </span>
+                  ) : (
+                    !past && !outside && baseline[d] != null && <Money cents={baseline[d]!} whole className="text-[9px] leading-tight text-faint sm:text-[10px]" />
+                  )}
                   <span className="flex items-center gap-0.5 text-[9px] leading-none sm:text-[10px]">
                     {payday && <span className="font-bold text-brand">$</span>}
                     {bills > 0 && <span className="text-faint">{"•".repeat(Math.min(bills, 3))}</span>}
@@ -108,6 +127,7 @@ export function PlanCalendar({ views, marks, today, end, accounts }: { views: Ev
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger align-middle" />Not yet</span>
           <span><span className="mr-1 font-bold text-brand">$</span>Payday</span>
           <span><span className="mr-1 text-faint">•</span>Bill</span>
+          <span><span className="mr-1 text-faint">$ under a date</span>= everyday safe to spend</span>
         </p>
       </div>
 
@@ -117,6 +137,12 @@ export function PlanCalendar({ views, marks, today, end, accounts }: { views: Ev
             <p className="font-semibold text-ink">{formatLong(selected)}</p>
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>Show all plans</button>
           </div>
+        )}
+        {selected && baseline[selected] != null && (
+          <p className="mb-2 flex justify-between gap-2 rounded-xl border border-brand/30 bg-brand/[0.06] px-3 py-2 text-sm">
+            <span className="text-ink">Everyday safe to spend{plansOn(selected).some((v) => v.plannedCents > 0) ? ", plus its plans" : ""}</span>
+            <Money cents={baseline[selected]!} className="font-semibold text-brand" />
+          </p>
         )}
         {selected && marksOn(selected).length > 0 && (
           <ul className="mb-3 space-y-1 rounded-xl border border-line p-2.5 text-sm">
@@ -130,7 +156,7 @@ export function PlanCalendar({ views, marks, today, end, accounts }: { views: Ev
         )}
         {shown.length === 0 ? (
           <EmptyState title={selected ? "No plans that day" : "No plans found"}>
-            {selected ? "Nothing on your calendars costs money that day." : "Connect your calendars or add a plan below."}
+            {selected ? "Just your everyday safe-to-spend above. Add a plan and it updates." : "Connect your calendars or add a plan."}
           </EmptyState>
         ) : (
           <div className="space-y-4">

@@ -13,7 +13,7 @@ import { Money } from "./privacy";
 import { ItemRow } from "./timeline";
 import { Badge, Card, Disclosure, EmptyState, Notice } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
-import { AddPlanButton } from "./calendar-forms";
+import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
 const SOURCE: Record<string, string> = { manual: "Entered by you", statement: "From a statement", import: "Imported", onboarding: "From setup" };
 
@@ -47,6 +47,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
   const costly = m.events.filter((v) => v.plannedCents > 0 || v.estimate.needsInput);
 
   return (
+    <PlanProvider value={{ snapshot, today, nextPayday: m.nextPayday, events: m.planned, calendarIncomplete: m.coverage.incomplete }}>
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
       {/* Snapshot: the whole picture first */}
       <section aria-labelledby="snapshot-title" className="card p-4 sm:p-5 lg:col-span-2">
@@ -355,6 +356,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         </Card>
       </div>
     </div>
+    </PlanProvider>
   );
 }
 
