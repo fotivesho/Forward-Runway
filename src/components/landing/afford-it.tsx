@@ -123,8 +123,13 @@ export function AffordIt({
     () => (valid ? checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: onCard ? card?.id : null, reservedCents: when === "plan" ? reservedCents : 0 }) : null),
     [ctx, valid, cents, date, onCard, card?.id, reservedCents, when],
   );
-  const safeAfter = useTween(result?.safeToday.after ?? 0);
-  const lowAfter = useTween(result?.lowest.after.cents ?? 0);
+  const roomAfter = useTween(result?.room.after ?? 0);
+  const tile2After = useTween(result ? (result.card ? result.card.withCents : result.lowest.after.cents) : 0);
+  /** Estimates read better in whole dollars. */
+  const dollars = (c: number) => "$" + Math.round(c / 100).toLocaleString("en-US");
+  /** "Nov 25–28" within a month, "Nov 29–Dec 12" across months. */
+  const span = (a: ISODate, b: ISODate) =>
+    a === b ? formatShort(a) : a.slice(0, 7) === b.slice(0, 7) ? `${formatShort(a)}–${Number(b.slice(8))}` : `${formatShort(a)}–${formatShort(b)}`;
   const look = result ? LOOK[result.verdict] : null;
   // Phones get tighter spacing and sizes so the choices and the answer fit on one screen;
   // from the sm breakpoint up, everything is as before.
@@ -138,10 +143,9 @@ export function AffordIt({
           <span className="font-medium text-ink">Or:</span> {a.title}. {a.detail}
         </li>
       ))}
-      {result?.plan.cardNote && onCard && <li className="text-xs text-muted">{result.plan.cardNote}</li>}
     </>
   );
-  const extrasCount = alternatives.length + (result?.plan.cardNote && onCard ? 1 : 0);
+  const extrasCount = alternatives.length;
 
   return (
     <div ref={rootRef} id="afford" className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:gap-4 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-6">
@@ -214,34 +218,50 @@ export function AffordIt({
               <span className="font-semibold text-ink tabular">{formatCents(cents!)}</span> on {formatShort(date)}
               {result.cash.viaCard ? (
                 <>
-                  {" "}with {result.cash.viaCard} ·{" "}
+                  {" "}with <span className="sm:hidden">{result.cash.viaCard.split(" ")[0]}</span>
+                  <span className="hidden sm:inline">{result.cash.viaCard}</span> ·{" "}
                   <span className="whitespace-nowrap font-semibold text-ink">
                     {result.cash.beyondHorizon ? "cash leaves after the next 90 days" : `cash leaves ${formatShort(result.cash.date)}`}
                   </span>
                 </>
               ) : null}
             </p>
-            <p className={`font-display flex items-center gap-2 text-3xl leading-tight sm:mt-1 sm:text-5xl ${look.word}`}>
+            <p className={`font-display flex items-center gap-2 text-[1.75rem] leading-tight sm:mt-1 sm:text-5xl ${look.word}`}>
               <span aria-hidden className="text-2xl sm:text-3xl">{look.icon}</span>
               {result.headline}
             </p>
 
-            <div className="mt-2.5 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
-              <div className="rounded-xl bg-surface/80 px-2.5 py-2 sm:p-3">
-                <p className="text-[11px] text-faint sm:text-xs">Safe to spend today</p>
-                <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.safeToday.before)}</p>
-                <p className={`text-2xl font-bold tabular sm:text-3xl ${result.safeToday.after < result.safeToday.before ? "text-ink" : "text-brand"}`}>{formatCents(safeAfter)}</p>
-              </div>
-              <div className="rounded-xl bg-surface/80 px-2.5 py-2 sm:p-3">
-                <p className="text-[11px] text-faint sm:text-xs">
-                  Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
+              <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
+                <p className="text-[11px] text-faint sm:text-xs">Free to spend · {span(result.room.start, result.room.end)}</p>
+                <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.room.before)}</p>
+                <p className="flex flex-wrap items-baseline gap-x-1.5">
+                  <span className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(roomAfter)}</span>
+                  {result.room.shortfall > 0 && <span className="text-[11px] font-semibold text-warn sm:text-xs">short {dollars(result.room.shortfall)}</span>}
+                  {result.room.borrowed > 0 && <span className="text-[11px] text-muted sm:text-xs">+{dollars(result.room.borrowed)} next period</span>}
                 </p>
-                <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.lowest.before.cents)}</p>
-                <p className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(lowAfter)}</p>
               </div>
+              {result.card ? (
+                <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
+                  <p className="text-[11px] text-faint sm:text-xs">{result.card.name.split(" ")[0]} payment · {formatShort(result.card.due)}</p>
+                  <p className="text-xs text-muted tabular sm:mt-1 sm:text-sm">
+                    <span className="line-through decoration-1">≈{dollars(result.card.usualCents)}</span>
+                    {result.card.typicalCents > 0 && <span className="text-[11px] sm:text-xs"> · ~{dollars(result.card.typicalCents)} typical</span>}
+                  </p>
+                  <p className="text-2xl font-bold tabular text-ink sm:text-3xl">≈{dollars(tile2After)}</p>
+                </div>
+              ) : (
+                <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
+                  <p className="text-[11px] text-faint sm:text-xs">
+                    Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}
+                  </p>
+                  <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.lowest.before.cents)}</p>
+                  <p className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(tile2After)}</p>
+                </div>
+              )}
             </div>
 
-            <div className="mt-2.5 rounded-xl border border-line bg-surface px-3 py-2.5 sm:mt-4 sm:p-4">
+            <div className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 sm:mt-4 sm:p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint sm:text-xs">Suggested move</p>
               <p className="text-base font-semibold leading-snug text-ink sm:mt-1 sm:text-lg">{result.action.title}</p>
               <p className="text-[13px] leading-snug text-muted sm:text-sm">{result.action.detail}</p>

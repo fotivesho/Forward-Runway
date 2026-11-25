@@ -32,119 +32,85 @@ describe("landing page data", () => {
 import { checkAffordability } from "../engine/afford";
 import { toEngineInput } from "../data/snapshot";
 
-describe("landing affordability checker", () => {
-  const today = "2026-11-25";
-  const d = buildLanding(today, `${today}T15:00:00Z`);
-  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
-
-  it("uses the same safe-to-spend number as the hero", () => {
-    const r = checkAffordability(ctx, { amountCents: 2_000, date: today });
-    expect(r.safeToday.before).toBe(d.hero.safeTodayCents);
-  });
-
-  it("a small purchase is a plain yes and lowers today's number at most by its cost", () => {
-    const r = checkAffordability(ctx, { amountCents: 2_000, date: addDays(today, 3) });
-    expect(r.verdict).toBe("yes");
-    expect(r.action.kind).toBe("go");
-    expect(r.safeToday.after).toBeLessThanOrEqual(r.safeToday.before);
-    expect(r.lowest.after.cents).toBeLessThanOrEqual(r.lowest.before.cents);
-  });
-
-  it("a big purchase comes with a plan or a computed alternative", () => {
-    for (const cents of [240_000, 600_000, 1_500_000]) {
-      const r = checkAffordability(ctx, { amountCents: cents, date: addDays(today, 3) });
-      expect(r.verdict).not.toBe("yes");
-      if (r.verdict === "yes_with_plan") expect(r.action.kind).toBe("move");
-      else expect(["wait", "tighten", "cheaper", "none"]).toContain(r.action.kind);
-      // Any "go cheaper" suggestion really fits.
-      for (const a of [r.action, ...r.alternatives].filter((x) => x.kind === "cheaper")) {
-        const amount = Number(a.title.replace(/[^0-9.]/g, "")) * 100;
-        expect(checkAffordability(ctx, { amountCents: Math.round(amount), date: addDays(today, 3) }).verdict).toBe("yes");
-      }
-    }
-  });
-
-  it("never suggests the protected wedding fund", () => {
-    const r = checkAffordability(ctx, { amountCents: 600_000, date: addDays(today, 3) });
-    expect(r.action.title).not.toMatch(/Wedding/);
-  });
-});
-
-describe("yes, with a plan", () => {
-  it("moves enough savings to keep today's safe-to-spend, without emptying savings", () => {
-    const today = "2026-11-25";
-    const d = buildLanding(today, `${today}T15:00:00Z`);
-    const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
-    const r = checkAffordability(ctx, { amountCents: 240_000, date: addDays(today, 3) });
-    expect(r.verdict).toBe("yes_with_plan");
-    expect(r.safeToday.after).toBeGreaterThanOrEqual(Math.floor(r.safeToday.before * 0.8));
-    expect(r.lowest.after.cents).toBeGreaterThanOrEqual(d.hero.floorCents);
-    const moved = Number(r.action.title.match(/\$([\d,]+\.\d\d)/)![1]!.replace(/,/g, "")) * 100;
-    expect(moved).toBeGreaterThanOrEqual(r.plan.shortfallCents);
-    expect(moved).toBeLessThanOrEqual(r.plan.shortfallCents + 240_000);
-  });
-});
-
-describe("a yes means today's number stays close to normal", () => {
-  it("never answers yes while squeezing today's safe-to-spend below 80%", () => {
-    const today = "2026-11-25";
-    const d = buildLanding(today, `${today}T15:00:00Z`);
-    const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
-    for (const cents of [5_000, 18_000, 65_000, 120_000, 210_000, 240_000]) {
-      const r = checkAffordability(ctx, { amountCents: cents, date: addDays(today, 3) });
-      if (r.verdict === "yes") expect(r.safeToday.after).toBeGreaterThanOrEqual(Math.floor(r.safeToday.before * 0.8));
-      if (r.verdict !== "not_yet") expect(r.lowest.after.cents).toBeGreaterThanOrEqual(d.hero.floorCents);
-    }
-    // The $2,100 case that used to say "fits" while leaving $0.40 a day is no longer a plain yes.
-    expect(checkAffordability(ctx, { amountCents: 210_000, date: addDays(today, 3) }).verdict).not.toBe("yes");
-  });
-});
-
-describe("checking a plan that's already on the calendar", () => {
-  const today = "2026-11-25";
-  const d = buildLanding(today, `${today}T15:00:00Z`);
-  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
-
-  it("doesn't count money already set aside for it", () => {
-    const r = checkAffordability(ctx, { amountCents: 6_000, date: "2026-11-30", reservedCents: 6_000 });
-    expect(r.verdict).toBe("yes");
-    expect(r.safeToday.after).toBe(r.safeToday.before);
-    expect(r.safeToday.before).toBe(d.hero.safeTodayCents);
-    expect(r.action.detail).toMatch(/already set aside/);
-  });
-
-  it("only tests the extra when spending more than the cap", () => {
-    const withCap = checkAffordability(ctx, { amountCents: 9_000, date: "2026-11-30", reservedCents: 6_000 });
-    const extraOnly = checkAffordability(ctx, { amountCents: 3_000, date: "2026-11-30" });
-    expect(withCap.safeToday.after).toBe(extraOnly.safeToday.after);
-  });
-});
-
-describe("paying by card", () => {
+describe("can I afford it: pay-period free money", () => {
   const today = "2026-11-25";
   const d = buildLanding(today, `${today}T15:00:00Z`);
   const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
   const visa = d.snapshot.accounts.find((a) => a.kind === "credit_card")!.id;
+  const check = (amountCents: number, date: string, card = false, reservedCents = 0) =>
+    checkAffordability(ctx, { amountCents, date, paymentAccountId: card ? visa : null, reservedCents });
 
-  it("cash leaves on the statement due date, which the 90-day answer already includes", () => {
-    const card = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28", paymentAccountId: visa });
-    const debit = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28" });
-    expect(card.cash.viaCard).toBeTruthy();
-    expect(card.cash.date > "2026-11-28").toBe(true);
-    expect(card.cash.statementCloses! >= "2026-11-28").toBe(true);
-    expect(card.cash.beyondHorizon).toBe(false);
-    // A card doesn't create money: today's number moves the same as paying by debit.
-    expect(card.safeToday.after).toBe(debit.safeToday.after);
-    expect(debit.cash.date).toBe("2026-11-28");
+  it("a purchase that fits its pay period's free money is a plain yes, and the numbers add up", () => {
+    const r = check(10_000, "2026-11-29");
+    expect(r.verdict).toBe("yes");
+    expect(r.room.start <= "2026-11-29" && r.room.end >= "2026-11-29").toBe(true);
+    expect(r.room.after).toBe(r.room.before - 10_000);
+    expect(r.room.shortfall).toBe(0);
   });
 
-  it("times any savings move to when the cash leaves, not the purchase date", () => {
-    const card = checkAffordability(ctx, { amountCents: 240_000, date: "2026-11-28", paymentAccountId: visa });
-    if (card.action.kind === "move") expect(card.action.title).toContain(formatShort(card.cash.date));
+  it("only calls it a yes when it fits, or costs at most a little everyday money later", () => {
+    for (const cents of [5_000, 18_000, 65_000, 120_000, 240_000]) {
+      for (const date of ["2026-11-25", "2026-11-28", "2026-11-29"]) {
+        const r = check(cents, date);
+        if (r.verdict === "yes") expect(r.room.shortfall === 0 || /a day less until/.test(r.action.detail)).toBe(true);
+        else expect(r.room.shortfall + Math.max(0, ctx.input.settings.cashFloorCents - r.lowest.after.cents)).toBeGreaterThan(0);
+      }
+    }
   });
 
-  it("flags a statement that falls beyond the 90-day window", () => {
-    const far = checkAffordability(ctx, { amountCents: 50_000, date: addDays(today, 80), paymentAccountId: visa });
-    expect(far.cash.beyondHorizon).toBe(true);
+  it("a savings move covers the shortfall, is a round amount, and never uses the wedding fund", () => {
+    const r = check(170_000, "2026-11-25");
+    const move = [r.action, ...r.alternatives].find((a) => a.kind === "move")!;
+    expect(move).toBeTruthy();
+    expect(move.title).not.toMatch(/Wedding/);
+    const moved = Number(move.title.match(/\$([\d,]+(?:\.\d\d)?)/)![1]!.replace(/,/g, "")) * 100;
+    expect(moved).toBeGreaterThanOrEqual(r.room.shortfall);
+    expect(moved % 1_000).toBe(0);
+  });
+
+  it("by card: cash leaves on the due date, measured against that pay period, with the payment shown", () => {
+    const r = check(90_000, "2026-11-25", true);
+    expect(r.cash.viaCard).toBeTruthy();
+    expect(r.card).not.toBeNull();
+    expect(r.cash.date).toBe(r.card!.due);
+    expect(r.room.start <= r.card!.due && r.room.end >= r.card!.due).toBe(true);
+    expect(r.card!.withCents).toBe(r.card!.usualCents + 90_000);
+    expect(r.card!.usualCents).toBeGreaterThanOrEqual(r.card!.typicalCents);
+    for (const a of [r.action, ...r.alternatives].filter((x) => x.kind === "move")) expect(a.title).toContain(formatShort(r.card!.due));
+  });
+
+  it("a plan already on the calendar isn't counted twice", () => {
+    const planned = check(6_000, "2026-11-30", false, 6_000);
+    expect(planned.verdict).toBe("yes");
+    expect(planned.room.after).toBe(planned.room.before);
+    expect(planned.action.detail).toMatch(/already set aside/);
+    // Over its cap: only the extra is tested.
+    expect(check(9_000, "2026-11-30", false, 6_000).room.after).toBe(check(3_000, "2026-11-30").room.after);
+  });
+
+  it("every 'cut it to' and 'skip a plan' suggestion really makes room", () => {
+    for (const [cents, date] of [[65_000, "2026-11-29"], [120_000, "2026-11-28"], [240_000, "2026-11-29"]] as const) {
+      const r = check(cents, date);
+      for (const a of [r.action, ...r.alternatives]) {
+        if (a.kind === "cheaper") {
+          const amount = Math.round(Number(a.title.replace(/[^0-9.]/g, "")) * 100);
+          expect(check(amount, date).verdict).toBe("yes");
+        }
+        if (a.kind === "skip_plan") {
+          const freed = Number(a.detail.match(/\$([\d,]+(?:\.\d\d)?)/)![1]!.replace(/,/g, "")) * 100;
+          expect(freed).toBeGreaterThanOrEqual(r.room.shortfall);
+        }
+      }
+    }
+  });
+
+  it("flags a card statement that falls beyond the 90-day window", () => {
+    expect(check(50_000, addDays(today, 80), true).cash.beyondHorizon).toBe(true);
+  });
+
+  it("a purchase far too big is 'not yet', still offering the most that fits", () => {
+    const r = check(1_000_000, "2026-11-28");
+    expect(r.verdict).toBe("not_yet");
+    expect([r.action, ...r.alternatives].some((a) => a.kind === "cheaper")).toBe(true);
   });
 });

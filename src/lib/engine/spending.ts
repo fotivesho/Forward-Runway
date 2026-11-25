@@ -104,3 +104,18 @@ export function spentBetween(input: EngineInput, from: ISODate, to: ISODate): Ce
     .filter((t) => isFlexibleSpend(t) && t.date >= from && t.date <= to)
     .reduce((s, t) => s + t.amountCents, 0);
 }
+
+/**
+ * Typical everyday spending on one card per day, from the last `lookbackDays` of logged purchases.
+ * Used to estimate how big a future statement will really be. Display only: everyday spending is
+ * already funded by the daily caps when it happens, so it's never subtracted from cash twice.
+ */
+export function avgDailyCardSpend(input: EngineInput, cardId: string, lookbackDays = 56): Cents {
+  const from = addDays(input.today, -lookbackDays);
+  const to = addDays(input.today, -1);
+  const txns = input.transactions.filter((t) => t.accountId === cardId && isFlexibleSpend(t) && t.date >= from && t.date <= to);
+  if (txns.length === 0) return 0;
+  const first = txns.reduce((m, t) => (t.date < m ? t.date : m), to);
+  const span = Math.max(14, diffDays(first, to) + 1);
+  return Math.round(txns.reduce((s, t) => s + t.amountCents, 0) / span);
+}

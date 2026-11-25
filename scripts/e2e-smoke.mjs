@@ -120,10 +120,11 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
 {
   const { page, errors } = await visit("/demo/what-if", 390);
   check(errors.length === 0, `what-if checker loads without errors ${errors.join(" | ")}`);
-  const todayText = await (await visit("/demo", 390)).page.locator("text=Safe to spend today").first().locator("xpath=ancestor::section").innerText();
-  const safe = todayText.match(/\$[\d,]+\.\d\d/)?.[0];
   const answer = await page.locator("#afford-result").innerText();
-  check(!!safe && answer.includes(safe), `what-if checker uses the Today screen's number (${safe})`);
+  check(/Free to spend/i.test(answer) && /(Yes|Not yet)/.test(answer), "what-if checker answers in pay-period free money");
+  await page.getByRole("button", { name: "Visa Rewards" }).click();
+  await page.waitForTimeout(300);
+  check(/payment ·/i.test(await page.locator("#afford-result").innerText()), "paying by card shows the statement payment");
   check((await page.locator("#afford button[aria-pressed]").filter({ hasText: "·" }).count()) > 0, "calendar plans appear as presets with their dates");
   await page.close();
 }

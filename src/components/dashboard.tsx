@@ -5,6 +5,8 @@ import { useMemo, useState } from "react";
 import { diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import type { Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard, type AccountView } from "@/lib/view/dashboard";
+import { avgDailyCardSpend } from "@/lib/engine";
+import { toEngineInput } from "@/lib/data/snapshot";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { ForecastChart } from "./forecast-chart";
 import { Money } from "./privacy";
@@ -298,7 +300,13 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                       </div>
                       {next ? (
                         <p className="text-xs text-muted">
-                          {next.isProjected ? "Next statement (projected)" : "Statement"} <Money cents={next.balanceCents} /> · closes {formatShort(next.closingDate)} · due {formatShort(next.dueDate)}{" "}
+                          {next.isProjected ? "Next statement (projected)" : "Statement"} <Money cents={next.balanceCents} />
+                          {next.isProjected && (() => {
+                            // Typical everyday card spending still to come this cycle (display only; already in your daily caps).
+                            const typical = avgDailyCardSpend(toEngineInput(snapshot, today), view.account.id) * Math.max(0, diffDays(today, next.closingDate));
+                            return typical > 0 ? <> + ~<Money cents={typical} /> typical spending</> : null;
+                          })()}{" "}
+                          · closes {formatShort(next.closingDate)} · due {formatShort(next.dueDate)}{" "}
                           {next.status === "projected" ? (
                             <Badge>Projected</Badge>
                           ) : next.paidOrScheduledCents >= next.balanceCents ? (

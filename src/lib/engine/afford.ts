@@ -1,31 +1,46 @@
-import { formatShort, type ISODate } from "../dates";
+import { diffDays, formatShort, maxDate, type ISODate } from "../dates";
 import { formatCents, friendlyRoundDown, type Cents } from "../money";
 import { planDailySpending, type PlannedEvent } from "./advisor";
 import { buildForecast } from "./forecast";
 import { planPurchase, purchaseItem, type PurchasePlan } from "./purchase";
-import type { EngineInput, ForecastItem } from "./types";
+import { avgDailyCardSpend } from "./spending";
+import type { EngineInput } from "./types";
+
+/**
+ * "Can I afford it?"
+ *
+ * People think in a pot of flexible money per pay period, with plans already taking slices of
+ * it. So the question is: does this fit in the FREE flexible money of the pay period when the cash
+ * actually leaves (the purchase date for debit, the statement due date for a card)? "Free" means
+ * after bills, savings transfers, card payments and the plans already budgeted. The 90-day forecast
+ * is also checked so cash never drops below the floor.
+ *
+ * If it doesn't fit, every option comes with its trade-off: use savings (and the rebuild), run
+ * lean for a while, skip a plan, cut it down, or wait.
+ */
 
 export type AffordVerdict = "yes" | "yes_with_plan" | "not_yet";
 
 export interface AffordAction {
-  kind: "go" | "move" | "tighten" | "wait" | "cheaper" | "none";
+  kind: "go" | "move" | "lean" | "skip_plan" | "cheaper" | "wait" | "none";
   title: string;
+  /** The trade-off, in plain words. */
   detail: string;
 }
 
 export interface AffordCheck {
   verdict: AffordVerdict;
   headline: string;
-  /** Today's safe-to-spend before and after following the suggested move. */
-  safeToday: { before: Cents; after: Cents };
+  /** Free flexible money in the pay period when the cash leaves, before and after this purchase. */
+  /** `borrowed`: a small amount taken from the next pay period(s) in a plain "yes". */
+  room: { start: ISODate; end: ISODate; before: Cents; after: Cents; shortfall: Cents; borrowed: Cents };
   lowest: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
+  /** When the money actually leaves your cash. */
+  cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
+  /** Paying by card: the statement it lands on, usual vs. with this purchase (incl. typical card spending). */
+  card: { name: string; due: ISODate; closes: ISODate; usualCents: Cents; withCents: Cents; typicalCents: Cents } | null;
   action: AffordAction;
   alternatives: AffordAction[];
-  /**
-   * When the money actually leaves your cash. Paid by card, that's the statement due date,
-   * not the purchase date (the 90-day forecast already includes that payment).
-   */
-  cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
   plan: PurchasePlan;
 }
 
@@ -40,199 +55,195 @@ export interface AffordRequest {
   amountCents: Cents;
   date: ISODate;
   paymentAccountId?: string | null;
-  /**
-   * Checking one of the user's own calendar plans: the amount its cap already sets aside in the
-   * daily caps. Only spending above it is new money (so the plan is never counted twice).
-   */
+  /** Checking one of your own calendar plans: the amount its cap already sets aside (never counted twice). */
   reservedCents?: Cents | null;
 }
 
-/** A purchase is a plain "yes" while today's safe-to-spend keeps at least this share of its value. */
-export const KEEP_SHARE = 0.8;
+/** "$790" when the amount is whole dollars, "$66.52" otherwise. */
+const money = (c: Cents) => (c % 100 === 0 ? "$" + (c / 100).toLocaleString("en-US") : formatCents(c));
+const range = (a: ISODate, b: ISODate) => (a === b ? formatShort(a) : `${formatShort(a)}–${formatShort(b)}`);
 
-/**
- * "Can I afford it?" judged by what you'd feel: today's safe-to-spend (the same number the
- * Today screen shows), not merely "stays above the floor". Returns one verdict, one suggested
- * move, and computed alternatives.
- */
 export function checkAffordability(ctx: AffordContext, req: AffordRequest): AffordCheck {
   const { input } = ctx;
   const reserved = Math.max(0, req.reservedCents ?? 0);
-  /** New money this purchase needs beyond what's already set aside for it. */
+  /** New money beyond what's already set aside for this plan. */
   const amt = Math.max(0, req.amountCents - reserved);
   const plan = planPurchase(input, { label: "Purchase", amountCents: Math.max(1, amt), date: req.date, paymentAccountId: req.paymentAccountId });
-  const buy = (cents: Cents, date: ISODate) => purchaseItem(input, { label: "Purchase", amountCents: cents, date, paymentAccountId: req.paymentAccountId });
-  const run = (extra: ForecastItem[]) => {
-    const f = buildForecast(input, 90, { extraItems: extra });
-    return { cap: planDailySpending(input, f, ctx.events, { calendarIncomplete: ctx.calendarIncomplete }).todayCap.capCents, lowest: f.lowest, belowFloor: f.lowest.cents < input.settings.cashFloorCents };
-  };
-  const base = run([]);
+  const item = purchaseItem(input, { label: "Purchase", amountCents: amt, date: req.date, paymentAccountId: req.paymentAccountId });
+  const floor = input.settings.cashFloorCents;
 
-  // When does the cash actually leave? By card: on the statement due date.
-  const payAcct = req.paymentAccountId ? input.accounts.find((a) => a.id === req.paymentAccountId) : undefined;
-  const cashOut: AffordCheck["cash"] = { date: req.date, viaCard: null, statementCloses: null, beyondHorizon: false };
-  if (payAcct?.kind === "credit_card") {
-    const f = buildForecast(input, 90, { extraItems: [buy(Math.max(1, amt), req.date)] });
-    const stmt = f.cards.find((c) => c.accountId === payAcct.id)?.statements.find((st) => st.closingDate >= req.date);
-    cashOut.viaCard = payAcct.name;
-    if (stmt) {
-      cashOut.date = stmt.dueDate;
-      cashOut.statementCloses = stmt.closingDate;
-      cashOut.beyondHorizon = stmt.dueDate > f.endDate;
-    } else cashOut.beyondHorizon = true;
-  }
-  if (reserved > 0 && amt === 0) {
-    return {
-      verdict: "yes",
-      headline: "Yes, it's already planned.",
-      safeToday: { before: base.cap, after: base.cap },
-      lowest: { before: base.lowest, after: base.lowest },
-      action: { kind: "go", title: "Go ahead", detail: `Its ${formatCents(reserved)} cap is already set aside in your daily caps, so nothing else changes.` },
-      alternatives: [],
-      cash: cashOut,
-      plan,
-    };
-  }
-  const target = Math.floor(base.cap * KEEP_SHARE);
-  const ok = (r: ReturnType<typeof run>) => !r.belowFloor && r.cap >= target;
-  const item = buy(amt, req.date);
-  const plain = run([item]);
-
-  // Savings that may be suggested: unprotected only (the wedding fund never is).
-  const cash = input.accounts.find((a) => a.isSpendable && a.kind !== "credit_card" && a.kind !== "loan");
-  const unprotected = plan.sources.filter((s) => !s.protected && s.availableCents > 0);
-  const available = unprotected.reduce((t, s) => t + s.availableCents, 0);
-  // Savings only need to arrive by the time the cash leaves (for a card: the statement due date).
-  const moveDate = cashOut.viaCard && !cashOut.beyondHorizon ? cashOut.date : (plan.transferDate ?? req.date);
-  const movesFor = (total: Cents) => {
-    const out: Array<{ accountId: string; name: string; cents: Cents }> = [];
-    let left = total;
-    for (const s of unprotected) {
-      if (left <= 0) break;
-      const take = Math.min(s.availableCents, left);
-      out.push({ accountId: s.accountId, name: s.name, cents: take });
-      left -= take;
-    }
-    return out;
-  };
-  const transfers = (total: Cents): ForecastItem[] =>
-    !cash
-      ? []
-      : movesFor(total).map((m) => ({
-          id: `scenario:move:${m.accountId}`,
-          date: moveDate,
-          label: `Move from ${m.name}`,
-          kind: "transfer" as const,
-          source: "scenario" as const,
-          sourceId: "move",
-          postings: [
-            { accountId: m.accountId, deltaCents: -m.cents },
-            { accountId: cash.id, deltaCents: m.cents },
-          ],
-          cashEffectCents: m.cents,
-          isEstimate: true,
-        }));
-
-  // Computed alternatives.
-  const alternatives: AffordAction[] = [];
-  const waitDate = ctx.nextPayday && ctx.nextPayday > req.date ? ctx.nextPayday : null;
-  const waitOk = waitDate ? ok(run([buy(amt, waitDate)])) : false;
-  const cheaperMax = (() => {
-    let lo = 0;
-    let hi = amt;
-    for (let i = 0; i < 12 && hi - lo > 1_000; i++) {
-      const mid = Math.floor((lo + hi) / 2);
-      if (ok(run([buy(mid, req.date)]))) lo = mid;
-      else hi = mid;
-    }
-    return friendlyRoundDown(lo);
+  // --- The pots: free flexible money per pay period (after plans already budgeted) ------------
+  const base = buildForecast(input, 90);
+  const dp = planDailySpending(input, base, ctx.events, { calendarIncomplete: ctx.calendarIncomplete });
+  const periods = dp.allowance.periods;
+  const pct = ctx.calendarIncomplete ? Math.min(50, Math.max(0, input.settings.unseenPlansBufferPct)) : 0;
+  const eventsById = new Map(ctx.events.map((e) => [e.id, e]));
+  const planned = dp.advice
+    .map((a) => ({ a, e: eventsById.get(a.eventId)! }))
+    .filter((x) => x.e && x.a.capCents > 0);
+  const pots = periods.map((p, i) => {
+    const pool = i === 0 ? dp.poolCents : p.budgetCents - Math.round((p.budgetCents * pct) / 100);
+    const plans = planned.filter((x) => x.e.date >= p.start && x.e.date <= p.end);
+    const reservedForPlans = plans.reduce((t, x) => t + x.a.capCents, 0);
+    return { ...p, start: i === 0 ? maxDate(p.start, input.today) : p.start, free: Math.max(0, pool - reservedForPlans), plans };
   });
 
-  let verdict: AffordVerdict;
-  let headline: string;
-  let action: AffordAction;
-  let after = plain;
+  // --- When does the cash leave? ------------------------------------------------------------
+  const payAcct = req.paymentAccountId ? input.accounts.find((a) => a.id === req.paymentAccountId) : undefined;
+  const cash: AffordCheck["cash"] = { date: req.date, viaCard: null, statementCloses: null, beyondHorizon: false };
+  let card: AffordCheck["card"] = null;
+  if (payAcct?.kind === "credit_card") {
+    cash.viaCard = payAcct.name;
+    const stmtNow = base.cards.find((c) => c.accountId === payAcct.id)?.statements.find((s) => s.closingDate >= req.date);
+    if (stmtNow) {
+      cash.date = stmtNow.dueDate;
+      cash.statementCloses = stmtNow.closingDate;
+      cash.beyondHorizon = stmtNow.dueDate > base.endDate;
+      // Typical everyday card spending still to come before this statement closes.
+      const daysLeftInCycle = Math.max(0, diffDays(input.today, stmtNow.closingDate));
+      const typical = avgDailyCardSpend(input, payAcct.id) * daysLeftInCycle;
+      const usual = stmtNow.balanceCents + typical;
+      card = { name: payAcct.name, due: stmtNow.dueDate, closes: stmtNow.closingDate, usualCents: usual, withCents: usual + req.amountCents, typicalCents: typical };
+    } else cash.beyondHorizon = true;
+  }
 
-  if (ok(plain)) {
-    verdict = "yes";
-    headline = "Yes, it fits.";
-    action = {
+  const found = pots.findIndex((p) => cash.date >= p.start && cash.date <= p.end);
+  const potIndex = cash.beyondHorizon || found < 0 ? pots.length - 1 : found;
+  const pot = pots[potIndex]!;
+  const withPurchase = buildForecast(input, 90, { extraItems: [item] });
+  const floorShort = Math.max(0, floor - withPurchase.lowest.cents);
+  const shortfall = Math.max(0, amt - pot.free);
+  const room = { start: pot.start, end: pot.end, before: pot.free, after: Math.max(0, pot.free - amt), shortfall, borrowed: 0 };
+  const lowest = { before: base.lowest, after: withPurchase.lowest };
+
+  const result = (verdict: AffordVerdict, headline: string, action: AffordAction, alternatives: AffordAction[]): AffordCheck => ({
+    verdict,
+    headline,
+    room,
+    lowest,
+    cash,
+    card,
+    action,
+    alternatives,
+    plan,
+  });
+
+  // Already budgeted in full.
+  if (reserved > 0 && amt === 0) {
+    return result("yes", "Yes, it's already planned.", {
       kind: "go",
       title: "Go ahead",
-      detail: reserved > 0
-        ? `${formatCents(reserved)} is already set aside for it; the extra ${formatCents(amt)} ${plain.cap < base.cap ? `dips today's safe-to-spend to ${formatCents(plain.cap)}` : "fits easily"}.`
-        : plain.cap < base.cap
-          ? `Today's safe-to-spend dips from ${formatCents(base.cap)} to ${formatCents(plain.cap)}. Every bill still clears.`
-          : "Every bill, card payment and savings transfer still clears.",
-    };
-  } else {
-    // Smallest savings move that brings today's number back to at least KEEP_SHARE.
-    let move: Cents | null = null;
-    if (cash && available > 0) {
-      const capAt = (total: Cents) => run([item, ...transfers(total)]);
-      let hi = Math.min(available, amt + Math.max(0, plan.shortfallCents));
-      if (ok(capAt(hi))) {
-        let lo = 0;
-        for (let i = 0; i < 12 && hi - lo > 1_000; i++) {
-          const mid = Math.floor((lo + hi) / 2);
-          if (ok(capAt(mid))) hi = mid;
-          else lo = mid;
-        }
-        move = Math.min(available, Math.ceil(hi / 1_000) * 1_000);
-      }
+      detail: `Its ${formatCents(reserved)} is already set aside, so nothing else changes.`,
+    }, []);
+  }
+
+  // Fits in this period's free money and keeps cash above the floor.
+  if (shortfall === 0 && floorShort === 0) {
+    const daysLeft = Math.max(1, diffDays(maxDate(pot.start, input.today), pot.end) + 1);
+    const left = pot.free - amt;
+    return result("yes", "Yes, it fits.", {
+      kind: "go",
+      title: "Go ahead",
+      detail: `Leaves ${formatCents(left)} for everyday spending ${range(pot.start, pot.end)}${daysLeft > 1 ? `, about ${formatCents(Math.floor(left / daysLeft))} a day` : ""}.`,
+    }, []);
+  }
+
+  // A small shortfall that costs only a little everyday money over the next few weeks is a plain yes.
+  const next = pots.slice(potIndex + 1, potIndex + 3);
+  const nextFree = next.reduce((t, p) => t + p.free, 0);
+  const nextDays = next.reduce((t, p) => t + p.days, 0);
+  const normalPerDay = nextDays > 0 ? Math.floor(nextFree / nextDays) : 0;
+  const leanPerDay = nextDays > 0 ? Math.floor((nextFree - shortfall) / nextDays) : 0;
+  const perDayCost = normalPerDay - leanPerDay;
+  if (floorShort === 0 && next.length && shortfall <= nextFree * 0.6 && perDayCost <= Math.max(200, normalPerDay * 0.1)) {
+    room.borrowed = shortfall;
+    room.shortfall = 0;
+    return result("yes", "Yes, it fits.", {
+      kind: "go",
+      title: "Go ahead",
+      detail: `Borrows ${money(Math.ceil(shortfall / 100) * 100)} from next pay period: about ${formatCents(Math.max(1, perDayCost))} a day less until ${formatShort(next[next.length - 1]!.end)}.`,
+    }, []);
+  }
+
+  // --- Options, each with its trade-off ----------------------------------------------------------
+  const options: Array<AffordAction & { rank: number }> = [];
+
+  // 1. Use savings (unprotected only; the wedding fund is never suggested).
+  const unprotected = plan.sources.filter((s) => !s.protected && s.availableCents > 0);
+  const available = unprotected.reduce((t, s) => t + s.availableCents, 0);
+  const needFromSavings = Math.min(available, Math.ceil(Math.max(shortfall, floorShort) / 1_000) * 1_000);
+  if (needFromSavings > 0 && available >= Math.max(shortfall, floorShort)) {
+    const parts: string[] = [];
+    let left = needFromSavings;
+    for (const s of unprotected) {
+      if (left <= 0) break;
+      const take = Math.min(left, s.availableCents);
+      parts.push(`${money(take)} from ${s.name}`);
+      left -= take;
     }
-    if (waitOk) alternatives.push({ kind: "wait", title: `Wait until payday, ${formatShort(waitDate!)}`, detail: "Then it fits without touching savings." });
-    if (!plain.belowFloor && plain.cap > 0) {
-      alternatives.push({
-        kind: "tighten",
-        title: `Buy it and tighten up`,
-        detail: `No savings needed if you keep spending to ${formatCents(plain.cap)} a day until payday.`,
-      });
-    }
-    const cheaper = cheaperMax();
-    if (reserved + cheaper >= 500) {
-      alternatives.push({
-        kind: "cheaper",
-        title: `Go cheaper: up to ${formatCents(reserved + cheaper)}`,
-        detail: reserved > 0 ? `That's ${formatCents(reserved)} already set aside plus ${formatCents(cheaper)} more, a plain yes today.` : "That's a plain yes today.",
+    const spanDays = Math.max(1, diffDays(pots[0]!.start, pots[pots.length - 1]!.end) + 1);
+    const monthlyFree = (pots.reduce((t, p) => t + p.free, 0) / spanDays) * 30;
+    const months = [2, 3, 6, 12].find((m) => needFromSavings / m <= monthlyFree * 0.25) ?? 12;
+    options.push({
+      kind: "move",
+      rank: 3,
+      title: `Move ${parts.join(" and ")} by ${formatShort(cash.date)}`,
+      detail: `Rebuild it with ${money(Math.ceil(needFromSavings / months / 100) * 100)}/month for ${months} months.`,
+    });
+  }
+
+  // The flexible-money options can't fix a floor breach (that's cash, not spending money).
+  if (floorShort === 0) {
+    // 2. Run lean: borrow from the next pay periods' everyday money.
+    if (next.length && nextDays > 0 && shortfall <= nextFree * 0.6) {
+      const normal = normalPerDay;
+      const lean = leanPerDay;
+      options.push({
+        kind: "lean",
+        rank: shortfall <= nextFree * 0.25 ? 1 : 4,
+        title: `Run lean until ${formatShort(next[next.length - 1]!.end)}`,
+        detail: `Nothing extra until ${formatShort(pot.end)}, then about ${formatCents(lean)} a day instead of ${formatCents(normal)}.`,
       });
     }
 
-    if (move != null) {
-      verdict = "yes_with_plan";
-      headline = "Yes, with a plan.";
-      after = run([item, ...transfers(move)]);
-      const months = (plan.rebuild.find((r) => r.feasible) ?? plan.rebuild[plan.rebuild.length - 1])?.months ?? 6;
-      action = {
-        kind: "move",
-        title: `Move ${movesFor(move).map((m) => `${formatCents(m.cents)} from ${m.name}`).join(" and ")} by ${formatShort(moveDate)}`,
-        detail: `Your everyday spending stays close to normal. Rebuild it with ${formatCents(Math.ceil(move / months))}/month over ${months} months.`,
-      };
-    } else if (alternatives.length && alternatives[0]!.kind !== "cheaper") {
-      verdict = "yes_with_plan";
-      headline = "Yes, with a plan.";
-      action = alternatives.shift()!;
-      if (action.kind === "wait") after = run([buy(amt, waitDate!)]);
-    } else {
-      verdict = "not_yet";
-      headline = "Not yet.";
-      action = alternatives.shift() ?? {
-        kind: "none",
-        title: "Hold off for now",
-        detail: plan.protectedAvailableCents > 0 ? "Only protected savings could cover it." : "It doesn't fit within this forecast, even with savings.",
-      };
-      if (action.kind === "cheaper") after = plain;
+    // 3. Skip a plan that's already budgeted in the same period.
+    const cuttable = pot.plans.filter((x) => !x.e.essential).sort((a, b) => a.a.capCents - b.a.capCents);
+    const single = cuttable.find((x) => x.a.capCents >= shortfall);
+    const pair = !single && cuttable.length >= 2 ? cuttable.slice(-2) : null;
+    if (single) {
+      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${formatCents(single.a.capCents)} on ${formatShort(single.e.date)}.` });
+    } else if (pair && pair[0]!.a.capCents + pair[1]!.a.capCents >= shortfall) {
+      options.push({
+        kind: "skip_plan",
+        rank: 5,
+        title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`,
+        detail: `Frees ${formatCents(pair[0]!.a.capCents + pair[1]!.a.capCents)} that pay period.`,
+      });
+    }
+
+    // 4. Wait for the next pay period (debit only; a card's cash already leaves later).
+    const following = pots[potIndex + 1];
+    if (!cash.viaCard && following && amt <= following.free) {
+      options.push({ kind: "wait", rank: 6, title: `Wait until ${formatShort(following.start)}`, detail: "It fits in that pay period's money." });
     }
   }
 
-  return {
-    verdict,
-    headline,
-    safeToday: { before: base.cap, after: after.cap },
-    lowest: { before: base.lowest, after: after.lowest },
-    action,
-    alternatives,
-    cash: cashOut,
-    plan,
-  };
+  // 5. Cut it down to what fits as is.
+  const cheaper = friendlyRoundDown(reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor)));
+  if (cheaper >= 500 && cheaper < req.amountCents) {
+    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `That fits ${range(pot.start, pot.end)} with nothing else changing.` });
+  }
+
+  options.sort((a, b) => a.rank - b.rank);
+  const strip = ({ rank: _r, ...a }: AffordAction & { rank: number }): AffordAction => a;
+  const [first, ...rest] = options;
+  if (options.some((o) => o.kind !== "cheaper")) {
+    return result("yes_with_plan", "Yes, with a plan.", strip(first!), rest.map(strip));
+  }
+  return result(
+    "not_yet",
+    "Not yet.",
+    first ? strip(first) : { kind: "none", title: "Hold off for now", detail: "It doesn't fit, even with your unprotected savings." },
+    rest.map(strip),
+  );
 }
