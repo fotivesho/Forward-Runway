@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/theme";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
 import { clearDecisions, deleteCorrection, setHideAmounts } from "@/app/app/actions";
+import { APP_NAME } from "@/lib/brand";
 
 const DECISION_LABEL: Record<string, string> = {
   proceed: "Go ahead", cheaper: "Cheaper version", postpone: "Postpone", skip: "Skip", posted: "Already happened", modify: "Changed date/amount",
@@ -24,7 +25,7 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
           <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
-        <Card title="What Runway Tomorrow remembers" id="memory">
+        <Card title={`What ${APP_NAME} remembers`} id="memory">
           <p className="mb-3 text-sm text-muted">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</p>
           <h3 className="text-sm font-semibold">Event cost corrections</h3>
           {corrections.length === 0 ? (

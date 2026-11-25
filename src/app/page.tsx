@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
+import { APP_NAME } from "@/lib/brand";
 
 export default async function Landing({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
@@ -7,7 +8,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
     <main id="main" className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-8 sm:px-6">
       <header className="flex items-center justify-between">
         <span className="flex items-center gap-2 font-bold">
-          <img src="/icon.svg" alt="" width={32} height={32} /> Runway Tomorrow
+          <img src="/icon.svg" alt="" width={32} height={32} /> {APP_NAME}
         </span>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -20,7 +21,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       <section className="mt-14 max-w-2xl">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Know what you can safely spend today.</h1>
         <p className="mt-4 text-lg text-muted">
-          Runway Tomorrow forecasts your cash day by day — paydays, bills, card statements, savings transfers — and turns what's left into
+          {APP_NAME} forecasts your cash day by day — paydays, bills, card statements, savings transfers — and turns what's left into
           realistic daily caps that keep every bill paid, every card statement paid in full, and your savings goals on track.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">

@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme";
 import { getAppSession } from "@/lib/data/session";
 import { formatLong } from "@/lib/dates";
 import { setHideAmounts, signOut } from "./actions";
+import { APP_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Today", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Link href="/app" className="flex items-center gap-2 font-bold text-ink">
             <img src="/icon.svg" alt="" width={28} height={28} />
-            Runway Tomorrow
+            {APP_NAME}
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden text-muted sm:inline">{formatLong(today)}</span>

@@ -40,7 +40,7 @@ export async function fetchIcs(rawUrl: string): Promise<string> {
       res = await fetch(url, {
         redirect: "manual",
         signal: AbortSignal.timeout(TIMEOUT_MS),
-        headers: { Accept: "text/calendar, text/plain;q=0.9, */*;q=0.1", "User-Agent": "RunwayTomorrow-CalendarSync/1.0" },
+        headers: { Accept: "text/calendar, text/plain;q=0.9, */*;q=0.1", "User-Agent": "CashFlowPlanner-CalendarSync/1.0" },
         cache: "no-store",
       });
     } catch (e) {

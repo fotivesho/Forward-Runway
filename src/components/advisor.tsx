@@ -10,6 +10,7 @@ import type { EventView, Question } from "@/lib/view/dashboard";
 import { ActionForm, CheckboxField, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
+import { APP_NAME } from "@/lib/brand";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
 
@@ -191,7 +192,7 @@ export function EventCard({ view, accounts }: { view: EventView; accounts: Accou
                     label="Decision"
                     defaultValue={event.decision ?? ""}
                     options={[
-                      { value: "", label: "Let Runway Tomorrow suggest" },
+                      { value: "", label: `Let ${APP_NAME} suggest` },
                       { value: "proceed", label: "Go ahead" },
                       { value: "cheaper", label: "Do a cheaper version" },
                       { value: "postpone", label: "Postpone" },

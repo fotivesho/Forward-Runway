@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { buildExport } from "@/lib/data/import-export";
 import { loadSnapshot } from "@/lib/data/load";
 import { getUser } from "@/lib/supabase/server";
+import { APP_SLUG } from "@/lib/brand";
 
 /** Download all of the signed-in user's data as JSON (calendar addresses excluded). */
 export async function GET() {
@@ -13,7 +14,7 @@ export async function GET() {
   return new NextResponse(body, {
     headers: {
       "Content-Type": "application/json; charset=utf-8",
-      "Content-Disposition": `attachment; filename="runway-tomorrow-${now.slice(0, 10)}.json"`,
+      "Content-Disposition": `attachment; filename="${APP_SLUG}-${now.slice(0, 10)}.json"`,
       "Cache-Control": "private, no-store",
     },
   });

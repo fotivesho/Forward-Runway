@@ -5,6 +5,7 @@ import { Badge, Card, Disclosure, EmptyState, PageHeader } from "@/components/ui
 import type { ViewProps } from "./types";
 import { formatShort } from "@/lib/dates";
 import { deleteTransaction, deleteTransfer } from "@/app/app/actions";
+import { APP_NAME } from "@/lib/brand";
 
 export function ActivityView({ snapshot, today, demo = false }: ViewProps) {
   const name = (id: string) => snapshot.accounts.find((a) => a.id === id)?.name ?? "Deleted account";
@@ -19,7 +20,7 @@ export function ActivityView({ snapshot, today, demo = false }: ViewProps) {
         <Card title="Add a transfer or card payment"><TransferForm accounts={snapshot.accounts} today={today} /></Card>
         <Card title="Transactions" className="lg:col-span-2">
           {txns.length === 0 ? (
-            <EmptyState title="Nothing logged yet">Logging spending lets Runway Tomorrow learn your pattern and recalculate today's cap.</EmptyState>
+            <EmptyState title="Nothing logged yet">Logging spending lets {APP_NAME} learn your pattern and recalculate today's cap.</EmptyState>
           ) : (
             <ul className="divide-y divide-line">
               {txns.map((t) => (

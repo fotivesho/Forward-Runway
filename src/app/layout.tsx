@@ -3,13 +3,13 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { ServiceWorker } from "@/components/service-worker";
 import { isThemePref, THEME_COLOR, THEME_COOKIE } from "@/lib/theme";
+import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { default: "Runway Tomorrow", template: "%s · Runway Tomorrow" },
+  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: "See what's coming up, what you can safely spend today, and keep bills, cards and savings on track.",
-  manifest: "/manifest.webmanifest",
   icons: { icon: "/icon.svg", apple: "/icon.svg" },
-  appleWebApp: { capable: true, title: "Runway Tmrw", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: APP_SHORT_NAME, statusBarStyle: "default" },
   robots: { index: true, follow: true },
 };
 

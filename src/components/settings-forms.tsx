@@ -6,6 +6,7 @@ import type { Snapshot } from "@/lib/data/snapshot";
 import { centsToInput } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
 import { ActionForm, CheckboxField, DemoCtx, Field, FileField, MoneyField, SelectField, Submit } from "./form";
+import { APP_NAME } from "@/lib/brand";
 
 function zones(current: string): string[] {
   let list: string[] = [];
@@ -58,7 +59,7 @@ export function SettingsForm({ snapshot }: { snapshot: Snapshot }) {
 export function ImportForm() {
   return (
     <ActionForm action={importData} className="grid gap-3" encType="multipart/form-data" aria-label="Import data">
-      <FileField name="file" label="Runway Tomorrow export (.json)" accept="application/json,.json" />
+      <FileField name="file" label={`${APP_NAME} export (.json)`} accept="application/json,.json" />
       <Field name="confirm" label='Type REPLACE to confirm' hint="Importing replaces all of your current data." autoComplete="off" />
       <Submit variant="danger" pendingLabel="Importing…">Import and replace</Submit>
     </ActionForm>

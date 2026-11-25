@@ -25,6 +25,7 @@ import {
   type FieldErrors,
 } from "@/lib/data/schemas";
 import { getUser } from "@/lib/supabase/server";
+import { APP_NAME } from "@/lib/brand";
 
 export type ActionState = {
   ok: boolean;
@@ -534,7 +535,7 @@ export async function importData(_: ActionState, form: FormData): Promise<Action
   const { supabase, user } = await session();
   if (form.get("confirm") !== "REPLACE") return invalid({ confirm: 'Type REPLACE to confirm. Importing replaces all of your current data.' });
   const file = form.get("file");
-  if (!(file instanceof File) || file.size === 0) return invalid({ file: "Choose a Runway Tomorrow export (.json)." });
+  if (!(file instanceof File) || file.size === 0) return invalid({ file: `Choose a ${APP_NAME} export (.json).` });
   if (file.size > MAX_IMPORT_BYTES) return invalid({ file: "That file is larger than 5 MB." });
   const parsed = parseImport(await file.text(), () => crypto.randomUUID());
   if (!parsed.ok) return invalid({ file: parsed.error });

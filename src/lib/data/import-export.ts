@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { isISODate } from "../dates";
 import type { Snapshot } from "./snapshot";
+import { APP_NAME } from "../brand";
 
 export const EXPORT_FORMAT = "runway-tomorrow";
 /** Files exported before the rename still import. */
@@ -169,7 +170,7 @@ const decisionZ = z.object({
 const scenarioZ = z.object({ id, name: z.string().min(1).max(60), adjustments: z.array(z.record(z.unknown())).max(200) });
 
 export const exportFileSchema = z.object({
-  format: z.enum([EXPORT_FORMAT, ...LEGACY_EXPORT_FORMATS], { errorMap: () => ({ message: "This isn't a Runway Tomorrow export file." }) }),
+  format: z.enum([EXPORT_FORMAT, ...LEGACY_EXPORT_FORMATS], { errorMap: () => ({ message: `This isn't a ${APP_NAME} export file.` }) }),
   version: z.literal(EXPORT_VERSION, { errorMap: () => ({ message: "This export was made by an unsupported version." }) }),
   profile: z.object({ displayName: z.string().max(80).nullable().optional(), timezone: z.string().max(64).optional(), hideAmounts: z.boolean().optional(), theme: z.enum(["system", "light", "dark"]).optional() }).optional(),
   settings: z
