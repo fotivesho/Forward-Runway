@@ -52,7 +52,7 @@ export function LoginForm({ initialMode, next, callbackError }: { initialMode: M
         if (error) throw error;
         setInfo("If that email has an account, a sign-in link is on its way.");
       } else {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${site}/auth/callback?next=/app/settings%23password` });
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${site}/auth/confirm?next=/reset-password` });
         if (error) throw error;
         setInfo("If that email has an account, a reset link is on its way.");
       }

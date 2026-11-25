@@ -87,6 +87,16 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
   await auto.close();
 }
 
+// Password reset: no session means a clear "expired" message, and bad links go back to sign-in
+{
+  const { page } = await visit("/reset-password");
+  await page.getByText("This reset link has expired").waitFor({ timeout: 10000 }).catch(() => {});
+  check(await page.getByText("This reset link has expired").isVisible(), "reset page without a valid link explains it has expired");
+  await page.close();
+  const res = await fetch(BASE + "/auth/confirm?token_hash=bad&type=recovery", { redirect: "manual" });
+  check(res.status >= 300 && res.status < 400 && /\/login\?mode=reset/.test(res.headers.get("location") ?? ""), "/auth/confirm handles a bad reset link");
+}
+
 // Signed-in area is protected
 {
   const { page } = await visit("/app");

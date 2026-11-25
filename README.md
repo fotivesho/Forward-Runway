@@ -81,9 +81,12 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
 2. **Apply the migration** (see above).
 3. **Configure Auth** (Authentication → URL Configuration):
    - Site URL: `https://runwaytomorrow.com`
-   - Redirect URLs: `https://runwaytomorrow.com/auth/callback` (add your `*.vercel.app` preview address too while testing)
+   - Redirect URLs: `https://runwaytomorrow.com/auth/callback`, `https://runwaytomorrow.com/auth/confirm` and `https://runwaytomorrow.com/auth/confirm?next=/reset-password` (add the same three for your `*.vercel.app` address while testing). `/auth/confirm` and `/auth/callback` are the same handler.
    - Email confirmations: on (recommended). Optionally set a custom SMTP provider for production email volume.
-   - For email templates that use token hashes, link to `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email&next=/app`. The default PKCE links work as-is.
+   - The default email links work as-is. For custom templates that use token hashes:
+     - Confirm sign-up: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=/app`
+     - Reset password: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery` (always lands on `/reset-password`)
+   - To keep registration closed, turn off "Allow new users to sign up" under Authentication → Sign In / Providers.
 4. **Deploy to Vercel**: import the repository and set these environment variables:
    | Variable | Value | Exposed to browser |
    |---|---|---|

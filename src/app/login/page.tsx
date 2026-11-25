@@ -22,7 +22,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
           </p>
         </div>
       ) : (
-        <LoginForm initialMode={sp.mode === "signup" ? "signup" : "signin"} next={next} callbackError={sp.error ?? null} />
+        <LoginForm initialMode={sp.mode === "signup" ? "signup" : sp.mode === "reset" ? "reset" : "signin"} next={next} callbackError={sp.error ?? null} />
       )}
     </main>
   );
