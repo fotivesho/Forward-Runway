@@ -244,3 +244,20 @@ describe("debt", () => {
     expect(payoff(1_000_000, 2400, 1_000).months).toBeNull();
   });
 });
+
+describe("daily cap weighting", () => {
+  it("never leaves a weekday with no history at ~$0", () => {
+    const i = base();
+    // Three weeks of spending only on weekdays (Mon-Fri), nothing on weekends.
+    for (let k = 1; k <= 21; k++) {
+      const d = `2025-12-${String(31 - k + 1).padStart(2, "0")}`;
+      const dow = new Date(`${d}T00:00:00Z`).getUTCDay();
+      if (dow === 0 || dow === 6) continue;
+      i.transactions.push({ id: `h${k}`, date: d, amountCents: 3_000, direction: "out", accountId: "chk", description: "x", status: "posted", cleared: true, flexible: true });
+    }
+    const plan = planDailySpending(i, buildForecast(i, 90), [], { calendarIncomplete: false });
+    const caps = plan.days.map((d) => d.capCents);
+    const max = Math.max(...caps);
+    expect(Math.min(...caps)).toBeGreaterThanOrEqual(Math.floor(max / 4));
+  });
+});

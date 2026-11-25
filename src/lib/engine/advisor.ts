@@ -374,7 +374,10 @@ export function planDailySpending(
   }
   const eventTotal = [...eventCapsByDate.values()].reduce((s, e) => s + e.cents, 0);
   const leftover = Math.max(0, periodPools[0]! - eventTotal);
-  const weights = curDates.map((d) => (baseline.reliable ? Math.max(1, baseline.byWeekday[dayOfWeek(d)]!) : 1));
+  // Weight days by the user's weekday pattern, but never below half an average day:
+  // a weekday with little history still needs room for ordinary spending.
+  const floorWeight = Math.max(1, Math.round(baseline.avgDailyCents * 0.5));
+  const weights = curDates.map((d) => (baseline.reliable ? Math.max(floorWeight, baseline.byWeekday[dayOfWeek(d)]!) : 1));
   const base = allocate(leftover, weights);
   if (!baseline.reliable) {
     notes.push("Daily caps are spread evenly until there are at least two weeks of logged spending to learn your pattern.");

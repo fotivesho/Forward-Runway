@@ -1,0 +1,144 @@
+"use client";
+
+import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatShort, formatLong } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
+import type { ForecastDay } from "@/lib/engine";
+import { useHideAmounts } from "./privacy";
+
+// Validated with the dataviz palette checker on the dark surface (#0b1f16).
+const SERIES_BALANCE = "#2bb36a";
+const SERIES_ALLOWANCE = "#5f9fe0";
+const FLOOR = "#f5c451";
+
+interface Point {
+  date: string;
+  closing: number;
+  afterAllowance?: number;
+  inflows: number;
+  outflows: number;
+}
+
+export function ForecastChart({
+  days,
+  floorCents,
+  allowanceByDay,
+  lowest,
+  onSelect,
+  height = 240,
+}: {
+  days: ForecastDay[];
+  floorCents: number;
+  /** Cumulative flexible allowance through each day (same length as days). */
+  allowanceByDay?: number[];
+  lowest: { date: string; cents: number };
+  onSelect?: (date: string) => void;
+  height?: number;
+}) {
+  const hide = useHideAmounts();
+  const data: Point[] = days.map((d, i) => ({
+    date: d.date,
+    closing: d.closingCents / 100,
+    afterAllowance: allowanceByDay ? (d.closingCents - allowanceByDay[i]!) / 100 : undefined,
+    inflows: d.inflowsCents,
+    outflows: d.outflowsCents,
+  }));
+  const fmtAxis = (v: number) => (hide ? "" : formatCents(Math.round(v * 100), { compact: true }));
+  const summary = `Projected cash from ${formatShort(days[0]!.date)} to ${formatShort(days[days.length - 1]!.date)}. Lowest ${
+    hide ? "hidden" : formatCents(lowest.cents)
+  } on ${formatShort(lowest.date)}. Cash floor ${hide ? "hidden" : formatCents(floorCents)}. The daily timeline below lists every value.`;
+
+  return (
+    <figure className="m-0">
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-hidden>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block h-0.5 w-4 rounded" style={{ background: SERIES_BALANCE }} /> Projected cash
+        </span>
+        {allowanceByDay && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: SERIES_ALLOWANCE }} /> If you spend your full daily allowance
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-4 border-t border-dashed" style={{ borderColor: FLOOR }} /> Cash floor
+        </span>
+      </div>
+      <div role="img" aria-label={summary} style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={data}
+            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+            onClick={(e) => {
+              const label = (e as { activeLabel?: string } | null)?.activeLabel;
+              if (label && onSelect) onSelect(String(label));
+            }}
+          >
+            <defs>
+              <linearGradient id="fr-balance" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={SERIES_BALANCE} stopOpacity={0.28} />
+                <stop offset="100%" stopColor={SERIES_BALANCE} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid stroke="#224434" strokeOpacity={0.5} vertical={false} />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatShort}
+              tick={{ fill: "#a3bfb1", fontSize: 11 }}
+              axisLine={{ stroke: "#224434" }}
+              tickLine={false}
+              minTickGap={24}
+            />
+            <YAxis tickFormatter={fmtAxis} tick={{ fill: "#a3bfb1", fontSize: 11 }} axisLine={false} tickLine={false} width={hide ? 8 : 52} />
+            <Tooltip
+              cursor={{ stroke: "#a3bfb1", strokeWidth: 1 }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const p = payload[0]!.payload as Point;
+                const money = (c: number) => (hide ? "$•••" : formatCents(c));
+                return (
+                  <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs shadow-lg">
+                    <p className="mb-1 font-semibold text-ink">{formatLong(p.date)}</p>
+                    <p className="text-ink">
+                      <strong className="tabular">{money(Math.round(p.closing * 100))}</strong> <span className="text-muted">closing cash</span>
+                    </p>
+                    {p.afterAllowance != null && (
+                      <p className="text-ink">
+                        <strong className="tabular">{money(Math.round(p.afterAllowance * 100))}</strong> <span className="text-muted">after full allowance</span>
+                      </p>
+                    )}
+                    {(p.inflows > 0 || p.outflows > 0) && (
+                      <p className="mt-1 text-muted">
+                        {p.inflows > 0 && <span className="tabular text-in">+{money(p.inflows)} in </span>}
+                        {p.outflows > 0 && <span className="tabular text-out">−{money(p.outflows)} out</span>}
+                      </p>
+                    )}
+                  </div>
+                );
+              }}
+            />
+            <ReferenceLine
+              y={floorCents / 100}
+              stroke={FLOOR}
+              strokeDasharray="4 4"
+              label={{ value: hide ? "Floor" : `Floor ${formatCents(floorCents, { compact: true })}`, fill: "#e8f4ee", fontSize: 11, position: "insideBottomRight" }}
+            />
+            <Area type="stepAfter" dataKey="closing" stroke={SERIES_BALANCE} strokeWidth={2} fill="url(#fr-balance)" isAnimationActive={false} activeDot={{ r: 5, stroke: "#0b1f16", strokeWidth: 2 }} />
+            {allowanceByDay && (
+              <Line type="stepAfter" dataKey="afterAllowance" stroke={SERIES_ALLOWANCE} strokeWidth={2} strokeDasharray="6 4" dot={false} isAnimationActive={false} activeDot={{ r: 4, stroke: "#0b1f16", strokeWidth: 2 }} />
+            )}
+            <ReferenceDot
+              x={lowest.date}
+              y={lowest.cents / 100}
+              r={5}
+              fill={SERIES_BALANCE}
+              stroke="#0b1f16"
+              strokeWidth={2}
+              label={{ value: "Lowest", position: "top", fill: "#e8f4ee", fontSize: 11 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <figcaption className="sr-only">{summary}</figcaption>
+    </figure>
+  );
+}

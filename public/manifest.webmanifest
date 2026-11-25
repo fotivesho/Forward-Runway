@@ -1,0 +1,14 @@
+{
+  "name": "Forward Runway",
+  "short_name": "Runway",
+  "description": "Personal cash-flow forecast: what's coming up and what you can safely spend today.",
+  "start_url": "/app",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#06130d",
+  "theme_color": "#06130d",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

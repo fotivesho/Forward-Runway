@@ -201,7 +201,11 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     };
   };
   const cashAccounts = accounts.filter(isCash).map(view);
-  const savings = accounts.filter((a) => !isCash(a) && (a.kind === "savings" || a.kind === "checking" || a.kind === "cash")).map(view);
+  const goalAccounts = new Set(s.goals.map((g) => g.accountId).filter(Boolean));
+  // Savings not already shown under a goal.
+  const savings = accounts
+    .filter((a) => !isCash(a) && (a.kind === "savings" || a.kind === "checking" || a.kind === "cash") && !goalAccounts.has(a.id))
+    .map(view);
   const cards = accounts
     .filter((a) => a.kind === "credit_card")
     .map((a) => ({ view: view(a), projection: forecast90.cards.find((c) => c.accountId === a.id) }));
