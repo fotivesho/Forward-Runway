@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { ActivityView } from "@/components/views/activity";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Activity" };
+/** Merged into Spend. Old links keep working. */
 export default function Page() {
-  return <ActivityView {...getDemoSession()} />;
+  redirect("/demo/spend");
 }

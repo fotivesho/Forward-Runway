@@ -121,7 +121,6 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       demoEvent("e2", ID.calPersonal, inDays(2), "Team sync"),
       demoEvent("e3", ID.calShared, inDays(5), "Bridal shower for Priya"),
       demoEvent("e4", ID.calPersonal, inDays(8), "Concert: The Midnight Owls"),
-      demoEvent("e5", ID.calShared, inDays(8), "Concert - The Midnight Owls"),
       demoEvent("e6", ID.calShared, inDays(11), "Cake tasting"),
       demoEvent("e7", ID.calPersonal, inDays(13), "Weekend trip to the lake"),
       demoEvent("e8", ID.calPersonal, inDays(16), "Pottery workshop"),

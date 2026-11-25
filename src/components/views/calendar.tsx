@@ -4,7 +4,8 @@ import { QuickAction } from "@/components/form";
 import { Badge, Card, Disclosure, EmptyState, Notice, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { buildDashboard } from "@/lib/view/dashboard";
-import { deleteCalendarSource, deleteEvent, toggleCalendarSource } from "@/app/app/actions";
+import { PlanCalendar, type DayMark } from "@/components/plan-calendar";
+import { deleteCalendarSource, toggleCalendarSource } from "@/app/app/actions";
 
 const STATUS = {
   ok: { tone: "good", label: "Synced" },
@@ -15,10 +16,16 @@ const STATUS = {
 
 export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProps) {
   const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
+  // Paydays and bills, so the calendar gives a sense of the whole month.
+  const marks: DayMark[] = m.forecast90.days.flatMap((d) =>
+    d.items
+      .filter((i) => i.kind === "income" || i.kind === "bill" || i.kind === "subscription" || i.kind === "loan_payment" || i.kind === "card_payment")
+      .map((i) => ({ date: d.date, kind: i.kind === "income" ? ("income" as const) : ("bill" as const), label: i.label, cents: i.cashEffectCents })),
+  );
   const ics = snapshot.calendarSources.some((s) => s.kind === "ics_url" && s.enabled);
   return (
     <>
-      <PageHeader title="Calendar plans" subtitle="Plans from every calendar you connect, with an estimated cost and a spending cap for each." action={ics ? <SyncButton label="Sync all" /> : undefined} />
+      <PageHeader title="Calendar plans" subtitle="Every plan with its cost, its cap, and whether it fits. Tap a day to see just that day." action={ics ? <SyncButton label="Sync all" /> : undefined} />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           {m.coverage.incomplete && (
@@ -26,24 +33,16 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
               {m.coverage.notes.join(" ")} Until every calendar syncs, a buffer is held back from your daily caps.
             </Notice>
           )}
-          <Card title="Next 30 days">
-            {m.events.length === 0 ? (
-              <EmptyState title="No plans found">
-                {m.coverage.status === "complete" ? "Nothing on your connected calendars in the next 30 days." : "That doesn't mean you have no plans — connect your calendars or add plans below."}
-              </EmptyState>
-            ) : (
-              <ul className="space-y-2">
-                {m.events.map((v) => (
-                  <div key={v.event.id}>
-                    <EventCard view={v} accounts={snapshot.accounts} />
-                    {!v.event.sourceId && (
-                      <div className="mt-1 flex justify-end">
-                        <QuickAction action={deleteEvent} fields={{ id: v.event.id }} confirm="Delete this plan?">Delete plan</QuickAction>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </ul>
+          <Card title="Your plans">
+            <PlanCalendar views={m.allEvents} marks={marks} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} />
+            {!demo && m.duplicates.length > 0 && (
+              <div className="mt-4">
+                <Disclosure summary={`${m.duplicates.length} hidden duplicate${m.duplicates.length === 1 ? "" : "s"} (counted once)`}>
+                  <ul className="space-y-2">
+                    {m.duplicates.map((v) => <EventCard key={v.event.id} view={v} accounts={snapshot.accounts} />)}
+                  </ul>
+                </Disclosure>
+              </div>
             )}
           </Card>
           <Card title="Add a plan that isn't on a calendar"><ManualEventForm today={today} /></Card>

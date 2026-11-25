@@ -7,7 +7,7 @@ import type { Cents } from "../money";
 import { demoSnapshot } from "../data/demo";
 import type { Snapshot } from "../data/snapshot";
 import type { PlannedEvent } from "../engine/advisor";
-import { buildDashboard } from "./dashboard";
+import { buildDashboard, type DashboardModel } from "./dashboard";
 
 export interface LandingStep {
   date: ISODate;
@@ -38,6 +38,8 @@ export interface LandingData {
   weekCaps: Array<{ date: ISODate; capCents: Cents; hasPlan: boolean }>;
   card: { name: string; purchaseDate: ISODate; closingDate: ISODate; dueDate: ISODate } | null;
   wedding: { balanceCents: Cents; targetCents: Cents; pct: number } | null;
+  /** The Today tab's snapshot tiles, from the same sample data. */
+  overview: Pick<DashboardModel, "cash" | "savings" | "goals" | "cards" | "loans">;
 }
 
 export function buildLanding(today: ISODate, nowIso: string): LandingData {
@@ -64,6 +66,7 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     today,
     snapshot,
     afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
+    overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,
       poolCents: m.plan.poolCents,
@@ -79,15 +82,15 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     },
     spokenFor: { startCents: m.forecast.startingCashCents, steps: steps.slice(0, 8), safeTodayCents: m.plan.todayCap.capCents },
     events: m.events
-      .filter((v) => v.advice || v.duplicate)
+      .filter((v) => v.advice)
       .slice(0, 7)
       .map((v) => ({
         title: v.event.title,
         date: v.event.date,
         estimateCents: v.estimate.cents,
         capCents: v.advice?.capCents ?? 0,
-        recommendation: v.duplicate ? "duplicate" : v.estimate.needsInput ? "needs_estimate" : (v.advice?.recommendation ?? "proceed"),
-        reason: v.duplicate ? `Same event as “${v.duplicate.ofTitle}”, counted once.` : (v.advice?.reason ?? ""),
+        recommendation: v.estimate.needsInput ? "needs_estimate" : (v.advice?.recommendation ?? "proceed"),
+        reason: v.advice?.reason ?? "",
         duplicateOf: v.duplicate?.ofTitle ?? null,
       })),
     weekCaps: m.plan.days.slice(0, 7).map((d) => ({ date: d.date, capCents: d.capCents, hasPlan: d.eventIds.length > 0 })),

@@ -44,10 +44,14 @@ export function ItemRow({ item, showDate }: { item: ForecastItem; showDate?: boo
   );
 }
 
-/** Daily timeline: one row per day with opening, in, out, closing. Doubles as the chart's table view. */
-export function Timeline({ days, selected, onlyActive = true }: { days: ForecastDay[]; selected?: string | null; onlyActive?: boolean }) {
+/**
+ * Daily timeline, every day expanded: what moves and where cash ends up.
+ * "balance" leads with the closing balance; "flow" leads with money in, out and net.
+ */
+export function Timeline({ days, selected, mode = "balance", onlyActive = true }: { days: ForecastDay[]; selected?: string | null; mode?: "balance" | "flow"; onlyActive?: boolean }) {
   const [showAll, setShowAll] = useState(!onlyActive);
   const visible = showAll ? days : days.filter((d) => d.items.length || d.nonCashItems.length || d.belowFloor || d.date === days[0]?.date);
+  const maxBal = Math.max(1, ...days.map((d) => d.closingCents));
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -56,40 +60,63 @@ export function Timeline({ days, selected, onlyActive = true }: { days: Forecast
           {showAll ? "Only days with activity" : "Show every day"}
         </button>
       </div>
-      <ol className="divide-y divide-line rounded-xl border border-line" aria-label="Daily cash timeline">
-        {visible.map((d) => (
-          <li key={d.date} id={`day-${d.date}`} className={`p-3 ${selected === d.date ? "bg-surface-3" : ""} ${d.belowFloor ? "border-l-4 border-l-warn" : ""}`}>
-            <details open={selected === d.date || undefined}>
-              <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-ink">
+      <ol className="space-y-2" aria-label="Daily cash timeline">
+        {visible.map((d) => {
+          const net = d.inflowsCents - d.outflowsCents;
+          const items = [...d.items, ...d.nonCashItems];
+          return (
+            <li
+              key={d.date}
+              id={`day-${d.date}`}
+              className={`scroll-mt-24 rounded-xl border bg-surface p-3 ${selected === d.date ? "border-brand ring-1 ring-brand" : d.negative ? "border-danger/50" : d.belowFloor ? "border-warn/60" : "border-line"}`}
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="font-medium text-ink">
                   {formatLong(d.date)}
                   {d.negative ? (
                     <span className="ml-2"><Badge tone="bad">Below $0</Badge></span>
                   ) : d.belowFloor ? (
                     <span className="ml-2"><Badge tone="warn">Below floor</Badge></span>
                   ) : null}
-                </span>
-                <span className="text-sm">
-                  <span className="sr-only">Closing cash </span>
-                  <Money cents={d.closingCents} className="font-semibold" />
-                </span>
-              </summary>
-              <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
-                <div><dt className="text-faint">Opening</dt><dd><Money cents={d.openingCents} /></dd></div>
-                <div><dt className="text-faint">In</dt><dd><Money cents={d.inflowsCents} tone="in" /></dd></div>
-                <div><dt className="text-faint">Out</dt><dd><Money cents={-d.outflowsCents} tone={d.outflowsCents ? "out" : undefined} /></dd></div>
-                <div><dt className="text-faint">Closing</dt><dd><Money cents={d.closingCents} className="font-semibold" /></dd></div>
-              </dl>
-              {(d.items.length > 0 || d.nonCashItems.length > 0) && (
-                <ul className="mt-2 divide-y divide-line/60">
-                  {[...d.items, ...d.nonCashItems].map((it) => (
+                </p>
+                {mode === "balance" ? (
+                  <p className="text-right">
+                    <span className="sr-only">Closing cash </span>
+                    <Money cents={d.closingCents} className="text-lg font-bold" />
+                  </p>
+                ) : (
+                  <p className="text-right">
+                    <span className="sr-only">Net </span>
+                    <Money cents={net} sign tone={net ? "auto" : undefined} className="text-lg font-bold" />
+                  </p>
+                )}
+              </div>
+              {mode === "balance" ? (
+                <>
+                  <div className="mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
+                    <div className={`h-1.5 rounded-full ${d.negative ? "bg-danger" : d.belowFloor ? "bg-warn" : "bg-brand"}`} style={{ width: `${Math.max(0, Math.min(100, (d.closingCents / maxBal) * 100))}%` }} />
+                  </div>
+                  <p className="mt-1 text-xs text-muted">
+                    Opened at <Money cents={d.openingCents} />
+                    {d.inflowsCents > 0 && <> · <Money cents={d.inflowsCents} tone="in" sign /></>}
+                    {d.outflowsCents > 0 && <> · <Money cents={-d.outflowsCents} tone="out" sign /></>}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-muted">
+                  <Money cents={d.inflowsCents} tone={d.inflowsCents ? "in" : undefined} sign /> in · <Money cents={-d.outflowsCents} tone={d.outflowsCents ? "out" : undefined} sign /> out · ends at <Money cents={d.closingCents} />
+                </p>
+              )}
+              {items.length > 0 && (
+                <ul className="mt-2 divide-y divide-line/60 border-t border-line/60">
+                  {items.map((it) => (
                     <ItemRow key={it.id} item={it} />
                   ))}
                 </ul>
               )}
-            </details>
-          </li>
-        ))}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

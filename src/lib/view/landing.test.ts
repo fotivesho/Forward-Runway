@@ -17,8 +17,8 @@ describe("landing page data", () => {
       expect(d.hero.safeTodayCents).toBeGreaterThanOrEqual(0);
       expect(d.hero.lowest.cents).toBe(Math.min(...d.hero.points.map((p) => p.cents)));
       expect(d.weekCaps.length).toBeGreaterThan(0);
-      // The demo's duplicate concert is caught and shown.
-      expect(d.events.some((e) => e.recommendation === "duplicate")).toBe(true);
+      // Duplicates are counted once and never shown as their own plan.
+      expect(d.events.some((e) => e.recommendation === "duplicate")).toBe(false);
     }
   });
 

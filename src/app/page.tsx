@@ -5,6 +5,7 @@ import { AffordIt } from "@/components/landing/afford-it";
 import { HeroCard } from "@/components/landing/hero-card";
 import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
+import { SnapshotTiles } from "@/components/snapshot";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { formatShort, formatWeekday, todayInZone } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -17,7 +18,6 @@ const REC = {
   cheaper: { label: "Go cheaper", cls: "border-warn/50 text-warn" },
   postpone: { label: "Wait", cls: "border-info/50 text-info" },
   skip: { label: "Skip", cls: "border-danger/50 text-danger" },
-  duplicate: { label: "Duplicate caught", cls: "border-info/50 text-info" },
   needs_estimate: { label: "Asks you", cls: "border-warn/50 text-warn" },
 } as const;
 
@@ -30,7 +30,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
   // Fictional sample data only, computed by the real engine.
   const d = buildLanding(todayInZone("America/New_York", now), now.toISOString());
   const maxCap = Math.max(1, ...d.weekCaps.map((c) => c.capCents));
-  const events = d.events.filter((e) => e.estimateCents > 0 || e.recommendation === "duplicate").slice(0, 3);
+  const events = d.events.filter((e) => e.estimateCents > 0).slice(0, 3);
 
   return (
     <>
@@ -92,10 +92,19 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         {/* ---------------------------------------------- supporting proof, compact */}
         <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
           <h2 id="also-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Behind that answer.</h2>
-          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
+          <article className="card mt-8 p-4 sm:p-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 className="font-semibold text-ink">Everything, in one look</h3>
+              <p className="text-sm text-muted">The first thing you see each morning, with when each number was last updated.</p>
+            </div>
+            <div className="mt-3">
+              <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
+            </div>
+          </article>
+          <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
             <article className="card p-5">
               <h3 className="font-semibold text-ink">Your calendar, priced</h3>
-              <p className="mt-1 text-sm text-muted">Every plan gets a cost, a cap and a call. Duplicates across shared calendars count once.</p>
+              <p className="mt-1 text-sm text-muted">Every plan gets a cost, a cap and a clear answer: fits, fits with a plan, or not yet.</p>
               <ul className="mt-4 space-y-2">
                 {events.map((e) => (
                   <li key={e.title + e.date} className="flex items-center justify-between gap-2 text-sm">

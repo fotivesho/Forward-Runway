@@ -21,6 +21,8 @@ import {
   type PlannedEvent,
   type RecurringRule,
   type SavingsGoal,
+  checkAffordability,
+  type AffordCheck,
 } from "../engine";
 import { toEngineInput, type CalendarEvent, type Snapshot } from "../data/snapshot";
 
@@ -31,6 +33,8 @@ export interface EventView {
   plannedCents: Cents;
   duplicate: { ofId: string; ofTitle: string; reason: string } | null;
   advice: EventAdvice | null;
+  /** The same answer "Can I afford it?" gives for this plan (null for duplicates and free events). */
+  check: AffordCheck | null;
   sourceName: string;
 }
 
@@ -71,7 +75,12 @@ export interface DashboardModel {
   /** Calendar events as the advisor saw them (for re-running the plan with a hypothetical purchase). */
   planned: PlannedEvent[];
   coverage: Coverage;
+  /** Plans in the next 30 days (duplicates are counted once and left out). */
   events: EventView[];
+  /** Plans in the whole 90-day forecast, for the calendar. */
+  allEvents: EventView[];
+  /** Events hidden as likely duplicates of another one. */
+  duplicates: EventView[];
   question: Question | null;
   issues: ForecastIssue[];
   cash: { totalCents: Cents; accounts: AccountView[] };
@@ -159,6 +168,7 @@ export function buildEventViews(s: Snapshot, today: ISODate, from: ISODate, to: 
         plannedCents: event.capCents ?? estimate.cents,
         duplicate: d ? { ofId: d.duplicateOf, ofTitle: byId.get(d.duplicateOf)?.title ?? "another event", reason: d.reason } : null,
         advice: null,
+        check: null,
         sourceName: event.sourceId ? (sources.get(event.sourceId) ?? "Calendar") : "Added by you",
       };
     })
@@ -188,6 +198,20 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
   const plan = planDailySpending(input, forecast90, planned, { calendarIncomplete: coverage.incomplete });
   const adviceById = new Map(plan.advice.map((a) => [a.eventId, a]));
   for (const v of events) v.advice = adviceById.get(v.event.id) ?? null;
+
+  const nextPayday =
+    forecast90.days.find((d) => d.date > today && d.items.some((i) => i.kind === "income" && i.cashEffectCents > 0))?.date ?? null;
+  // Each plan gets the same answer as "Can I afford it?", with its own cap already set aside.
+  const ctx = { input, events: planned, calendarIncomplete: coverage.incomplete, nextPayday };
+  for (const v of events) {
+    if (v.duplicate || v.plannedCents <= 0 || v.event.decision === "skip") continue;
+    v.check = checkAffordability(ctx, {
+      amountCents: v.plannedCents,
+      date: v.event.date,
+      paymentAccountId: v.event.paymentAccountId,
+      reservedCents: v.advice?.capCents ?? 0,
+    });
+  }
 
   const accounts = s.accounts.filter((a) => !a.archived);
   const view = (a: Account): AccountView => {
@@ -247,9 +271,6 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     .filter((d) => d.date <= upcomingEnd)
     .flatMap((d) => [...d.items, ...d.nonCashItems]);
 
-  const nextPayday =
-    forecast90.days.find((d) => d.date > today && d.items.some((i) => i.kind === "income" && i.cashEffectCents > 0))?.date ?? null;
-
   return {
     today,
     horizon,
@@ -258,7 +279,9 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     plan,
     planned,
     coverage,
-    events: events.filter((v) => v.event.date <= addDays(today, 30)),
+    events: events.filter((v) => !v.duplicate && v.event.date <= addDays(today, 30)),
+    allEvents: events.filter((v) => !v.duplicate),
+    duplicates: events.filter((v) => v.duplicate),
     question: pickQuestion(forecast90.issues, events, today),
     issues: forecast90.issues,
     cash: { totalCents: forecast90.startingCashCents, accounts: cashAccounts },

@@ -5,14 +5,13 @@ import { usePathname } from "next/navigation";
 const LINKS = [
   { href: "/app", label: "Today", icon: "◎" },
   { href: "/app/forecast", label: "Forecast", icon: "↗" },
-  { href: "/app/plans", label: "Bills & pay", icon: "↻" },
+  { href: "/app/spend", label: "Spend", icon: "$" },
   { href: "/app/calendar", label: "Calendar", icon: "▦" },
   { href: "/app/what-if", label: "What if", icon: "?" },
   { href: "/app/accounts", label: "Accounts", icon: "▭" },
-  { href: "/app/activity", label: "Activity", icon: "≡" },
   { href: "/app/settings", label: "Settings", icon: "⚙" },
 ];
-const MOBILE = ["/app", "/app/forecast", "/app/plans", "/app/calendar", "/app/what-if"];
+const MOBILE = ["/app", "/app/forecast", "/app/spend", "/app/calendar", "/app/what-if"];
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();

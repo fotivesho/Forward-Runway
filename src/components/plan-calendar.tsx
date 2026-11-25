@@ -1,0 +1,168 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { addDays, addMonths, dayOfWeek, eachDay, endOfMonth, formatLong, parts, startOfMonth, type ISODate } from "@/lib/dates";
+import type { Account } from "@/lib/engine";
+import type { EventView } from "@/lib/view/dashboard";
+import { deleteEvent } from "@/app/app/actions";
+import { EventCard } from "./advisor";
+import { QuickAction } from "./form";
+import { Money } from "./privacy";
+import { EmptyState } from "./ui";
+
+export interface DayMark {
+  date: ISODate;
+  kind: "income" | "bill";
+  label: string;
+  cents: number;
+}
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const DOT = { yes: "bg-brand", yes_with_plan: "bg-warn", not_yet: "bg-danger" } as const;
+
+/**
+ * A month calendar of your plans, paydays and bills. Tap a day to see just that day;
+ * every plan card below carries the same answer as "Can I afford it?".
+ */
+export function PlanCalendar({ views, marks, today, end, accounts }: { views: EventView[]; marks: DayMark[]; today: ISODate; end: ISODate; accounts: Account[] }) {
+  const months = useMemo(() => {
+    const out: ISODate[] = [];
+    for (let m = startOfMonth(today); m <= end; m = addMonths(m, 1)) out.push(m);
+    return out;
+  }, [today, end]);
+  // Open on the month of the next plan, so there's something to see.
+  const firstPlan = views.find((v) => v.event.date >= today)?.event.date;
+  const [monthIdx, setMonthIdx] = useState(() => Math.max(0, months.findIndex((m) => firstPlan && firstPlan.slice(0, 7) === m.slice(0, 7))));
+  const [selected, setSelected] = useState<ISODate | null>(null);
+
+  const month = months[monthIdx] ?? months[0]!;
+  const { y, m } = parts(month);
+  // In the current month, start at this week: past weeks only take up room.
+  const first = monthIdx === 0 ? addDays(today, -dayOfWeek(today)) : month;
+  const gridStart = first < month ? month : first;
+  const lead = dayOfWeek(gridStart);
+  const days = eachDay(gridStart, endOfMonth(month));
+  const plansOn = (d: ISODate) => views.filter((v) => v.event.date === d);
+  const marksOn = (d: ISODate) => marks.filter((k) => k.date === d);
+
+  // Plans that cost nothing (meetings, "not spending") stay out of the way.
+  const free = views.filter((v) => v.plannedCents === 0 && !v.estimate.needsInput);
+  const spending = views.filter((v) => !free.includes(v));
+  const shown = selected ? views.filter((v) => v.event.date === selected) : spending;
+  const groups = new Map<ISODate, EventView[]>();
+  for (const v of shown) groups.set(v.event.date, [...(groups.get(v.event.date) ?? []), v]);
+
+  return (
+    <div>
+      <div className="rounded-xl border border-line bg-surface p-2 sm:p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMonthIdx((i) => Math.max(0, i - 1))} disabled={monthIdx === 0} aria-label="Previous month">‹</button>
+          <p className="font-semibold text-ink">{MONTHS[m - 1]} {y}</p>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setMonthIdx((i) => Math.min(months.length - 1, i + 1))} disabled={monthIdx >= months.length - 1} aria-label="Next month">›</button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center text-[11px] text-faint" aria-hidden>
+          {WEEKDAYS.map((d, i) => <span key={i}>{d}</span>)}
+        </div>
+        <ol className="mt-1 grid grid-cols-7 gap-1" aria-label={`${MONTHS[m - 1]} ${y}`}>
+          {Array.from({ length: lead }, (_, i) => <li key={`lead-${i}`} aria-hidden />)}
+          {days.map((d) => {
+            const plans = plansOn(d).filter((v) => !free.includes(v));
+            const dayMarks = marksOn(d);
+            const payday = dayMarks.some((k) => k.kind === "income");
+            const bills = dayMarks.filter((k) => k.kind === "bill").length;
+            const past = d < today;
+            const outside = d > end;
+            const isSel = selected === d;
+            const label = `${formatLong(d)}: ${plans.length} plan${plans.length === 1 ? "" : "s"}${payday ? ", payday" : ""}${bills ? `, ${bills} bill${bills === 1 ? "" : "s"}` : ""}`;
+            return (
+              <li key={d}>
+                <button
+                  type="button"
+                  disabled={past || outside}
+                  onClick={() => setSelected(isSel ? null : d)}
+                  aria-pressed={isSel}
+                  aria-label={label}
+                  className={`flex h-12 w-full flex-col items-center justify-start rounded-lg border pt-1 text-xs transition sm:h-16 ${
+                    isSel ? "border-brand bg-brand/15" : d === today ? "border-brand/60" : "border-transparent hover:border-line"
+                  } ${past || outside ? "opacity-35" : ""} ${plans.length ? "bg-surface-2/70" : ""}`}
+                >
+                  <span className={`tabular ${d === today ? "font-bold text-brand" : "text-ink"}`}>{Number(d.slice(8))}</span>
+                  <span className="mt-0.5 flex items-center gap-0.5">
+                    {plans.slice(0, 3).map((v) => (
+                      <span key={v.event.id} className={`h-1.5 w-1.5 rounded-full ${v.check ? DOT[v.check.verdict] : "bg-info"}`} />
+                    ))}
+                  </span>
+                  <span className="flex items-center gap-0.5 text-[9px] leading-none sm:text-[10px]">
+                    {payday && <span className="font-bold text-brand">$</span>}
+                    {bills > 0 && <span className="text-faint">{"•".repeat(Math.min(bills, 3))}</span>}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-brand align-middle" />Fits</span>
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-warn align-middle" />With a plan</span>
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger align-middle" />Not yet</span>
+          <span><span className="mr-1 font-bold text-brand">$</span>Payday</span>
+          <span><span className="mr-1 text-faint">•</span>Bill</span>
+        </p>
+      </div>
+
+      <div className="mt-4">
+        {selected && (
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <p className="font-semibold text-ink">{formatLong(selected)}</p>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>Show all plans</button>
+          </div>
+        )}
+        {selected && marksOn(selected).length > 0 && (
+          <ul className="mb-3 space-y-1 rounded-xl border border-line p-2.5 text-sm">
+            {marksOn(selected).map((k) => (
+              <li key={k.label + k.cents} className="flex justify-between gap-2">
+                <span className="text-ink">{k.kind === "income" ? "💰" : "🧾"} {k.label}</span>
+                <Money cents={k.cents} sign tone="auto" />
+              </li>
+            ))}
+          </ul>
+        )}
+        {shown.length === 0 ? (
+          <EmptyState title={selected ? "No plans that day" : "No plans found"}>
+            {selected ? "Nothing on your calendars costs money that day." : "Connect your calendars or add a plan below."}
+          </EmptyState>
+        ) : (
+          <div className="space-y-4">
+            {[...groups.entries()].map(([date, list]) => (
+              <section key={date} aria-label={formatLong(date)}>
+                {!selected && <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-faint">{formatLong(date)}{date === addDays(today, 1) ? " · tomorrow" : date === today ? " · today" : ""}</h3>}
+                <ul className="space-y-2">
+                  {list.map((v) => (
+                    <div key={v.event.id}>
+                      <EventCard view={v} accounts={accounts} />
+                      {!v.event.sourceId && (
+                        <div className="mt-1 flex justify-end">
+                          <QuickAction action={deleteEvent} fields={{ id: v.event.id }} confirm="Delete this plan?">Delete plan</QuickAction>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        )}
+        {!selected && free.length > 0 && (
+          <details className="mt-4 rounded-xl border border-line p-3 text-sm">
+            <summary className="cursor-pointer font-medium text-muted">{free.length} event{free.length === 1 ? "" : "s"} that cost nothing</summary>
+            <ul className="mt-2 space-y-2">
+              {free.map((v) => <EventCard key={v.event.id} view={v} accounts={accounts} />)}
+            </ul>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+

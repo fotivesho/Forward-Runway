@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { PlansView } from "@/components/views/plans";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Bills & pay" };
+/** Merged into Spend. Old links keep working. */
 export default function Page() {
-  return <PlansView {...getDemoSession()} />;
+  redirect("/demo/spend");
 }

@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { PlansView } from "@/components/views/plans";
-import { getAppSession } from "@/lib/data/session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Bills & pay" };
-
-export default async function Page() {
-  return <PlansView {...await getAppSession()} />;
+/** Merged into Spend. Old links keep working. */
+export default function Page() {
+  redirect("/app/spend");
 }

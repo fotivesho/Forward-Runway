@@ -6,6 +6,7 @@ import { addDays, dayOfWeek, formatShort, type ISODate } from "@/lib/dates";
 import { formatCents, parseDollars } from "@/lib/money";
 import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
+import { AffordTiles, LOOK } from "../afford-result";
 
 export const AFFORD_EVENT = "fr-afford";
 export interface AffordPreset {
@@ -51,59 +52,6 @@ function useTween(value: number, ms = 450) {
   }, [value, ms]);
   return shown;
 }
-
-const LOOK = {
-  yes: { panel: "border-brand/50 bg-brand/[0.07]", word: "text-brand", icon: "✓" },
-  yes_with_plan: { panel: "border-warn/50 bg-warn/[0.07]", word: "text-warn", icon: "↺" },
-  not_yet: { panel: "border-danger/40 bg-danger/[0.06]", word: "text-danger", icon: "✕" },
-} as const;
-
-/** One answer tile: label, big number with a small note beside it, a bar, and a status line. */
-function Tile({
-  label,
-  value,
-  aside,
-  status,
-  tone = "muted",
-  children,
-}: {
-  label: React.ReactNode;
-  value: string;
-  aside?: string;
-  status: React.ReactNode;
-  tone?: "muted" | "good" | "warn" | "bad";
-  children: React.ReactNode;
-}) {
-  const toneClass = { muted: "text-muted", good: "text-brand", warn: "font-semibold text-warn", bad: "font-semibold text-danger" }[tone];
-  return (
-    <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
-      <p className="text-[11px] text-faint sm:text-xs">{label}</p>
-      <p className="flex flex-wrap items-baseline gap-x-1">
-        <span className="text-2xl font-bold tabular text-ink sm:text-3xl">{value}</span>
-        {aside && <span className="text-[11px] text-muted sm:text-xs">{aside}</span>}
-      </p>
-      <div className="relative mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
-        {children}
-      </div>
-      <p className={`mt-0.5 text-[11px] sm:text-xs ${toneClass}`}>{status}</p>
-    </div>
-  );
-}
-
-/** Where the limit line sits on every bar, so over and under always read the same way. */
-const LINE = 70;
-/**
- * Position (0–100) of a value on a bar whose limit sits at LINE%. Up to the limit scales
- * linearly; past it, `overRange` past the limit fills the remaining space (with a visible sliver minimum).
- */
-const gauge = (value: number, limit: number, overRange: number) =>
-  value <= limit
-    ? (Math.max(0, value) / Math.max(1, limit)) * LINE
-    : LINE + Math.max(3, Math.min(1, (value - limit) / Math.max(1, overRange)) * (100 - LINE));
-const w = (n: number) => `${Math.max(0, n)}%`;
-const LimitLine = () => (
-  <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: `${LINE}%` }} title="Limit" />
-);
 
 export function AffordIt({
   snapshot,
@@ -172,11 +120,6 @@ export function AffordIt({
   );
   const tile1After = useTween(result ? (result.card && !result.cash.beyondHorizon ? result.card.withCents : result.room.after) : 0);
   const lowestAfter = useTween(result?.lowest.after.cents ?? 0);
-  /** Estimates read better in whole dollars. */
-  const dollars = (c: number) => (c < 0 ? "−$" : "$") + Math.abs(Math.round(c / 100)).toLocaleString("en-US");
-  /** "Nov 25–28" within a month, "Nov 29–Dec 12" across months. */
-  const span = (a: ISODate, b: ISODate) =>
-    a === b ? formatShort(a) : a.slice(0, 7) === b.slice(0, 7) ? `${formatShort(a)}–${Number(b.slice(8))}` : `${formatShort(a)}–${formatShort(b)}`;
   const look = result ? LOOK[result.verdict] : null;
   // Phones get tighter spacing and sizes so the choices and the answer fit on one screen;
   // from the sm breakpoint up, everything is as before.
@@ -278,94 +221,9 @@ export function AffordIt({
               {result.headline}
             </p>
 
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
-              {result.card && !result.cash.beyondHorizon ? (
-                (() => {
-                  const c = result.card;
-                  const purchase = c.withCents - c.usualCents;
-                  const g = (v: number) => gauge(v, c.capCents, c.capCents);
-                  const over = c.withCents > c.capCents;
-                  // The part of this purchase that still fits under the max is green; anything past it is red.
-                  const fits = Math.max(0, Math.min(purchase, c.capCents - c.usualCents));
-                  // A small overage the next pay period absorbs is amber (still a plain yes); a real one is red.
-                  const overColor = result.verdict === "yes" ? "bg-warn" : "bg-danger";
-                  return (
-                    <Tile
-                      label={<>{c.name.split(" ")[0]} statement · {formatShort(c.due)}</>}
-                      value={dollars(tile1After)}
-                      aside={`of ${dollars(c.capCents)} max`}
-                      tone={over ? (result.verdict === "yes" ? "warn" : "bad") : "good"}
-                      status={over ? (result.verdict === "yes" ? `${dollars(c.withCents - c.capCents)} over · next period covers it` : `over by ${dollars(c.withCents - c.capCents)}`) : `${dollars(c.capCents - c.withCents)} room left`}
-                    >
-                      <div className="absolute inset-0 flex overflow-hidden rounded-full">
-                        <span className="h-full bg-faint/70" style={{ width: w(g(c.onCardCents)) }} />
-                        <span className="h-full bg-info/70" style={{ width: w(g(c.usualCents) - g(c.onCardCents)) }} />
-                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: w(g(c.usualCents + fits) - g(c.usualCents)) }} />
-                        <span className={`h-full transition-[width] duration-500 ${overColor}`} style={{ width: w(g(c.withCents) - Math.max(g(c.usualCents), g(c.usualCents + fits))) }} />
-                      </div>
-                      <LimitLine />
-                    </Tile>
-                  );
-                })()
-              ) : (
-                (() => {
-                  const r = result.room;
-                  const used = r.before - r.after + r.shortfall + r.borrowed;
-                  const overflow = r.shortfall > 0;
-                  const g = (v: number) => gauge(v, r.before, r.before);
-                  return (
-                    <Tile
-                      label={<>Free to spend · {span(r.start, r.end)}</>}
-                      value={formatCents(tile1After)}
-                      aside={`left of ${dollars(r.before)}`}
-                      tone={overflow ? "warn" : r.borrowed > 0 ? "muted" : "good"}
-                      status={overflow ? `short ${dollars(r.shortfall)}` : r.borrowed > 0 ? `+${dollars(r.borrowed)} from next period` : "fits this pay period"}
-                    >
-                      <div className="absolute inset-0 flex overflow-hidden rounded-full">
-                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: w(g(Math.min(used, r.before))) }} />
-                        <span className="h-full bg-warn transition-[width] duration-500" style={{ width: w(used > r.before ? g(used) - LINE : 0) }} />
-                      </div>
-                      <LimitLine />
-                    </Tile>
-                  );
-                })()
-              )}
-              {(() => {
-                const floor = result.floorCents;
-                const cushionAfter = result.lowest.after.cents - floor;
-                const below = cushionAfter < 0;
-                // Floor at the line; the space to its right is the cushion you had before this purchase.
-                const cushionBefore = result.lowest.before.cents - floor;
-                const pos = gauge(result.lowest.after.cents, floor, cushionBefore > 0 ? cushionBefore : floor);
-                return (
-                  <Tile
-                    label={<>Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}</>}
-                    value={dollars(lowestAfter)}
-                    aside={`floor ${dollars(floor)}`}
-                    tone={below ? "bad" : "good"}
-                    status={below ? `${dollars(-cushionAfter)} below your floor` : `✓ ${dollars(cushionAfter)} above your floor`}
-                  >
-                    <span
-                      className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ${below ? "bg-danger" : "bg-brand"}`}
-                      style={{ width: w(pos) }}
-                    />
-                    <LimitLine />
-                  </Tile>
-                );
-              })()}
+            <div className="mt-2 sm:mt-5">
+              <AffordTiles result={result} tile1After={tile1After} lowestAfter={lowestAfter} reservedCents={when === "plan" ? reservedCents : 0} />
             </div>
-            {result.card && !result.cash.beyondHorizon && (
-              <p className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-muted sm:gap-x-3 sm:text-xs">
-                <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-faint/70 align-middle" />{dollars(result.card.onCardCents)} on card</span>
-                {result.card.typicalCents > 0 && (
-                  <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info/70 align-middle" />{dollars(result.card.typicalCents)} expected</span>
-                )}
-                <span>
-                  <span className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${result.card.withCents <= result.card.capCents ? "bg-brand" : result.verdict === "yes" ? "bg-warn" : "bg-danger"}`} />
-                  {dollars(result.card.withCents - result.card.usualCents)} this purchase
-                </span>
-              </p>
-            )}
 
             <div className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 sm:mt-4 sm:p-4">
               <p className="hidden text-xs font-semibold uppercase tracking-[0.14em] text-faint sm:block">Suggested move</p>

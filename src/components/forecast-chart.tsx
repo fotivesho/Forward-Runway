@@ -1,6 +1,6 @@
 "use client";
 
-import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Area, Bar, CartesianGrid, ComposedChart, Line, ReferenceDot, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { formatShort, formatLong } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import type { ForecastDay } from "@/lib/engine";
@@ -146,6 +146,65 @@ export function ForecastChart({
               strokeWidth={2}
               label={{ value: "Lowest", position: "top", fill: LABEL, fontSize: 11 }}
             />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+      <figcaption className="sr-only">{summary}</figcaption>
+    </figure>
+  );
+}
+
+/** Money in and out per day: in above the line, out below it. Uses the same tokens as the text colours. */
+export function FlowChart({ days, height = 240, onSelect }: { days: ForecastDay[]; height?: number; onSelect?: (date: string) => void }) {
+  const hide = useHideAmounts();
+  const theme = useResolvedTheme();
+  const c = PALETTES[theme];
+  const IN = theme === "dark" ? "#7fd39a" : "#2e7346";
+  const OUT = theme === "dark" ? "#f0a37a" : "#a8502a";
+  const data = days.map((d) => ({ date: d.date, in: d.inflowsCents / 100, out: -d.outflowsCents / 100 }));
+  const totalIn = days.reduce((t, d) => t + d.inflowsCents, 0);
+  const totalOut = days.reduce((t, d) => t + d.outflowsCents, 0);
+  const fmtAxis = (v: number) => (hide ? "" : formatCents(Math.round(v * 100), { compact: true }));
+  const summary = `Money in and out each day from ${formatShort(days[0]!.date)} to ${formatShort(days[days.length - 1]!.date)}: ${hide ? "hidden" : formatCents(totalIn)} in, ${hide ? "hidden" : formatCents(totalOut)} out. The daily timeline below lists every value.`;
+  return (
+    <figure className="m-0">
+      <div className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted" aria-hidden>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: IN }} /> Money in</span>
+        <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: OUT }} /> Money out</span>
+      </div>
+      <div role="img" aria-label={summary} style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart
+            data={data}
+            stackOffset="sign"
+            margin={{ top: 8, right: 8, bottom: 0, left: 0 }}
+            onClick={(e) => {
+              const label = (e as { activeLabel?: string } | null)?.activeLabel;
+              if (label && onSelect) onSelect(String(label));
+            }}
+          >
+            <CartesianGrid stroke={c.grid} strokeOpacity={0.5} vertical={false} />
+            <XAxis dataKey="date" tickFormatter={formatShort} tick={{ fill: c.tick, fontSize: 11 }} axisLine={{ stroke: c.grid }} tickLine={false} minTickGap={24} />
+            <YAxis tickFormatter={fmtAxis} tick={{ fill: c.tick, fontSize: 11 }} axisLine={false} tickLine={false} width={hide ? 8 : 52} />
+            <ReferenceLine y={0} stroke={c.tick} strokeOpacity={0.6} />
+            <Tooltip
+              cursor={{ fill: c.grid, fillOpacity: 0.4 }}
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null;
+                const p = payload[0]!.payload as { date: string; in: number; out: number };
+                const money = (v: number) => (hide ? "$•••" : formatCents(Math.round(v * 100)));
+                return (
+                  <div className="rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs shadow-lg">
+                    <p className="mb-1 font-semibold text-ink">{formatLong(p.date)}</p>
+                    <p className="tabular text-in">+{money(p.in)} in</p>
+                    <p className="tabular text-out">−{money(-p.out)} out</p>
+                    <p className="mt-1 font-semibold text-ink">Net {p.in + p.out >= 0 ? "+" : "−"}{money(Math.abs(p.in + p.out))}</p>
+                  </div>
+                );
+              }}
+            />
+            <Bar dataKey="in" stackId="flow" fill={IN} radius={[3, 3, 0, 0]} isAnimationActive={false} />
+            <Bar dataKey="out" stackId="flow" fill={OUT} radius={[3, 3, 0, 0]} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
       </div>

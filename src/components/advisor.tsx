@@ -10,6 +10,7 @@ import type { EventView, Question } from "@/lib/view/dashboard";
 import { ActionForm, CheckboxField, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
+import { LOOK, PlanImpact } from "./afford-result";
 import { APP_NAME } from "@/lib/brand";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
@@ -79,7 +80,7 @@ export function QuestionCard({ question, accounts, today }: { question: Question
           </ActionForm>
         )}
         {(question.kind === "card" || question.kind === "statement" || question.kind === "goal" || question.kind === "other" || (question.kind === "balance" && !account) || (question.kind === "income" && !cash)) && (
-          <Link className="btn btn-primary" href={base + (question.kind === "income" ? "/plans" : "/accounts")}>
+          <Link className="btn btn-primary" href={base + (question.kind === "income" ? "/spend" : "/accounts")}>
             Answer this
           </Link>
         )}
@@ -117,7 +118,7 @@ export function QuickLog({ accounts, today }: { accounts: Account[]; today: ISOD
 
 export function EventCard({ view, accounts }: { view: EventView; accounts: Account[] }) {
   const demo = useContext(DemoCtx);
-  const { event, estimate, advice, duplicate } = view;
+  const { event, estimate, advice, duplicate, check } = view;
   const payWith = accounts.filter((a) => !a.archived && (a.isSpendable || a.kind === "credit_card"));
   return (
     <li className="rounded-xl border border-line bg-surface-2/40 p-3">
@@ -131,6 +132,10 @@ export function EventCard({ view, accounts }: { view: EventView; accounts: Accou
         </div>
         {advice && !duplicate && estimate.needsInput && event.capCents == null ? (
           <Badge tone="warn">Needs estimate</Badge>
+        ) : check && !advice?.userDecided ? (
+          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[check.verdict].badge}`}>
+            {LOOK[check.verdict].icon} {check.verdict === "yes" ? "Fits" : check.verdict === "yes_with_plan" ? "With a plan" : "Not yet"}
+          </span>
         ) : advice && !duplicate && (
           <Badge tone={REC_TONE[advice.recommendation]}>
             {advice.userDecided ? "Your call: " : ""}
@@ -170,8 +175,12 @@ export function EventCard({ view, accounts }: { view: EventView; accounts: Accou
               </dd>
             </div>
           </dl>
-          {advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
-          {advice && advice.impacts.length > 0 && (
+          {check ? (
+            <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} />
+          ) : (
+            advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
+          )}
+          {!check && advice && advice.impacts.length > 0 && (
             <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted">
               {advice.impacts.map((i) => (
                 <li key={i}>{i}</li>

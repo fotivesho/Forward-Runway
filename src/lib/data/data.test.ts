@@ -99,8 +99,9 @@ describe("demo dashboard", () => {
       // Card charges never hit cash directly.
       const direct = m.forecast90.days.flatMap((d) => d.items).filter((it) => it.kind === "card_purchase");
       expect(direct).toHaveLength(0);
-      // The duplicate concert is detected.
-      expect(m.events.some((e) => e.duplicate)).toBe(true);
+      // Duplicates never appear in the plan list, and every shown plan has an answer.
+      expect(m.events.some((e) => e.duplicate)).toBe(false);
+      expect(m.events.filter((e) => e.plannedCents > 0).every((e) => e.check)).toBe(true);
       // The fictional demo never contains a real calendar URL.
       expect(snap.calendarSources.every((c) => c.urlHint === "calendar.example.com")).toBe(true);
     }
