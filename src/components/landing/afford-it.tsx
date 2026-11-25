@@ -123,8 +123,8 @@ export function AffordIt({
     () => (valid ? checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: onCard ? card?.id : null, reservedCents: when === "plan" ? reservedCents : 0 }) : null),
     [ctx, valid, cents, date, onCard, card?.id, reservedCents, when],
   );
-  const roomAfter = useTween(result?.room.after ?? 0);
-  const tile2After = useTween(result ? (result.card ? result.card.withCents : result.lowest.after.cents) : 0);
+  const tile1After = useTween(result ? (result.card && !result.cash.beyondHorizon ? result.card.withCents : result.room.after) : 0);
+  const lowestAfter = useTween(result?.lowest.after.cents ?? 0);
   /** Estimates read better in whole dollars. */
   const dollars = (c: number) => "$" + Math.round(c / 100).toLocaleString("en-US");
   /** "Nov 25–28" within a month, "Nov 29–Dec 12" across months. */
@@ -232,34 +232,49 @@ export function AffordIt({
             </p>
 
             <div className="mt-2 grid grid-cols-2 gap-2 sm:mt-5 sm:gap-3">
-              <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
-                <p className="text-[11px] text-faint sm:text-xs">Free to spend · {span(result.room.start, result.room.end)}</p>
-                <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.room.before)}</p>
-                <p className="flex flex-wrap items-baseline gap-x-1.5">
-                  <span className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(roomAfter)}</span>
-                  {result.room.shortfall > 0 && <span className="text-[11px] font-semibold text-warn sm:text-xs">short {dollars(result.room.shortfall)}</span>}
-                  {result.room.borrowed > 0 && <span className="text-[11px] text-muted sm:text-xs">+{dollars(result.room.borrowed)} next period</span>}
-                </p>
-              </div>
-              {result.card ? (
+              {result.card && !result.cash.beyondHorizon ? (
                 <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
-                  <p className="text-[11px] text-faint sm:text-xs">{result.card.name.split(" ")[0]} payment · {formatShort(result.card.due)}</p>
-                  <p className="text-xs text-muted tabular sm:mt-1 sm:text-sm">
-                    <span className="line-through decoration-1">≈{dollars(result.card.usualCents)}</span>
-                    {result.card.typicalCents > 0 && <span className="text-[11px] sm:text-xs"> · ~{dollars(result.card.typicalCents)} typical</span>}
+                  <p className="text-[11px] text-faint sm:text-xs">{result.card.name.split(" ")[0]} statement · {formatShort(result.card.due)}</p>
+                  <p className="flex flex-wrap items-baseline gap-x-1">
+                    <span className="text-2xl font-bold tabular text-ink sm:text-3xl">{dollars(tile1After)}</span>
+                    <span className="text-[11px] text-muted sm:text-xs">of {dollars(result.card.capCents)} max</span>
                   </p>
-                  <p className="text-2xl font-bold tabular text-ink sm:text-3xl">≈{dollars(tile2After)}</p>
+                  <div className="mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
+                    <div
+                      className={`h-1.5 rounded-full transition-[width] duration-500 ${result.card.withCents > result.card.capCents ? "bg-warn" : "bg-brand"}`}
+                      style={{ width: `${Math.min(100, Math.round((result.card.withCents / Math.max(1, result.card.capCents)) * 100))}%` }}
+                    />
+                  </div>
+                  <p className={`mt-0.5 text-[11px] sm:text-xs ${result.card.withCents > result.card.capCents ? "font-semibold text-warn" : "text-muted"}`}>
+                    {result.card.withCents > result.card.capCents
+                      ? `over by ${dollars(result.card.withCents - result.card.capCents)}`
+                      : `${dollars(result.card.capCents - result.card.withCents)} room left`}
+                  </p>
                 </div>
               ) : (
                 <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
-                  <p className="text-[11px] text-faint sm:text-xs">
-                    Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}
+                  <p className="text-[11px] text-faint sm:text-xs">Free to spend · {span(result.room.start, result.room.end)}</p>
+                  <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.room.before)}</p>
+                  <p className="flex flex-wrap items-baseline gap-x-1.5">
+                    <span className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(tile1After)}</span>
+                    {result.room.shortfall > 0 && <span className="text-[11px] font-semibold text-warn sm:text-xs">short {dollars(result.room.shortfall)}</span>}
+                    {result.room.borrowed > 0 && <span className="text-[11px] text-muted sm:text-xs">+{dollars(result.room.borrowed)} next period</span>}
                   </p>
-                  <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.lowest.before.cents)}</p>
-                  <p className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(tile2After)}</p>
                 </div>
               )}
+              <div className="rounded-xl bg-surface/80 px-2.5 py-1.5 sm:p-3">
+                <p className="text-[11px] text-faint sm:text-xs">
+                  Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}
+                </p>
+                <p className="text-xs text-muted line-through decoration-1 tabular sm:mt-1 sm:text-sm">{formatCents(result.lowest.before.cents)}</p>
+                <p className="text-2xl font-bold tabular text-ink sm:text-3xl">{formatCents(lowestAfter)}</p>
+              </div>
             </div>
+            {result.card && !result.cash.beyondHorizon && result.card.typicalCents > 0 && result.verdict !== "yes" && (
+              <p className="mt-1.5 hidden text-[11px] leading-snug text-muted sm:block sm:text-xs">
+                The statement already includes ~{dollars(result.card.typicalCents)} of your usual {result.card.name.split(" ")[0]} spending before it closes {formatShort(result.card.closes)}.
+              </p>
+            )}
 
             <div className="mt-2 rounded-xl border border-line bg-surface px-3 py-2 sm:mt-4 sm:p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-faint sm:text-xs">Suggested move</p>

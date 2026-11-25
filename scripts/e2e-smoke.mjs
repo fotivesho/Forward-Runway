@@ -124,7 +124,7 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
   check(/Free to spend/i.test(answer) && /(Yes|Not yet)/.test(answer), "what-if checker answers in pay-period free money");
   await page.getByRole("button", { name: "Visa Rewards" }).click();
   await page.waitForTimeout(300);
-  check(/payment ·/i.test(await page.locator("#afford-result").innerText()), "paying by card shows the statement payment");
+  check(/statement ·/i.test(await page.locator("#afford-result").innerText()) && /max/.test(await page.locator("#afford-result").innerText()), "paying by card shows the statement against its cap");
   check((await page.locator("#afford button[aria-pressed]").filter({ hasText: "·" }).count()) > 0, "calendar plans appear as presets with their dates");
   await page.close();
 }

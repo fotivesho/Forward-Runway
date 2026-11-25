@@ -114,3 +114,25 @@ describe("can I afford it: pay-period free money", () => {
     expect([r.action, ...r.alternatives].some((a) => a.kind === "cheaper")).toBe(true);
   });
 });
+
+describe("card statement cap", () => {
+  const today = "2026-11-25";
+  const d = buildLanding(today, `${today}T15:00:00Z`);
+  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
+  const visa = d.snapshot.accounts.find((a) => a.kind === "credit_card")!.id;
+
+  it("cap = what's already headed to the statement + the due-date pay period's free money", () => {
+    const r = checkAffordability(ctx, { amountCents: 100, date: "2026-11-29", paymentAccountId: visa });
+    expect(r.card!.capCents).toBe(r.card!.usualCents + r.room.before);
+    expect(r.verdict).toBe("yes");
+    expect(r.action.detail).toMatch(/can be paid in full/);
+  });
+
+  it("staying under the cap needs no savings; going over it is short by exactly the overage", () => {
+    const small = checkAffordability(ctx, { amountCents: 50_000, date: "2026-11-29", paymentAccountId: visa });
+    expect(small.card!.withCents).toBeLessThanOrEqual(small.card!.capCents);
+    expect([small.action, ...small.alternatives].some((a) => a.kind === "move")).toBe(false);
+    const big = checkAffordability(ctx, { amountCents: 170_000, date: "2026-11-29", paymentAccountId: visa });
+    expect(big.card!.withCents - big.card!.capCents).toBe(big.room.shortfall);
+  });
+});

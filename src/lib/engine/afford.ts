@@ -38,7 +38,13 @@ export interface AffordCheck {
   /** When the money actually leaves your cash. */
   cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
   /** Paying by card: the statement it lands on, usual vs. with this purchase (incl. typical card spending). */
-  card: { name: string; due: ISODate; closes: ISODate; usualCents: Cents; withCents: Cents; typicalCents: Cents } | null;
+  /**
+   * Paying by card: the statement it lands on. `usualCents` = what's already headed for that statement
+   * (card bills + `typicalCents` of usual everyday card spending before it closes). `capCents` = the
+   * biggest statement you can pay in full on the due date without savings or squeezing everyday
+   * spending (usual + that pay period's free money).
+   */
+  card: { name: string; due: ISODate; closes: ISODate; usualCents: Cents; withCents: Cents; typicalCents: Cents; capCents: Cents } | null;
   action: AffordAction;
   alternatives: AffordAction[];
   plan: PurchasePlan;
@@ -103,7 +109,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       const daysLeftInCycle = Math.max(0, diffDays(input.today, stmtNow.closingDate));
       const typical = avgDailyCardSpend(input, payAcct.id) * daysLeftInCycle;
       const usual = stmtNow.balanceCents + typical;
-      card = { name: payAcct.name, due: stmtNow.dueDate, closes: stmtNow.closingDate, usualCents: usual, withCents: usual + req.amountCents, typicalCents: typical };
+      card = { name: payAcct.name, due: stmtNow.dueDate, closes: stmtNow.closingDate, usualCents: usual, withCents: usual + req.amountCents, typicalCents: typical, capCents: usual };
     } else cash.beyondHorizon = true;
   }
 
@@ -114,6 +120,9 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   const floorShort = Math.max(0, floor - withPurchase.lowest.cents);
   const shortfall = Math.max(0, amt - pot.free);
   const room = { start: pot.start, end: pot.end, before: pot.free, after: Math.max(0, pot.free - amt), shortfall, borrowed: 0 };
+  // The statement cap: what's already headed there, plus the free money of the due-date pay period
+  // (plus anything already set aside for this exact plan).
+  if (card && !cash.beyondHorizon) card.capCents = card.usualCents + pot.free + reserved;
   const lowest = { before: base.lowest, after: withPurchase.lowest };
 
   const result = (verdict: AffordVerdict, headline: string, action: AffordAction, alternatives: AffordAction[]): AffordCheck => ({
@@ -141,6 +150,13 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   if (shortfall === 0 && floorShort === 0) {
     const daysLeft = Math.max(1, diffDays(maxDate(pot.start, input.today), pot.end) + 1);
     const left = pot.free - amt;
+    if (card && !cash.beyondHorizon) {
+      return result("yes", "Yes, it fits.", {
+        kind: "go",
+        title: "Go ahead",
+        detail: `Up to about ${money(Math.round(card.capCents / 100) * 100)} can be paid in full on ${formatShort(card.due)} without savings${card.typicalCents > 0 ? `, counting ~${money(Math.round(card.typicalCents / 100) * 100)} of your usual ${card.name.split(" ")[0]} spending before ${formatShort(card.closes)}` : ""}.`,
+      }, []);
+    }
     return result("yes", "Yes, it fits.", {
       kind: "go",
       title: "Go ahead",
