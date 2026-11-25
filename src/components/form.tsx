@@ -6,7 +6,7 @@ import type { ActionState } from "@/app/app/actions";
 
 type Action = (state: ActionState, form: FormData) => Promise<ActionState>;
 
-const FormCtx = createContext<{ state: ActionState; disabled: boolean }>({ state: null, disabled: false });
+const FormCtx = createContext<{ state: ActionState; disabled: boolean; submitDisabled: boolean }>({ state: null, disabled: false, submitDisabled: false });
 
 /** In the public demo every form is read-only. */
 export const DemoCtx = createContext(false);
@@ -26,6 +26,7 @@ export function ActionForm({
   disabled = false,
   onSuccess,
   encType,
+  demoPreview = false,
   "aria-label": ariaLabel,
 }: {
   action: Action;
@@ -35,12 +36,15 @@ export function ActionForm({
   disabled?: boolean;
   onSuccess?: () => void;
   encType?: "multipart/form-data";
+  /** In the demo, let people type and see live answers; only saving is turned off. */
+  demoPreview?: boolean;
   "aria-label"?: string;
 }) {
   const [state, formAction] = useActionState(action, null);
   const ref = useRef<HTMLFormElement>(null);
   const demo = useContext(DemoCtx);
-  disabled = disabled || demo;
+  const submitDisabled = disabled || demo;
+  disabled = disabled || (demo && !demoPreview);
   useEffect(() => {
     if (!state) return;
     if (state.ok) {
@@ -53,7 +57,7 @@ export function ActionForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state?.at]);
   return (
-    <FormCtx.Provider value={{ state, disabled }}>
+    <FormCtx.Provider value={{ state, disabled, submitDisabled }}>
       <form ref={ref} action={formAction} className={className} noValidate encType={encType} aria-label={ariaLabel}>
         <fieldset disabled={disabled} className="contents">
           {children}
@@ -229,7 +233,7 @@ export function FileField({ name, label, hint, accept }: { name: string; label: 
 
 export function Submit({ children, variant = "primary", className = "", pendingLabel = "Saving…", name, value }: { children: React.ReactNode; variant?: "primary" | "secondary" | "danger"; className?: string; pendingLabel?: string; name?: string; value?: string }) {
   const { pending } = useFormStatus();
-  const { disabled } = useContext(FormCtx);
+  const { submitDisabled: disabled } = useContext(FormCtx);
   return (
     <button type="submit" name={name} value={value} className={`btn btn-${variant} ${className}`} disabled={pending || disabled} aria-disabled={pending || disabled}>
       {pending ? pendingLabel : children}

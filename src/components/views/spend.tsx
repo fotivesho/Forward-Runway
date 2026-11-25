@@ -1,15 +1,15 @@
-import { RuleForm, TransactionForm, TransferForm } from "@/components/entity-forms";
-import { OccurrenceControls } from "@/components/occurrence-controls";
 import { QuickAction } from "@/components/form";
 import { Money } from "@/components/privacy";
+import { AddButton, RecurringTiles, type RuleTile } from "@/components/spend-modals";
+import { CashFlowCard } from "@/components/spend-insights";
 import { TransactionList } from "@/components/transaction-list";
-import { iconFor } from "@/lib/categories";
-import { Badge, Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { addDays, formatShort, startOfMonth } from "@/lib/dates";
-import { describeSchedule, ruleOccurrences, type RecurringRule } from "@/lib/engine";
+import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
 import { monthlyEquivalent } from "@/lib/view/dashboard";
-import { deleteRule, deleteTransfer, toggleRule } from "@/app/app/actions";
+import { cashFlow, categoryHistory, monthBuckets, payPeriodBuckets, weekBuckets } from "@/lib/view/spend";
+import { deleteTransfer } from "@/app/app/actions";
 
 const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
   { title: "Income", kinds: ["income"] },
@@ -17,12 +17,11 @@ const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
   { title: "Debt & savings", kinds: ["loan_payment", "card_payment", "savings_transfer", "transfer"] },
 ];
 
-const KIND_ICON: Partial<Record<RecurringRule["kind"], string>> = { income: "💰", loan_payment: "🏦", card_payment: "💳", savings_transfer: "🐷", transfer: "↔️", subscription: "🔁" };
-
-/** Spend: recurring money as tiles, then every transaction with its category. */
+/** Spend: what repeats (tiles), cash flow, then every transaction with its category. Edits open in pop-ups. */
 export function SpendView({ snapshot, today }: ViewProps) {
   const accountName = (id?: string | null) => snapshot.accounts.find((a) => a.id === id)?.name ?? "—";
-  const hasAccounts = snapshot.accounts.some((a) => !a.archived);
+  const accounts = snapshot.accounts;
+  const hasAccounts = accounts.some((a) => !a.archived);
   const monthStart = startOfMonth(today);
   const active = snapshot.rules.filter((r) => r.active !== false);
   const monthlyIn = active.filter((r) => r.kind === "income").reduce((t, r) => t + monthlyEquivalent(r), 0);
@@ -30,12 +29,33 @@ export function SpendView({ snapshot, today }: ViewProps) {
   const spentThisMonth = snapshot.transactions
     .filter((t) => t.direction === "out" && t.status === "posted" && t.date >= monthStart && t.date <= today)
     .reduce((s, t) => s + t.amountCents, 0);
-  const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 200);
+  const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 300);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
+
+  const tile = (r: RecurringRule): RuleTile => {
+    const occurrences = ruleOccurrences(r, snapshot.overrides, addDays(today, -7), addDays(today, 60));
+    return {
+      rule: r,
+      occurrences,
+      next: occurrences.find((o) => o.date >= today)?.date ?? null,
+      onCard: accounts.find((a) => a.id === r.accountId)?.kind === "credit_card" && !r.toAccountId,
+      from: accountName(r.accountId),
+      to: r.toAccountId ? accountName(r.toAccountId) : null,
+    };
+  };
+
+  // Insights, computed on the server from your own data.
+  const months = monthBuckets(today);
+  const periods = payPeriodBuckets(snapshot, today);
+  const weeks = weekBuckets(today);
+  const categories = [...new Set(snapshot.transactions.filter((t) => t.direction === "out").map((t) => t.category ?? "Other"))];
+  const trends = Object.fromEntries(
+    categories.map((c) => [c, { month: categoryHistory(snapshot, c, months, today), week: categoryHistory(snapshot, c, weeks, today) }]),
+  );
 
   return (
     <>
-      <PageHeader title="Spend" subtitle="What repeats, and everything you've spent. Card purchases count once, when you buy." />
+      <PageHeader title="Spend" subtitle="What repeats, where your money goes, and everything you've spent. Tap anything to change it." />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
           <Summary label="Spent this month" value={<Money cents={spentThisMonth} whole />} />
@@ -43,7 +63,7 @@ export function SpendView({ snapshot, today }: ViewProps) {
           <Summary label="Out / month" value={<Money cents={-monthlyOut} whole tone="out" />} />
         </ul>
 
-        <Card title="Repeating">
+        <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
           {!hasAccounts && <EmptyState title="Add an account first">Repeating items need an account to come from or go to.</EmptyState>}
           <div className="space-y-4">
             {GROUPS.map((g) => {
@@ -52,81 +72,20 @@ export function SpendView({ snapshot, today }: ViewProps) {
               return (
                 <section key={g.title} aria-label={g.title}>
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">{g.title}</h3>
-                  <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-                    {rules.map((r) => {
-                      const occ = ruleOccurrences(r, snapshot.overrides, addDays(today, -7), addDays(today, 60));
-                      const next = occ.find((o) => o.date >= today);
-                      const isIncome = r.kind === "income";
-                      const onCard = snapshot.accounts.find((a) => a.id === r.accountId)?.kind === "credit_card" && !r.toAccountId;
-                      return (
-                        <li key={r.id} className="contents">
-                          <details className={`group rounded-xl border p-3 open:col-span-full ${isIncome ? "border-brand/40 bg-brand/[0.06]" : "border-line bg-surface-2/50"} ${r.active === false ? "opacity-60" : ""}`}>
-                            <summary className="flex cursor-pointer list-none flex-col gap-0.5">
-                              <span className="flex items-center justify-between gap-1">
-                                <span aria-hidden className="text-lg">{KIND_ICON[r.kind] ?? iconFor(r.category)}</span>
-                                <span className="text-[11px] text-faint">{next ? `Next ${formatShort(next.date)}` : r.active === false ? "Paused" : ""}</span>
-                              </span>
-                              <span className="truncate text-sm font-medium text-ink">{r.name}</span>
-                              <Money cents={isIncome ? r.amountCents : -r.amountCents} sign tone="auto" className="text-lg font-bold" />
-                              <span className="truncate text-[11px] text-muted">{describeSchedule(r.schedule)}</span>
-                              <span className="flex flex-wrap gap-1">
-                                {r.isEstimate && <Badge tone="warn">Estimate</Badge>}
-                                {onCard && <Badge title="Charged to a card; paid with the statement">On card</Badge>}
-                              </span>
-                            </summary>
-                            <div className="mt-3 border-t border-line pt-3">
-                              <p className="text-xs text-muted">
-                                {isIncome ? "Into" : "From"} {accountName(r.accountId)}
-                                {r.toAccountId && ` → ${accountName(r.toAccountId)}`}
-                                {r.category && ` · ${r.category}`}
-                              </p>
-                              {occ.length > 0 && (
-                                <ul className="mt-2 divide-y divide-line/60 text-sm">
-                                  {occ.slice(0, 4).map((o) => (
-                                    <li key={o.originalDate} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
-                                      <span>
-                                        {formatShort(o.date)} · <Money cents={o.amountCents} />
-                                        {o.posted && <> <Badge tone="good">Already in balance</Badge></>}
-                                        {o.movedFrom && <> <Badge tone="info">moved from {formatShort(o.movedFrom)}</Badge></>}
-                                        {o.overridden && !o.posted && !o.movedFrom && <> <Badge tone="info">changed</Badge></>}
-                                      </span>
-                                      <OccurrenceControls ruleId={r.id} originalDate={o.originalDate} date={o.date} amountCents={o.amountCents} overridden={o.overridden} />
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <div className="w-full"><Disclosure summary="Edit"><RuleForm rule={r} accounts={snapshot.accounts} today={today} /></Disclosure></div>
-                                <QuickAction action={toggleRule} fields={{ id: r.id, active: r.active === false ? "true" : "false" }} variant="secondary">{r.active === false ? "Resume" : "Pause"}</QuickAction>
-                                <QuickAction action={deleteRule} fields={{ id: r.id }} variant="danger" confirm={`Delete “${r.name}” and all its date changes?`}>Delete</QuickAction>
-                              </div>
-                            </div>
-                          </details>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                  <RecurringTiles tiles={rules.map(tile)} accounts={accounts} today={today} />
                 </section>
               );
             })}
           </div>
-          {hasAccounts && (
-            <div className="mt-4">
-              <Disclosure summary="Add a payday, bill or subscription"><RuleForm accounts={snapshot.accounts} today={today} /></Disclosure>
-            </div>
-          )}
         </Card>
 
-        <Card title="Transactions">
-          {hasAccounts && (
-            <div className="mb-3">
-              <Disclosure summary="Add income or spending"><TransactionForm accounts={snapshot.accounts} today={today} /></Disclosure>
-            </div>
-          )}
-          <TransactionList txns={txns} accounts={snapshot.accounts} today={today} monthStart={monthStart} />
+        <CashFlowCard months={cashFlow(snapshot, today, months)} periods={periods ? cashFlow(snapshot, today, periods) : null} />
+
+        <Card title="Transactions" action={hasAccounts ? <AddButton what="transaction" accounts={accounts} today={today} /> : undefined}>
+          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} />
         </Card>
 
-        <Card title="Transfers & card payments">
+        <Card title="Transfers & card payments" action={hasAccounts ? <AddButton what="transfer" accounts={accounts} today={today} /> : undefined}>
           {transfers.length === 0 ? (
             <p className="text-sm text-muted">No one-time transfers. Statement payments are scheduled automatically from your card statements.</p>
           ) : (
@@ -139,7 +98,6 @@ export function SpendView({ snapshot, today }: ViewProps) {
               ))}
             </ul>
           )}
-          {hasAccounts && <div className="mt-3"><Disclosure summary="Add a transfer or card payment"><TransferForm accounts={snapshot.accounts} today={today} /></Disclosure></div>}
         </Card>
       </div>
     </>

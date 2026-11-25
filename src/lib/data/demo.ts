@@ -65,6 +65,28 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       });
     }
   }
+  // Older history (a separate sequence, so the recent 40 days stay exactly as they were):
+  // enough months for spending trends and cash flow by month.
+  const older = lcg(7);
+  for (let i = 180; i >= 41; i--) {
+    const count = older() < 0.35 ? 0 : older() < 0.6 ? 1 : 2;
+    for (let k = 0; k < count; k++) {
+      const [cat, lo, hi] = categories[Math.floor(older() * categories.length)]!;
+      const amount = Math.round((lo + older() * (hi - lo)) / 25) * 25;
+      transactions.push({
+        id: `00000000-0000-4000-9100-${String(i * 10 + k).padStart(12, "0")}`,
+        date: daysAgo(i),
+        amountCents: amount,
+        direction: "out",
+        accountId: older() < 0.55 ? ID.visa : ID.checking,
+        description: cat,
+        category: cat,
+        status: "posted",
+        cleared: true,
+        flexible: true,
+      });
+    }
+  }
   transactions.push({
     id: "00000000-0000-4000-9000-999999999999",
     date: today,
@@ -92,14 +114,14 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       { id: ID.carLoan, name: "Car Loan", kind: "loan", balanceCents: 1_120_000, balanceAsOf: daysAgo(5), balanceSource: "statement", balanceUpdatedAt: hoursAgo(120), isSpendable: false, aprBps: 690, minimumPaymentCents: 32_000 },
     ],
     rules: [
-      { id: "00000000-0000-4000-a000-000000000001", name: "Paycheck", kind: "income", amountCents: 215_000, accountId: ID.checking, category: "Salary", schedule: { frequency: "biweekly", startDate: inDays(4) } },
-      { id: "00000000-0000-4000-a000-000000000002", name: "Rent", kind: "bill", amountCents: 165_000, accountId: ID.checking, category: "Housing", schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 1, weekendAdjust: "before" } },
-      { id: "00000000-0000-4000-a000-000000000003", name: "Electric & gas", kind: "bill", amountCents: 14_000, accountId: ID.checking, category: "Utilities", isEstimate: true, schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 18 } },
-      { id: "00000000-0000-4000-a000-000000000004", name: "Phone", kind: "bill", amountCents: 6_500, accountId: ID.visa, category: "Utilities", schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 8 } },
-      { id: "00000000-0000-4000-a000-000000000005", name: "Streaming", kind: "subscription", amountCents: 1_799, accountId: ID.visa, category: "Subscriptions", schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 22 } },
-      { id: "00000000-0000-4000-a000-000000000006", name: "Gym", kind: "subscription", amountCents: 4_000, accountId: ID.visa, category: "Fitness", schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 3 } },
-      { id: "00000000-0000-4000-a000-000000000007", name: "Car loan payment", kind: "loan_payment", amountCents: 32_000, accountId: ID.checking, toAccountId: ID.carLoan, category: "Debt", schedule: { frequency: "monthly", startDate: daysAgo(60), dayOfMonth: 12 } },
-      { id: "00000000-0000-4000-a000-000000000008", name: "Wedding savings", kind: "savings_transfer", amountCents: 40_000, accountId: ID.checking, toAccountId: ID.wedding, category: "Savings", schedule: { frequency: "semimonthly", startDate: daysAgo(60), dayOfMonth: 15, secondDayOfMonth: -1 } },
+      { id: "00000000-0000-4000-a000-000000000001", name: "Paycheck", kind: "income", amountCents: 215_000, accountId: ID.checking, category: "Salary", schedule: { frequency: "biweekly", startDate: inDays(4 - 14 * 13) } },
+      { id: "00000000-0000-4000-a000-000000000002", name: "Rent", kind: "bill", amountCents: 165_000, accountId: ID.checking, category: "Housing", schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 1, weekendAdjust: "before" } },
+      { id: "00000000-0000-4000-a000-000000000003", name: "Electric & gas", kind: "bill", amountCents: 14_000, accountId: ID.checking, category: "Utilities", isEstimate: true, schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 18 } },
+      { id: "00000000-0000-4000-a000-000000000004", name: "Phone", kind: "bill", amountCents: 6_500, accountId: ID.visa, category: "Utilities", schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 8 } },
+      { id: "00000000-0000-4000-a000-000000000005", name: "Streaming", kind: "subscription", amountCents: 1_799, accountId: ID.visa, category: "Subscriptions", schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 22 } },
+      { id: "00000000-0000-4000-a000-000000000006", name: "Gym", kind: "subscription", amountCents: 4_000, accountId: ID.visa, category: "Fitness", schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 3 } },
+      { id: "00000000-0000-4000-a000-000000000007", name: "Car loan payment", kind: "loan_payment", amountCents: 32_000, accountId: ID.checking, toAccountId: ID.carLoan, category: "Debt", schedule: { frequency: "monthly", startDate: daysAgo(200), dayOfMonth: 12 } },
+      { id: "00000000-0000-4000-a000-000000000008", name: "Wedding savings", kind: "savings_transfer", amountCents: 40_000, accountId: ID.checking, toAccountId: ID.wedding, category: "Savings", schedule: { frequency: "semimonthly", startDate: daysAgo(200), dayOfMonth: 15, secondDayOfMonth: -1 } },
       { id: "00000000-0000-4000-a000-000000000009", name: "Groceries (planned)", kind: "expense", amountCents: 12_000, accountId: ID.visa, category: "Groceries", isEstimate: true, schedule: { frequency: "weekly", startDate: inDays(2) } },
     ],
     overrides: [],

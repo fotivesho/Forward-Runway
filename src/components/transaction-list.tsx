@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import { deleteTransaction } from "@/app/app/actions";
-import { formatLong, type ISODate } from "@/lib/dates";
+import { formatLong, formatShort, type ISODate } from "@/lib/dates";
 import type { Account, OneTimeTransaction } from "@/lib/engine";
 import { TransactionForm } from "./entity-forms";
 import { QuickAction } from "./form";
+import { Modal } from "./modal";
+import { CategoryTrend } from "./spend-insights";
+import type { CategoryBucket } from "@/lib/view/spend";
 import { Money } from "./privacy";
 import { Badge, EmptyState } from "./ui";
 import { APP_NAME } from "@/lib/brand";
@@ -13,7 +16,20 @@ import { iconFor } from "@/lib/categories";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
-export function TransactionList({ txns, accounts, today, monthStart }: { txns: OneTimeTransaction[]; accounts: Account[]; today: ISODate; monthStart: ISODate }) {
+export function TransactionList({
+  txns,
+  accounts,
+  today,
+  monthStart,
+  trends = {},
+}: {
+  txns: OneTimeTransaction[];
+  accounts: Account[];
+  today: ISODate;
+  monthStart: ISODate;
+  /** Per category: spending by month and by week, shown when you tap the category. */
+  trends?: Record<string, { month: CategoryBucket[]; week: CategoryBucket[] }>;
+}) {
   const [cat, setCat] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
@@ -28,6 +44,7 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
   }
   const chips = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   const shown = cat ? txns.filter((t) => (t.category ?? "Other") === cat) : txns;
+  const current = open ? (txns.find((t) => t.id === open) ?? null) : null;
   const groups = new Map<ISODate, OneTimeTransaction[]>();
   for (const t of shown) groups.set(t.date, [...(groups.get(t.date) ?? []), t]);
 
@@ -37,7 +54,7 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
   return (
     <div>
       {chips.length > 0 && (
-        <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Filter by category (this month's totals)">
+        <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Pick a category to see it over time (this month's totals)">
           <button type="button" onClick={() => setCat(null)} aria-pressed={cat === null} className={chip(cat === null)}>All</button>
           {chips.map(([c, cents]) => (
             <button key={c} type="button" onClick={() => setCat(cat === c ? null : c)} aria-pressed={cat === c} className={chip(cat === c)}>
@@ -46,6 +63,7 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
           ))}
         </div>
       )}
+      {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} />}
       <div className="space-y-3">
         {[...groups.entries()].map(([date, list]) => {
           const dayOut = list.filter((t) => t.direction === "out").reduce((s, t) => s + t.amountCents, 0);
@@ -58,7 +76,7 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
               <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
                 {list.map((t) => (
                   <li key={t.id}>
-                    <button type="button" onClick={() => setOpen(open === t.id ? null : t.id)} aria-expanded={open === t.id} className="flex w-full items-center gap-3 px-3 py-2 text-left">
+                    <button type="button" onClick={() => setOpen(t.id)} aria-haspopup="dialog" className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-2/60">
                       <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-3 text-base">{t.direction === "in" ? "💰" : iconFor(t.category)}</span>
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium text-ink">{t.description}</span>
@@ -70,19 +88,6 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
                       </span>
                       <Money cents={t.direction === "in" ? t.amountCents : -t.amountCents} sign tone="auto" className="shrink-0 text-sm font-semibold" />
                     </button>
-                    {open === t.id && (
-                      <div className="border-t border-line p-3">
-                        <div className="mb-2 flex flex-wrap gap-1">
-                          {t.cleared && <Badge title="Already reflected in the balance">In balance</Badge>}
-                          {t.isEstimate && <Badge tone="warn">Estimate</Badge>}
-                          {onCard(t.accountId) && t.direction === "out" && <Badge title="Paid later with the statement — never counted twice">Paid with the statement</Badge>}
-                        </div>
-                        <TransactionForm accounts={accounts} today={today} txn={t} />
-                        <div className="mt-2 flex justify-end">
-                          <QuickAction action={deleteTransaction} fields={{ id: t.id }} variant="danger" confirm="Delete this transaction?">Delete</QuickAction>
-                        </div>
-                      </div>
-                    )}
                   </li>
                 ))}
               </ul>
@@ -90,6 +95,32 @@ export function TransactionList({ txns, accounts, today, monthStart }: { txns: O
           );
         })}
       </div>
+      {current && (
+        <Modal
+          open
+          onClose={() => setOpen(null)}
+          icon={current.direction === "in" ? "💰" : iconFor(current.category)}
+          tone={current.direction === "in" ? "in" : "out"}
+          title={current.description}
+          subtitle={
+            <>
+              <Money cents={current.direction === "in" ? current.amountCents : -current.amountCents} sign tone="auto" className="font-semibold" /> · {formatShort(current.date)} · {name(current.accountId)}
+              <span className="mt-1 flex flex-wrap gap-1">
+                {current.category && <Badge>{current.category}</Badge>}
+                {current.status === "planned" && <Badge tone="info">Planned</Badge>}
+                {current.cleared && <Badge title="Already reflected in the balance">In balance</Badge>}
+                {current.isEstimate && <Badge tone="warn">Estimate</Badge>}
+                {onCard(current.accountId) && current.direction === "out" && <Badge title="Paid later with the statement — never counted twice">Paid with the statement</Badge>}
+              </span>
+            </>
+          }
+        >
+          <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} onDone={() => setOpen(null)} />
+          <div className="mt-4 flex justify-end border-t border-line pt-4">
+            <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

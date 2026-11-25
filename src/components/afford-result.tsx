@@ -198,7 +198,7 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
       <p className="text-xs text-muted">{check.action.detail}</p>
       {check.alternatives.length > 0 && (
         <details className="mt-1 text-xs">
-          <summary className="cursor-pointer font-medium text-brand">▸ {check.alternatives.length} other option{check.alternatives.length === 1 ? "" : "s"}</summary>
+          <summary className="cursor-pointer list-none font-medium text-brand [&::-webkit-details-marker]:hidden">▸ {check.alternatives.length} other option{check.alternatives.length === 1 ? "" : "s"}</summary>
           <ul className="mt-1 space-y-1 text-muted">
             {check.alternatives.map((a) => (
               <li key={a.title}><span className="font-medium text-ink">Or:</span> {a.title}. {a.detail}</li>

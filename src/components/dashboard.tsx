@@ -13,6 +13,7 @@ import { Money } from "./privacy";
 import { ItemRow } from "./timeline";
 import { Badge, Card, Disclosure, EmptyState, Notice } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
+import { AddPlanButton } from "./calendar-forms";
 
 const SOURCE: Record<string, string> = { manual: "Entered by you", statement: "From a statement", import: "Imported", onboarding: "From setup" };
 
@@ -299,9 +300,12 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           id="plans"
           title="Plans on your calendar"
           action={
-            <Link href={base + "/calendar"} className="btn btn-ghost btn-sm">
-              Calendars →
-            </Link>
+            <span className="flex items-center gap-1">
+              <AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} className="btn btn-secondary btn-sm" />
+              <Link href={base + "/calendar"} className="btn btn-ghost btn-sm">
+                Calendar →
+              </Link>
+            </span>
           }
         >
           {m.coverage.incomplete && (

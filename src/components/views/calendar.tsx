@@ -1,5 +1,5 @@
 import { EventCard } from "@/components/advisor";
-import { AddCalendarForm, ManualEventForm, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
+import { AddCalendarForm, AddPlanButton, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
 import { QuickAction } from "@/components/form";
 import { Badge, Card, Disclosure, EmptyState, Notice, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
@@ -33,7 +33,10 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
               {m.coverage.notes.join(" ")} Until every calendar syncs, a buffer is held back from your daily caps.
             </Notice>
           )}
-          <Card title="Your plans">
+          <Card
+            title="Your plans"
+            action={<AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} />}
+          >
             <PlanCalendar views={m.allEvents} marks={marks} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} />
             {!demo && m.duplicates.length > 0 && (
               <div className="mt-4">
@@ -45,7 +48,6 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
               </div>
             )}
           </Card>
-          <Card title="Add a plan that isn't on a calendar"><ManualEventForm today={today} /></Card>
         </div>
         <div className="flex flex-col gap-4">
           <Card title="Connected calendars">

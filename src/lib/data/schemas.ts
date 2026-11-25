@@ -350,6 +350,7 @@ export const manualEventSchema = z.object({
   title: text("what the plan is", 200),
   date: date("date"),
   estimate: optionalMoney("the expected cost"),
+  paymentAccountId: optionalUuid,
 });
 
 export const eventCorrectionSchema = z.object({
