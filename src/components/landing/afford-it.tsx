@@ -290,14 +290,16 @@ export function AffordIt({
                         <span className="h-full bg-brand transition-[width] duration-500" style={{ width: pct(fits, scale) }} />
                         <span className={`h-full transition-[width] duration-500 ${overColor}`} style={{ width: pct(purchase - fits, scale) }} />
                       </div>
+                      <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(c.capCents, scale) }} title="Limit" />
                     </Tile>
                   );
                 })()
               ) : (
                 (() => {
                   const r = result.room;
-                  const used = r.before - r.after;
+                  const used = r.before - r.after + r.shortfall + r.borrowed;
                   const overflow = r.shortfall > 0;
+                  const scale = Math.max(r.before, used);
                   return (
                     <Tile
                       label={<>Free to spend · {span(r.start, r.end)}</>}
@@ -306,19 +308,20 @@ export function AffordIt({
                       tone={overflow ? "warn" : r.borrowed > 0 ? "muted" : "good"}
                       status={overflow ? `short ${dollars(r.shortfall)}` : r.borrowed > 0 ? `+${dollars(r.borrowed)} from next period` : "fits this pay period"}
                     >
-                      <span
-                        className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ${overflow ? "bg-warn" : "bg-brand"}`}
-                        style={{ width: overflow || r.borrowed > 0 ? "100%" : pct(used, r.before) }}
-                      />
+                      <div className="absolute inset-0 flex overflow-hidden rounded-full">
+                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: pct(Math.min(used, r.before), scale) }} />
+                        <span className="h-full bg-warn transition-[width] duration-500" style={{ width: pct(Math.max(0, used - r.before), scale) }} />
+                      </div>
+                      <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(r.before, scale) }} title="Limit" />
                     </Tile>
                   );
                 })()
               )}
               {(() => {
                 const floor = result.floorCents;
-                const cushionBefore = result.lowest.before.cents - floor;
                 const cushionAfter = result.lowest.after.cents - floor;
                 const below = cushionAfter < 0;
+                const scale = Math.max(result.lowest.before.cents, floor * 1.5);
                 return (
                   <Tile
                     label={<>Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}</>}
@@ -329,8 +332,9 @@ export function AffordIt({
                   >
                     <span
                       className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ${below ? "bg-danger" : "bg-brand"}`}
-                      style={{ width: below ? "100%" : pct(cushionAfter, cushionBefore) }}
+                      style={{ width: pct(Math.max(0, result.lowest.after.cents), scale) }}
                     />
+                    <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(floor, scale) }} title="Limit" />
                   </Tile>
                 );
               })()}
