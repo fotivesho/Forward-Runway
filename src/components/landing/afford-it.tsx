@@ -90,7 +90,20 @@ function Tile({
   );
 }
 
-const pct = (part: number, whole: number) => `${Math.max(0, Math.min(100, (part / Math.max(1, whole)) * 100))}%`;
+/** Where the limit line sits on every bar, so over and under always read the same way. */
+const LINE = 70;
+/**
+ * Position (0–100) of a value on a bar whose limit sits at LINE%. Up to the limit scales
+ * linearly; past it, `overRange` past the limit fills the remaining space (with a visible sliver minimum).
+ */
+const gauge = (value: number, limit: number, overRange: number) =>
+  value <= limit
+    ? (Math.max(0, value) / Math.max(1, limit)) * LINE
+    : LINE + Math.max(3, Math.min(1, (value - limit) / Math.max(1, overRange)) * (100 - LINE));
+const w = (n: number) => `${Math.max(0, n)}%`;
+const LimitLine = () => (
+  <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: `${LINE}%` }} title="Limit" />
+);
 
 export function AffordIt({
   snapshot,
@@ -270,7 +283,7 @@ export function AffordIt({
                 (() => {
                   const c = result.card;
                   const purchase = c.withCents - c.usualCents;
-                  const scale = Math.max(c.withCents, c.capCents);
+                  const g = (v: number) => gauge(v, c.capCents, c.capCents);
                   const over = c.withCents > c.capCents;
                   // The part of this purchase that still fits under the max is green; anything past it is red.
                   const fits = Math.max(0, Math.min(purchase, c.capCents - c.usualCents));
@@ -285,12 +298,12 @@ export function AffordIt({
                       status={over ? (result.verdict === "yes" ? `${dollars(c.withCents - c.capCents)} over · next period covers it` : `over by ${dollars(c.withCents - c.capCents)}`) : `${dollars(c.capCents - c.withCents)} room left`}
                     >
                       <div className="absolute inset-0 flex overflow-hidden rounded-full">
-                        <span className="h-full bg-faint/70" style={{ width: pct(c.onCardCents, scale) }} />
-                        <span className="h-full bg-info/70" style={{ width: pct(c.typicalCents, scale) }} />
-                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: pct(fits, scale) }} />
-                        <span className={`h-full transition-[width] duration-500 ${overColor}`} style={{ width: pct(purchase - fits, scale) }} />
+                        <span className="h-full bg-faint/70" style={{ width: w(g(c.onCardCents)) }} />
+                        <span className="h-full bg-info/70" style={{ width: w(g(c.usualCents) - g(c.onCardCents)) }} />
+                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: w(g(c.usualCents + fits) - g(c.usualCents)) }} />
+                        <span className={`h-full transition-[width] duration-500 ${overColor}`} style={{ width: w(g(c.withCents) - Math.max(g(c.usualCents), g(c.usualCents + fits))) }} />
                       </div>
-                      <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(c.capCents, scale) }} title="Limit" />
+                      <LimitLine />
                     </Tile>
                   );
                 })()
@@ -299,7 +312,7 @@ export function AffordIt({
                   const r = result.room;
                   const used = r.before - r.after + r.shortfall + r.borrowed;
                   const overflow = r.shortfall > 0;
-                  const scale = Math.max(r.before, used);
+                  const g = (v: number) => gauge(v, r.before, r.before);
                   return (
                     <Tile
                       label={<>Free to spend · {span(r.start, r.end)}</>}
@@ -309,10 +322,10 @@ export function AffordIt({
                       status={overflow ? `short ${dollars(r.shortfall)}` : r.borrowed > 0 ? `+${dollars(r.borrowed)} from next period` : "fits this pay period"}
                     >
                       <div className="absolute inset-0 flex overflow-hidden rounded-full">
-                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: pct(Math.min(used, r.before), scale) }} />
-                        <span className="h-full bg-warn transition-[width] duration-500" style={{ width: pct(Math.max(0, used - r.before), scale) }} />
+                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: w(g(Math.min(used, r.before))) }} />
+                        <span className="h-full bg-warn transition-[width] duration-500" style={{ width: w(used > r.before ? g(used) - LINE : 0) }} />
                       </div>
-                      <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(r.before, scale) }} title="Limit" />
+                      <LimitLine />
                     </Tile>
                   );
                 })()
@@ -321,7 +334,9 @@ export function AffordIt({
                 const floor = result.floorCents;
                 const cushionAfter = result.lowest.after.cents - floor;
                 const below = cushionAfter < 0;
-                const scale = Math.max(result.lowest.before.cents, floor * 1.5);
+                // Floor at the line; the space to its right is the cushion you had before this purchase.
+                const cushionBefore = result.lowest.before.cents - floor;
+                const pos = gauge(result.lowest.after.cents, floor, cushionBefore > 0 ? cushionBefore : floor);
                 return (
                   <Tile
                     label={<>Lowest<span className="hidden sm:inline"> balance</span>, 90 days · {formatShort(result.lowest.after.date)}</>}
@@ -332,9 +347,9 @@ export function AffordIt({
                   >
                     <span
                       className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-500 ${below ? "bg-danger" : "bg-brand"}`}
-                      style={{ width: pct(Math.max(0, result.lowest.after.cents), scale) }}
+                      style={{ width: w(pos) }}
                     />
-                    <span className="absolute -inset-y-1 w-0.5 -translate-x-1/2 rounded bg-ink" style={{ left: pct(floor, scale) }} title="Limit" />
+                    <LimitLine />
                   </Tile>
                 );
               })()}
