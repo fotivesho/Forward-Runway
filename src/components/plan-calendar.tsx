@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { addDays, addMonths, dayOfWeek, eachDay, endOfMonth, formatLong, parts, startOfMonth, type ISODate } from "@/lib/dates";
+import { addDays, addMonths, dayOfWeek, eachDay, endOfMonth, formatLong, formatShort, parts, startOfMonth, type ISODate } from "@/lib/dates";
 import type { Account } from "@/lib/engine";
 import type { EventView } from "@/lib/view/dashboard";
 import { deleteEvent } from "@/app/app/actions";
@@ -29,6 +29,7 @@ export function PlanCalendar({
   views,
   marks,
   baseline,
+  periods,
   today,
   end,
   accounts,
@@ -37,6 +38,8 @@ export function PlanCalendar({
   marks: DayMark[];
   /** Everyday safe-to-spend per day (before plans). */
   baseline: Record<ISODate, number>;
+  /** Pay periods, to explain why the daily amount changes on payday. */
+  periods: Array<{ start: ISODate; end: ISODate; freeCents: number; perDayCents: number }>;
   today: ISODate;
   end: ISODate;
   accounts: Account[];
@@ -59,6 +62,10 @@ export function PlanCalendar({
   const lead = dayOfWeek(gridStart);
   const days = eachDay(gridStart, endOfMonth(month));
   const plansOn = (d: ISODate) => views.filter((v) => v.event.date === d);
+  /** What's safe to spend that day: the everyday amount plus the cap of any plan that day. */
+  const planCaps = (d: ISODate) => plansOn(d).reduce((t, v) => t + (v.advice?.capCents ?? 0), 0);
+  const dayTotal = (d: ISODate) => (baseline[d] == null ? null : baseline[d]! + planCaps(d));
+  const periodOf = (d: ISODate) => periods.find((p) => d >= p.start && d <= p.end) ?? null;
   const marksOn = (d: ISODate) => marks.filter((k) => k.date === d);
 
   // Plans that cost nothing (meetings, "not spending") stay out of the way.
@@ -103,14 +110,15 @@ export function PlanCalendar({
                   } ${past || outside ? "opacity-35" : ""} ${plans.length ? "bg-surface-2/70" : ""}`}
                 >
                   <span className={`tabular ${d === today ? "font-bold text-brand" : "text-ink"}`}>{Number(d.slice(8))}</span>
-                  {plans.length > 0 ? (
+                  {!past && !outside && dayTotal(d) != null && (
+                    <Money cents={dayTotal(d)!} whole className={`text-[9px] leading-tight sm:text-[10px] ${plans.length ? "font-semibold text-ink" : "text-faint"}`} />
+                  )}
+                  {plans.length > 0 && (
                     <span className="mt-0.5 flex items-center gap-0.5">
                       {plans.slice(0, 3).map((v) => (
                         <span key={v.event.id} className={`h-1.5 w-1.5 rounded-full ${v.check ? DOT[v.check.verdict] : "bg-info"}`} />
                       ))}
                     </span>
-                  ) : (
-                    !past && !outside && baseline[d] != null && <Money cents={baseline[d]!} whole className="text-[9px] leading-tight text-faint sm:text-[10px]" />
                   )}
                   <span className="flex items-center gap-0.5 text-[9px] leading-none sm:text-[10px]">
                     {payday && <span className="font-bold text-brand">$</span>}
@@ -138,11 +146,38 @@ export function PlanCalendar({
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSelected(null)}>Show all plans</button>
           </div>
         )}
-        {selected && baseline[selected] != null && (
-          <p className="mb-2 flex justify-between gap-2 rounded-xl border border-brand/30 bg-brand/[0.06] px-3 py-2 text-sm">
-            <span className="text-ink">Safe to spend</span>
-            <Money cents={baseline[selected]!} className="font-semibold text-brand" />
-          </p>
+        {selected && dayTotal(selected) != null && (
+          <div className="mb-2 rounded-xl border border-brand/30 bg-brand/[0.06] px-3 py-2 text-sm">
+            <p className="flex justify-between gap-2">
+              <span className="font-medium text-ink">Safe to spend</span>
+              <Money cents={dayTotal(selected)!} className="text-base font-semibold text-brand" />
+            </p>
+            {planCaps(selected) > 0 && (
+              <p className="text-xs text-muted">
+                Includes{" "}
+                {plansOn(selected)
+                  .filter((v) => (v.advice?.capCents ?? 0) > 0)
+                  .map((v, i) => (
+                    <span key={v.event.id}>
+                      {i > 0 && " and "}
+                      <Money cents={v.advice!.capCents} whole /> for {v.event.title}
+                    </span>
+                  ))}
+                .
+              </p>
+            )}
+            {(() => {
+              const p = periodOf(selected);
+              if (!p) return null;
+              return (
+                <p className="mt-0.5 text-xs text-muted">
+                  {selected === p.start && selected !== today ? "Payday starts a new pay period: " : "Pay period "}
+                  {formatShort(p.start)}–{formatShort(p.end)} has <Money cents={p.freeCents} whole /> free after bills, savings and plans, about{" "}
+                  <Money cents={p.perDayCents} whole /> a day.
+                </p>
+              );
+            })()}
+          </div>
         )}
         {selected && marksOn(selected).length > 0 && (
           <ul className="mb-3 space-y-1 rounded-xl border border-line p-2.5 text-sm">

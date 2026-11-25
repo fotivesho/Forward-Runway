@@ -97,6 +97,8 @@ export interface DashboardModel {
    * daily caps (weekday pattern, today's spending); later periods spread their free money evenly.
    */
   baselineByDay: Record<ISODate, Cents>;
+  /** Each pay period's free everyday money (after bills, savings and plans) and what that is per day. */
+  payPeriods: Array<{ start: ISODate; end: ISODate; freeCents: Cents; perDayCents: Cents }>;
 }
 
 export function monthlyEquivalent(rule: RecurringRule): Cents {
@@ -278,6 +280,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     .flatMap((d) => [...d.items, ...d.nonCashItems]);
 
   const baselineByDay: Record<ISODate, Cents> = {};
+  const payPeriods: DashboardModel["payPeriods"] = [];
   const pct = coverage.incomplete ? Math.min(50, Math.max(0, s.settings.unseenPlansBufferPct)) : 0;
   const capOf = new Map(plan.advice.map((a) => [a.eventId, a.capCents]));
   plan.allowance.periods.forEach((p, i) => {
@@ -285,9 +288,18 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     const pool = p.budgetCents - Math.round((p.budgetCents * pct) / 100);
     const reserved = planned.filter((e) => !e.duplicateOf && e.date >= p.start && e.date <= p.end).reduce((t, e) => t + (capOf.get(e.id) ?? 0), 0);
     const perDay = Math.max(0, Math.floor((pool - reserved) / Math.max(1, p.days)));
+    payPeriods.push({ start: p.start, end: p.end, freeCents: Math.max(0, pool - reserved), perDayCents: perDay });
     for (let d = p.start; d <= p.end && d <= forecast90.endDate; d = addDays(d, 1)) baselineByDay[d] = perDay;
   });
   for (const d of plan.days) baselineByDay[d.date] = d.baseCents;
+  if (plan.days.length) {
+    payPeriods.unshift({
+      start: plan.days[0]!.date,
+      end: plan.days[plan.days.length - 1]!.date,
+      freeCents: plan.days.reduce((t, d) => t + d.baseCents, 0),
+      perDayCents: plan.days[plan.days.length - 1]!.baseCents,
+    });
+  }
 
   return {
     today,
@@ -317,6 +329,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     upcoming,
     nextPayday,
     baselineByDay,
+    payPeriods,
   };
 }
 
