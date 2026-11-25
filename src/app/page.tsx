@@ -62,7 +62,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                 Create your runway
               </Link>
             </div>
-            <p className="fade-up mt-4 text-sm text-[#b9cbb4]" style={{ animationDelay: "480ms" }}>No bank login needed · About five minutes to set up</p>
+            <p className="fade-up mt-4 text-sm text-[#b9cbb4]" style={{ animationDelay: "480ms" }}>No bank login needed · About five minutes to set up · <span className="text-[#ddefbf]">Bank sync &amp; one-tap calendars coming soon</span></p>
           </div>
           <div className="fade-up" style={{ animationDelay: "200ms" }}>
             <HeroCard hero={d.hero} />
@@ -198,7 +198,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <ol className="mt-10 grid gap-4 md:grid-cols-3">
             {[
               ["Add your balance and payday", "Checking balance, when you get paid, and your main bills. About five minutes, no bank login."],
-              ["Connect your calendars", "Google, iCloud or Outlook, including calendars shared with a partner. Plans get priced automatically."],
+              ["Connect your calendars", "Google, iCloud or Outlook, including calendars shared with a partner, using a private calendar link. Plans get priced automatically. One-tap sign-in is coming soon."],
               ["Check your number each morning", "Safe to spend today, what's coming up, and whether that plan on Saturday fits."],
             ].map(([t, body], i) => (
               <li key={t} className="card p-6">
@@ -208,6 +208,24 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               </li>
             ))}
           </ol>
+        </section>
+
+        {/* ---------------------------------------------- coming soon */}
+        <section className="reveal border-t border-line py-20 sm:py-28" aria-labelledby="soon-title">
+          <p className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Coming soon</p>
+          <h2 id="soon-title" className="font-display mt-3 max-w-3xl text-4xl leading-tight text-ink sm:text-5xl">Even less typing.</h2>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            {[
+              ["Connect your bank", "Balances, transactions and card statements update on their own through a secure bank connection. Always optional: manual entry keeps working."],
+              ["One-tap calendars", "Sign in with Google or Apple and every calendar you choose, shared ones included, comes along. No links to copy."],
+            ].map(([t, body]) => (
+              <article key={t} className="card relative overflow-hidden p-6">
+                <span className="absolute right-4 top-4 rounded-full border border-brand/40 bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">Coming soon</span>
+                <h3 className="pr-28 text-lg font-semibold text-ink">{t}</h3>
+                <p className="mt-1 text-sm text-muted">{body}</p>
+              </article>
+            ))}
+          </div>
         </section>
 
         {/* ---------------------------------------------- privacy */}
@@ -220,7 +238,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <ul className="grid gap-4 sm:grid-cols-2">
               {[
                 ["Only you can see your data", "The database itself refuses to show your rows to anyone else."],
-                ["No bank login required", "You enter what matters. Nothing is pulled from your bank without you."],
+                ["No bank login required", "You enter what matters. When bank sync arrives, it will be optional and only connect the accounts you choose."],
                 ["Every number explainable", "Plain, deterministic math with its assumptions listed. No black box."],
                 ["Export or delete anytime", "Download everything as a file, or erase it all, in Settings."],
               ].map(([t, body]) => (
