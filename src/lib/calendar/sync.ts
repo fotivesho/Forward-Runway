@@ -1,5 +1,5 @@
 import "server-only";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { AppSupabaseClient as SupabaseClient } from "../supabase/server";
 import { addDays, type ISODate } from "../dates";
 import { fetchIcs, FetchIcsError } from "./fetch";
 import { parseIcs, type ParsedEvent } from "./ics";

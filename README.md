@@ -46,6 +46,7 @@ supabase/tests/      RLS test suite (runs against real Postgres)
 
 ## Security and privacy
 
+- **Own schema.** Every table is in the `app` schema, which `anon` can't even use.
 - **RLS on every table.** Each policy is `user_id = auth.uid()` for select, insert, update and delete, with `FORCE ROW LEVEL SECURITY`. `anon` has no table grants.
 - **Composite foreign keys** `(id, user_id)` stop a row from referencing another user's account, rule or event, even by guessing an ID.
 - All queries run with the signed-in user's session. The service-role key is used for exactly one call (deleting your own auth user), only if configured.
@@ -67,6 +68,9 @@ Apply the schema to your Supabase project, either:
 
 - **Supabase CLI:** `supabase link --project-ref <ref>` then `supabase db push`
 - **Dashboard:** SQL Editor → paste and run `supabase/migrations/20261125000000_init.sql`
+  then `20261126000000_theme.sql`.
+
+Then add `app` under Project Settings → Data API → Exposed schemas. All tables live in the `app` schema, so the app can share a project with other apps without clashing.
 
 ## Tests
 
@@ -80,6 +84,9 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
 `test:db` needs Postgres binaries (`initdb`, `pg_ctl`, `psql`) on `PATH` or in `/usr/lib/postgresql/*/bin`. It uses a minimal stand-in for Supabase's `auth` schema (`supabase/tests/auth_stub.sql`); never apply that file to a real project.
 
 ## Deployment (Vercel + Supabase)
+
+> **Replacing the live runwaytomorrow.com site?** Follow [docs/CUTOVER.md](docs/CUTOVER.md) instead. It reuses the existing Supabase project so logins, emails and the domain carry over with no downtime.
+
 
 1. **Create a Supabase project.** Note the Project URL, the `anon` key and the `service_role` key (Project Settings → API).
 2. **Apply the migration** (see above).

@@ -21,6 +21,7 @@ trap cleanup EXIT
 PSQL=("${RUN_AS[@]}" "$PGBIN/psql" -h "$SOCK" -p "$PORT" -U postgres -d postgres -v ON_ERROR_STOP=1 -q)
 
 "${PSQL[@]}" -f "$ROOT/supabase/tests/auth_stub.sql"
+"${PSQL[@]}" -f "$ROOT/supabase/tests/legacy_fixture.sql"
 for f in "$ROOT"/supabase/migrations/*.sql; do
   echo "Applying $(basename "$f")"
   "${PSQL[@]}" -f "$f"

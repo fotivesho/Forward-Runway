@@ -7,7 +7,7 @@ import { NextResponse, type NextRequest } from "next/server";
  */
 export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   const isApp = request.nextUrl.pathname.startsWith("/app");
   if (!url || !key) {
     if (isApp) return NextResponse.redirect(new URL("/login?setup=1", request.url));
