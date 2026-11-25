@@ -78,7 +78,7 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
   });
 
   return {
-    profile: { displayName: "Alex (demo)", timezone: "America/New_York", onboardedAt: nowIso, hideAmounts: false },
+    profile: { displayName: "Alex (demo)", timezone: "America/New_York", onboardedAt: nowIso, hideAmounts: false, theme: "system" },
     settings: { ...DEFAULT_SETTINGS, cashFloorCents: 50_000 },
     accounts: [
       { id: ID.checking, name: "Everyday Checking", kind: "checking", balanceCents: 284_000, balanceAsOf: today, balanceSource: "manual", balanceUpdatedAt: hoursAgo(3), isSpendable: true },

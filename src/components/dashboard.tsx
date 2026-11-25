@@ -393,7 +393,7 @@ function SpendingBars({ title, totals, total }: { title: string; totals: { categ
             <li key={t.category} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-2 text-xs">
               <span className="truncate text-muted">{t.category}</span>
               <span className="h-2 rounded-full bg-surface-3" aria-hidden>
-                <span className="block h-2 rounded-full" style={{ width: `${(t.cents / max) * 100}%`, background: "#2e8a52" }} />
+                <span className="block h-2 rounded-full bg-brand" style={{ width: `${(t.cents / max) * 100}%` }} />
               </span>
               <Money cents={t.cents} className="text-ink" />
             </li>

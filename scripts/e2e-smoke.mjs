@@ -65,6 +65,28 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
   await page.close();
 }
 
+// Dark mode: saved choice applied on first paint, switch works and persists, Auto follows the device
+{
+  const bg = (page) => page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
+  const host = new URL(BASE).hostname;
+  await ctx.addCookies([{ name: "fr-theme", value: "dark", domain: host, path: "/" }]);
+  const page = await ctx.newPage();
+  await page.goto(BASE + "/demo", { waitUntil: "networkidle" });
+  check((await page.getAttribute("html", "data-theme")) === "dark", "saved dark theme is rendered by the server");
+  check((await bg(page)) === "rgb(18, 26, 21)", "dark background applied");
+  await page.getByRole("radio", { name: "Light theme" }).click();
+  check((await page.getAttribute("html", "data-theme")) === "light" && (await bg(page)) === "rgb(246, 241, 228)", "switching to light updates the page");
+  check((await ctx.cookies()).some((c) => c.name === "fr-theme" && c.value === "light"), "theme choice is remembered");
+  await ctx.close();
+
+  const auto = await browser.newContext({ colorScheme: "dark" });
+  const p2 = await auto.newPage();
+  await p2.goto(BASE + "/", { waitUntil: "networkidle" });
+  check((await p2.getAttribute("html", "data-theme")) === null && (await bg(p2)) === "rgb(18, 26, 21)", "Auto follows a dark device setting");
+  await auto.close();
+}
+
 // Signed-in area is protected
 {
   const { page } = await visit("/app");

@@ -24,6 +24,55 @@
 
 :root {
   color-scheme: light;
+  --color-field: #fffefa;
+  --card-shadow: 0 1px 2px rgb(60 50 20 / 0.05), 0 4px 16px -8px rgb(60 50 20 / 0.08);
+}
+
+/* Dark theme: deep green surfaces with cream text. Every text token passes WCAG AA.
+ * Applied when the user picks Dark, or picks Auto (no data-theme) and the device is in dark mode. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --color-bg: #121a15;
+    --color-surface: #18231c;
+    --color-surface-2: #1f2c24;
+    --color-surface-3: #253a2c;
+    --color-line: #34483b;
+    --color-ink: #efe9d8;
+    --color-muted: #bfc6b4;
+    --color-faint: #a3ad9b;
+    --color-brand: #7fd39a;
+    --color-brand-strong: #9be0b1;
+    --color-brand-ink: #0f1d14;
+    --color-in: #7fd39a;
+    --color-out: #f0a37a;
+    --color-warn: #e8c26a;
+    --color-danger: #ff9a90;
+    --color-info: #93c4f5;
+    --color-field: #1b271f;
+    --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #121a15;
+  --color-surface: #18231c;
+  --color-surface-2: #1f2c24;
+  --color-surface-3: #253a2c;
+  --color-line: #34483b;
+  --color-ink: #efe9d8;
+  --color-muted: #bfc6b4;
+  --color-faint: #a3ad9b;
+  --color-brand: #7fd39a;
+  --color-brand-strong: #9be0b1;
+  --color-brand-ink: #0f1d14;
+  --color-in: #7fd39a;
+  --color-out: #f0a37a;
+  --color-warn: #e8c26a;
+  --color-danger: #ff9a90;
+  --color-info: #93c4f5;
+  --color-field: #1b271f;
+  --card-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 }
 
 html,
@@ -63,7 +112,7 @@ body {
   width: 100%;
   border-radius: 0.6rem;
   border: 1px solid var(--color-line);
-  background: #fffefa;
+  background: var(--color-field);
   padding: 0.6rem 0.75rem;
   color: var(--color-ink);
   font-size: 1rem; /* 16px avoids iOS zoom on focus */
@@ -106,7 +155,7 @@ select.input {
 }
 .btn-secondary {
   border: 1px solid var(--color-line);
-  background: #fffefa;
+  background: var(--color-field);
   color: var(--color-ink);
 }
 .btn-secondary:hover {
@@ -140,7 +189,7 @@ select.input {
   border-radius: 1rem;
   border: 1px solid var(--color-line);
   background: var(--color-surface);
-  box-shadow: 0 1px 2px rgb(60 50 20 / 0.05), 0 4px 16px -8px rgb(60 50 20 / 0.08);
+  box-shadow: var(--card-shadow);
 }
 
 .sr-only-focusable:not(:focus) {

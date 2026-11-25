@@ -21,6 +21,7 @@ export interface Profile {
   timezone: string;
   onboardedAt: string | null;
   hideAmounts: boolean;
+  theme: "system" | "light" | "dark";
 }
 
 export interface CalendarSourceView extends CalendarSourceState {
@@ -117,7 +118,7 @@ export function toEngineInput(s: Snapshot, today: ISODate): EngineInput {
 
 export function emptySnapshot(): Snapshot {
   return {
-    profile: { displayName: null, timezone: "America/New_York", onboardedAt: null, hideAmounts: false },
+    profile: { displayName: null, timezone: "America/New_York", onboardedAt: null, hideAmounts: false, theme: "system" },
     settings: DEFAULT_SETTINGS,
     accounts: [],
     rules: [],

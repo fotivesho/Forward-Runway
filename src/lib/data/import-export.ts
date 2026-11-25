@@ -14,7 +14,7 @@ export function buildExport(s: Snapshot, exportedAt: string) {
     version: EXPORT_VERSION,
     exportedAt,
     note: "Amounts are integer US cents. Dates are calendar dates (YYYY-MM-DD). Calendar subscription addresses are not included.",
-    profile: { displayName: s.profile.displayName, timezone: s.profile.timezone, hideAmounts: s.profile.hideAmounts },
+    profile: { displayName: s.profile.displayName, timezone: s.profile.timezone, hideAmounts: s.profile.hideAmounts, theme: s.profile.theme },
     settings: s.settings,
     accounts: s.accounts,
     rules: s.rules,
@@ -169,7 +169,7 @@ const scenarioZ = z.object({ id, name: z.string().min(1).max(60), adjustments: z
 export const exportFileSchema = z.object({
   format: z.literal(EXPORT_FORMAT, { errorMap: () => ({ message: "This isn't a Forward Runway export file." }) }),
   version: z.literal(EXPORT_VERSION, { errorMap: () => ({ message: "This export was made by an unsupported version." }) }),
-  profile: z.object({ displayName: z.string().max(80).nullable().optional(), timezone: z.string().max(64).optional(), hideAmounts: z.boolean().optional() }).optional(),
+  profile: z.object({ displayName: z.string().max(80).nullable().optional(), timezone: z.string().max(64).optional(), hideAmounts: z.boolean().optional(), theme: z.enum(["system", "light", "dark"]).optional() }).optional(),
   settings: z
     .object({
       cashFloorCents: cents.nonnegative(),
@@ -249,7 +249,7 @@ export function parseImport(text: string, newId: () => string): ParseImportResul
 
   const rows: ImportRows = {
     profile: f.profile
-      ? { display_name: f.profile.displayName ?? null, timezone: f.profile.timezone ?? "America/New_York", hide_amounts: !!f.profile.hideAmounts }
+      ? { display_name: f.profile.displayName ?? null, timezone: f.profile.timezone ?? "America/New_York", hide_amounts: !!f.profile.hideAmounts, theme: f.profile.theme ?? "system" }
       : null,
     settings: f.settings
       ? {

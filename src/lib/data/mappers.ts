@@ -39,6 +39,7 @@ export const mapProfile = (r: Row | null): Profile => ({
   timezone: (r?.timezone as string) || "America/New_York",
   onboardedAt: s(r?.onboarded_at),
   hideAmounts: !!r?.hide_amounts,
+  theme: r?.theme === "light" || r?.theme === "dark" ? r.theme : "system",
 });
 
 export const mapSettings = (r: Row | null, fallback: ForecastSettings): ForecastSettings =>

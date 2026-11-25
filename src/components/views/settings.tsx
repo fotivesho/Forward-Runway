@@ -1,6 +1,7 @@
 import { QuickAction } from "@/components/form";
 import { DeleteAccountForm, DeleteDataForm, ImportForm, PasswordForm, ProfileForm, SettingsForm } from "@/components/settings-forms";
 import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { ThemeToggle } from "@/components/theme";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
 import { clearDecisions, deleteCorrection, setHideAmounts } from "@/app/app/actions";
@@ -18,6 +19,10 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
       <PageHeader title="Settings" subtitle={user.email ? `Signed in as ${user.email}` : undefined} />
       <div className="grid gap-4">
         <Card title="Profile"><ProfileForm snapshot={snapshot} /></Card>
+        <Card title="Appearance">
+          <p className="mb-3 text-sm text-muted">Auto follows your phone or computer's light/dark setting. Your choice is saved to your account and used on every device.</p>
+          <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
+        </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
         <Card title="What Runway remembers" id="memory">
           <p className="mb-3 text-sm text-muted">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</p>

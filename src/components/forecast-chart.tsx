@@ -5,15 +5,14 @@ import { formatShort, formatLong } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import type { ForecastDay } from "@/lib/engine";
 import { useHideAmounts } from "./privacy";
+import { useResolvedTheme } from "./theme";
 
-// Validated with the dataviz palette checker on the cream surface (#fffcf4).
-const SERIES_BALANCE = "#2e8a52";
-const SERIES_ALLOWANCE = "#3a78c2";
-const FLOOR = "#b8860b";
-const GRID = "#e6dcc6";
-const TICK = "#4f6455";
-const LABEL = "#1d3324";
-const RING = "#fffcf4";
+// Both palettes validated with the dataviz palette checker against their surfaces
+// (light #fffcf4, dark #18231c): lightness band, chroma, CVD separation and contrast all pass.
+const PALETTES = {
+  light: { balance: "#2e8a52", allowance: "#3a78c2", floor: "#b8860b", grid: "#e6dcc6", tick: "#4f6455", label: "#1d3324", ring: "#fffcf4", tipBg: "#fffcf4" },
+  dark: { balance: "#45b06b", allowance: "#5d9be0", floor: "#e8c26a", grid: "#2b3d31", tick: "#bfc6b4", label: "#efe9d8", ring: "#18231c", tipBg: "#1f2c24" },
+} as const;
 
 interface Point {
   date: string;
@@ -40,6 +39,14 @@ export function ForecastChart({
   height?: number;
 }) {
   const hide = useHideAmounts();
+  const c = PALETTES[useResolvedTheme()];
+  const SERIES_BALANCE = c.balance;
+  const SERIES_ALLOWANCE = c.allowance;
+  const FLOOR = c.floor;
+  const GRID = c.grid;
+  const TICK = c.tick;
+  const LABEL = c.label;
+  const RING = c.ring;
   const data: Point[] = days.map((d, i) => ({
     date: d.date,
     closing: d.closingCents / 100,

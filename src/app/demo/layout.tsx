@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { DemoProvider } from "@/components/form";
 import { PrivacyProvider } from "@/components/privacy";
+import { ThemeToggle } from "@/components/theme";
 import { formatLong, todayInZone } from "@/lib/dates";
 
 export const metadata: Metadata = { title: { default: "Demo", template: "%s · Demo · Forward Runway" } };
@@ -26,7 +27,10 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
               <img src="/icon.svg" alt="" width={28} height={28} />
               Forward Runway
             </Link>
-            <span className="text-sm text-muted">{formatLong(todayInZone("America/New_York"))}</span>
+            <div className="flex items-center gap-3">
+              <span className="hidden text-sm text-muted sm:inline">{formatLong(todayInZone("America/New_York"))}</span>
+              <ThemeToggle />
+            </div>
           </header>
           <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
             <AppNav base="/demo" />

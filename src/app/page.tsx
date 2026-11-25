@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ThemeToggle } from "@/components/theme";
 
 export default async function Landing({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
@@ -8,7 +9,10 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         <span className="flex items-center gap-2 font-bold">
           <img src="/icon.svg" alt="" width={32} height={32} /> Forward Runway
         </span>
-        <Link href="/login" className="btn btn-secondary btn-sm">Sign in</Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Link href="/login" className="btn btn-secondary btn-sm">Sign in</Link>
+        </div>
       </header>
       {deleted && (
         <p role="status" className="mt-6 rounded-xl border border-brand/40 bg-brand/5 p-3 text-sm">Your account and all of its data have been deleted.</p>

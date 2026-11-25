@@ -305,6 +305,13 @@ export async function setHideAmounts(form: FormData) {
   revalidatePath("/app", "layout");
 }
 
+export async function saveTheme(form: FormData) {
+  const { supabase, user } = await getUser();
+  const theme = String(form.get("theme") ?? "");
+  if (!user || !["system", "light", "dark"].includes(theme)) return;
+  await supabase.from("profiles").upsert({ user_id: user.id, theme });
+}
+
 export async function completeOnboarding() {
   const { supabase, user } = await session();
   await supabase.from("profiles").upsert({ user_id: user.id, onboarded_at: new Date().toISOString() });

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { PrivacyProvider } from "@/components/privacy";
+import { ThemeToggle } from "@/components/theme";
 import { getAppSession } from "@/lib/data/session";
 import { formatLong } from "@/lib/dates";
 import { setHideAmounts, signOut } from "./actions";
@@ -22,6 +23,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </Link>
           <div className="flex items-center gap-2 text-sm">
             <span className="hidden text-muted sm:inline">{formatLong(today)}</span>
+            <ThemeToggle saved={snapshot.profile.theme} persist />
             <form action={setHideAmounts}>
               <input type="hidden" name="hide" value={hide ? "false" : "true"} />
               <button className="btn btn-ghost btn-sm" aria-pressed={hide} title="Hide amounts on screen (for when someone is looking over your shoulder)">
