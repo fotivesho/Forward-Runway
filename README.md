@@ -1,8 +1,10 @@
-# Project Fern (working title)
+# Runway Tomorrow
 
-> **Naming:** the app's name is a single setting. It shows as the working title "Project Fern" until you set
-> `NEXT_PUBLIC_APP_NAME` (and the ~12-character home-screen label `NEXT_PUBLIC_APP_SHORT_NAME`) at build time,
-> e.g. `Runway Tomorrow` / `Runway Tmrw` at launch. No code changes are needed to rename it (see `src/lib/brand.ts`).
+*Your money, looking forward.* Live at [runwaytomorrow.com](https://runwaytomorrow.com).
+
+> The name, home-screen label and tagline live in `src/lib/brand.ts` (overridable with `NEXT_PUBLIC_APP_NAME` /
+> `NEXT_PUBLIC_APP_SHORT_NAME`). The logo is a vector redraw in `public/icon.svg` and `src/components/logo.tsx`;
+> PNG icons in `public/icons/` include a 1024×1024 App Store icon.
 
 A mobile-first personal cash-flow forecasting PWA. It shows what you've spent, what's coming up, and what you can safely spend each day while still paying every bill, paying credit-card statements in full, reducing debt and saving for goals like a wedding.
 
@@ -105,7 +107,7 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon key | yes (safe: RLS protects data) |
    | `SUPABASE_SERVICE_ROLE_KEY` | service_role key (optional; enables "Delete my account") | **no, server only** |
    | `NEXT_PUBLIC_SITE_URL` | `https://runwaytomorrow.com` | yes |
-   | `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_APP_SHORT_NAME` | the app's public name / home-screen label (optional; defaults to the working title) | yes |
+   | `NEXT_PUBLIC_APP_NAME` / `NEXT_PUBLIC_APP_SHORT_NAME` | the app's public name / home-screen label (optional; defaults to Runway Tomorrow / Runway) | yes |
 5. **Connect the domain** (runwaytomorrow.com): in Vercel → Project → Settings → Domains, add `runwaytomorrow.com` and `www.runwaytomorrow.com`. Vercel shows the DNS records to add at the registrar where you bought the domain (usually an `A` record for the bare domain and a `CNAME` for `www`). HTTPS is issued automatically once DNS resolves.
 6. Visit `/login`, create an account and complete onboarding. Install it as an app from the browser menu ("Add to Home Screen").
 

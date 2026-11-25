@@ -27,8 +27,6 @@ one DNS change.
    |---|---|
    | `NEXT_PUBLIC_SUPABASE_URL` | the current project URL (same one the live site uses) |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | the current publishable key (same one the live site uses) |
-   | `NEXT_PUBLIC_APP_NAME` | `Runway Tomorrow` |
-   | `NEXT_PUBLIC_APP_SHORT_NAME` | `Runway Tmrw` |
    | `NEXT_PUBLIC_SITE_URL` | `https://runwaytomorrow.com` |
    | `SUPABASE_SERVICE_ROLE_KEY` | optional, server-only: enables "Delete my account" |
 4. **Allow the test address.** In Supabase Auth → URL Configuration, add the Vercel test

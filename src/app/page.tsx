@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 
 export default async function Landing({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const { deleted } = await searchParams;
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-5xl flex-col px-4 py-8 sm:px-6">
       <header className="flex items-center justify-between">
-        <span className="flex items-center gap-2 font-bold">
-          <img src="/icon.svg" alt="" width={32} height={32} /> {APP_NAME}
-        </span>
+        <Logo size="lg" />
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Link href="/login" className="btn btn-secondary btn-sm">Sign in</Link>
@@ -19,7 +18,8 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         <p role="status" className="mt-6 rounded-xl border border-brand/40 bg-brand/5 p-3 text-sm">Your account and all of its data have been deleted.</p>
       )}
       <section className="mt-14 max-w-2xl">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Know what you can safely spend today.</h1>
+        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand">{APP_TAGLINE}</p>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">Know what you can safely spend today.</h1>
         <p className="mt-4 text-lg text-muted">
           {APP_NAME} forecasts your cash day by day — paydays, bills, card statements, savings transfers — and turns what's left into
           realistic daily caps that keep every bill paid, every card statement paid in full, and your savings goals on track.

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { LoginForm } from "./login-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { APP_NAME } from "@/lib/brand";
+import { Logo } from "@/components/logo";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -11,8 +11,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const next = sp.next && sp.next.startsWith("/app") ? sp.next : "/app";
   return (
     <main id="main" className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 py-10">
-      <Link href="/" className="mb-6 flex items-center gap-2 font-bold">
-        <img src="/icon.svg" alt="" width={28} height={28} /> {APP_NAME}
+      <Link href="/" className="mb-6 flex items-center">
+        <Logo />
       </Link>
       {!isSupabaseConfigured() ? (
         <div role="alert" className="card p-5">

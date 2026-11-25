@@ -8,7 +8,13 @@ import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
 export const metadata: Metadata = {
   title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
   description: "See what's coming up, what you can safely spend today, and keep bills, cards and savings on track.",
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: { capable: true, title: APP_SHORT_NAME, statusBarStyle: "default" },
   robots: { index: true, follow: true },
 };
