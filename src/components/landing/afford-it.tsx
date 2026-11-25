@@ -272,20 +272,24 @@ export function AffordIt({
                   const purchase = c.withCents - c.usualCents;
                   const scale = Math.max(c.withCents, c.capCents);
                   const over = c.withCents > c.capCents;
+                  // The part of this purchase that still fits under the max is green; anything past it is red.
+                  const fits = Math.max(0, Math.min(purchase, c.capCents - c.usualCents));
+                  // A small overage the next pay period absorbs is amber (still a plain yes); a real one is red.
+                  const overColor = result.verdict === "yes" ? "bg-warn" : "bg-danger";
                   return (
                     <Tile
                       label={<>{c.name.split(" ")[0]} statement · {formatShort(c.due)}</>}
                       value={dollars(tile1After)}
                       aside={`of ${dollars(c.capCents)} max`}
-                      tone={over ? "warn" : "good"}
-                      status={over ? `over by ${dollars(c.withCents - c.capCents)}` : `${dollars(c.capCents - c.withCents)} room left`}
+                      tone={over ? (result.verdict === "yes" ? "warn" : "bad") : "good"}
+                      status={over ? (result.verdict === "yes" ? `${dollars(c.withCents - c.capCents)} over · next period covers it` : `over by ${dollars(c.withCents - c.capCents)}`) : `${dollars(c.capCents - c.withCents)} room left`}
                     >
                       <div className="absolute inset-0 flex overflow-hidden rounded-full">
                         <span className="h-full bg-faint/70" style={{ width: pct(c.onCardCents, scale) }} />
                         <span className="h-full bg-info/70" style={{ width: pct(c.typicalCents, scale) }} />
-                        <span className={`h-full transition-[width] duration-500 ${over ? "bg-warn" : "bg-brand"}`} style={{ width: pct(purchase, scale) }} />
+                        <span className="h-full bg-brand transition-[width] duration-500" style={{ width: pct(fits, scale) }} />
+                        <span className={`h-full transition-[width] duration-500 ${overColor}`} style={{ width: pct(purchase - fits, scale) }} />
                       </div>
-                      <span className="absolute -top-1 h-3.5 w-0.5 rounded bg-ink" style={{ left: pct(c.capCents, scale) }} title="Max" />
                     </Tile>
                   );
                 })()
@@ -335,13 +339,12 @@ export function AffordIt({
               <p className="mt-1.5 flex flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] text-muted sm:gap-x-3 sm:text-xs">
                 <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-faint/70 align-middle" />{dollars(result.card.onCardCents)} on card</span>
                 {result.card.typicalCents > 0 && (
-                  <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info/70 align-middle" />{dollars(result.card.typicalCents)} usual</span>
+                  <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info/70 align-middle" />{dollars(result.card.typicalCents)} expected</span>
                 )}
                 <span>
-                  <span className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${result.card.withCents > result.card.capCents ? "bg-warn" : "bg-brand"}`} />
-                  {dollars(result.card.withCents - result.card.usualCents)} this
+                  <span className={`mr-1 inline-block h-2 w-2 rounded-full align-middle ${result.card.withCents <= result.card.capCents ? "bg-brand" : result.verdict === "yes" ? "bg-warn" : "bg-danger"}`} />
+                  {dollars(result.card.withCents - result.card.usualCents)} this purchase
                 </span>
-                <span><span className="mr-1 inline-block h-2.5 w-0.5 rounded bg-ink align-middle" />max</span>
               </p>
             )}
 

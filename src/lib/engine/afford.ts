@@ -179,7 +179,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       return result("yes", "Yes, it fits.", {
         kind: "go",
         title: "Go ahead",
-        detail: `Up to about ${money(Math.round(card.capCents / 100) * 100)} can be paid in full on ${formatShort(card.due)} without savings${card.typicalCents > 0 ? `, counting ~${money(Math.round(card.typicalCents / 100) * 100)} of your usual ${card.name.split(" ")[0]} spending before ${formatShort(card.closes)}` : ""}.`,
+        detail: `Up to about ${money(Math.round(card.capCents / 100) * 100)} can be paid in full on ${formatShort(card.due)} without savings${card.typicalCents > 0 ? `, counting ~${money(Math.round(card.typicalCents / 100) * 100)} of expected ${card.name.split(" ")[0]} spending before ${formatShort(card.closes)}` : ""}.`,
       }, []);
     }
     return result("yes", "Yes, it fits.", {
