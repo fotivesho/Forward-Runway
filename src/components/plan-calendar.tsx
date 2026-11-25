@@ -127,7 +127,7 @@ export function PlanCalendar({
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger align-middle" />Not yet</span>
           <span><span className="mr-1 font-bold text-brand">$</span>Payday</span>
           <span><span className="mr-1 text-faint">•</span>Bill</span>
-          <span><span className="mr-1 text-faint">$ under a date</span>= everyday safe to spend</span>
+          <span><span className="mr-1 text-faint">$ under a date</span>= safe to spend that day</span>
         </p>
       </div>
 
@@ -140,7 +140,7 @@ export function PlanCalendar({
         )}
         {selected && baseline[selected] != null && (
           <p className="mb-2 flex justify-between gap-2 rounded-xl border border-brand/30 bg-brand/[0.06] px-3 py-2 text-sm">
-            <span className="text-ink">Everyday safe to spend{plansOn(selected).some((v) => v.plannedCents > 0) ? ", plus its plans" : ""}</span>
+            <span className="text-ink">Safe to spend</span>
             <Money cents={baseline[selected]!} className="font-semibold text-brand" />
           </p>
         )}
@@ -156,7 +156,7 @@ export function PlanCalendar({
         )}
         {shown.length === 0 ? (
           <EmptyState title={selected ? "No plans that day" : "No plans found"}>
-            {selected ? "Just your everyday safe-to-spend above. Add a plan and it updates." : "Connect your calendars or add a plan."}
+            {selected ? "Add a plan and the amount above updates." : "Connect your calendars or add a plan."}
           </EmptyState>
         ) : (
           <div className="space-y-4">

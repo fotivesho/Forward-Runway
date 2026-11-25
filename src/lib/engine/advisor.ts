@@ -1,4 +1,4 @@
-import { addDays, dayOfWeek, diffDays, formatShort, type ISODate } from "../dates";
+import { addDays, diffDays, formatShort, type ISODate } from "../dates";
 import { allocate, formatCents, friendlyRoundDown, friendlyRoundUp, type Cents } from "../money";
 import { spendingBaseline, spentOn, type SpendingBaseline } from "./spending";
 import type { EngineInput, Forecast } from "./types";
@@ -374,14 +374,9 @@ export function planDailySpending(
   }
   const eventTotal = [...eventCapsByDate.values()].reduce((s, e) => s + e.cents, 0);
   const leftover = Math.max(0, periodPools[0]! - eventTotal);
-  // Weight days by the user's weekday pattern, but never below half an average day:
-  // a weekday with little history still needs room for ordinary spending.
-  const floorWeight = Math.max(1, Math.round(baseline.avgDailyCents * 0.5));
-  const weights = curDates.map((d) => (baseline.reliable ? Math.max(floorWeight, baseline.byWeekday[dayOfWeek(d)]!) : 1));
-  const base = allocate(leftover, weights);
-  if (!baseline.reliable) {
-    notes.push("Daily caps are spread evenly until there are at least two weeks of logged spending to learn your pattern.");
-  }
+  // Everyday money is the same every day of the period (to the cent), so any two days without
+  // plans read the same. Plan days get their plan's cap on top.
+  const base = allocate(leftover, curDates.map(() => 1));
 
   const dayCaps: DayCap[] = curDates.map((date, i) => {
     const ev = eventCapsByDate.get(date);

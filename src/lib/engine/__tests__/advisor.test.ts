@@ -245,8 +245,8 @@ describe("debt", () => {
   });
 });
 
-describe("daily cap weighting", () => {
-  it("never leaves a weekday with no history at ~$0", () => {
+describe("everyday money per day", () => {
+  it("is the same on every day without a plan, even with lopsided weekday history", () => {
     const i = base();
     // Three weeks of spending only on weekdays (Mon-Fri), nothing on weekends.
     for (let k = 1; k <= 21; k++) {
@@ -256,8 +256,7 @@ describe("daily cap weighting", () => {
       i.transactions.push({ id: `h${k}`, date: d, amountCents: 3_000, direction: "out", accountId: "chk", description: "x", status: "posted", cleared: true, flexible: true });
     }
     const plan = planDailySpending(i, buildForecast(i, 90), [], { calendarIncomplete: false });
-    const caps = plan.days.map((d) => d.capCents);
-    const max = Math.max(...caps);
-    expect(Math.min(...caps)).toBeGreaterThanOrEqual(Math.floor(max / 4));
+    const everyday = plan.days.map((d) => d.baseCents);
+    expect(Math.max(...everyday) - Math.min(...everyday)).toBeLessThanOrEqual(1);
   });
 });
