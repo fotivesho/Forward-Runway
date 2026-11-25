@@ -122,7 +122,7 @@ export function PlanCalendar({
                   )}
                   <span className="flex items-center gap-0.5 text-[9px] leading-none sm:text-[10px]">
                     {payday && <span className="rounded bg-brand px-1 text-[8px] font-bold uppercase leading-[1.4] text-brand-ink sm:text-[9px]">Pay</span>}
-                    {bills > 0 && <span className="text-faint">{"•".repeat(Math.min(bills, 3))}</span>}
+                    {bills > 0 && <span className="rounded bg-out px-1 text-[8px] font-bold uppercase leading-[1.4] text-surface sm:text-[9px]">Bill</span>}
                   </span>
                 </button>
               </li>
@@ -135,7 +135,7 @@ export function PlanCalendar({
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger align-middle" />Not yet</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info align-middle" />Needs a cost</span>
           <span><span className="mr-1 rounded bg-brand px-1 text-[9px] font-bold uppercase text-brand-ink">Pay</span>Payday</span>
-          <span><span className="mr-1 text-faint">•</span>Bill</span>
+          <span><span className="mr-1 rounded bg-out px-1 text-[9px] font-bold uppercase text-surface">Bill</span>Bill due</span>
           <span>Amount under a date = safe to spend that day</span>
         </p>
       </div>
