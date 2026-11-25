@@ -236,7 +236,7 @@ export function AffordIt({
             <span id="afford-pay" className="w-11 shrink-0 pt-2 text-sm font-medium text-ink sm:block sm:w-auto sm:pt-0">Pay<span className="hidden sm:inline"> with</span></span>
             <div className="flex flex-wrap gap-1.5 sm:mt-1.5 sm:gap-2">
               <button type="button" onClick={() => setOnCard(false)} aria-pressed={!onCard} className={chip(!onCard)}>Debit</button>
-              <button type="button" onClick={() => setOnCard(true)} aria-pressed={onCard} className={chip(onCard)}>{card.name}</button>
+              <button type="button" onClick={() => setOnCard(true)} aria-pressed={onCard} className={chip(onCard)} title={card.name}>Credit</button>
             </div>
           </div>
         )}

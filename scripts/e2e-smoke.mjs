@@ -122,7 +122,7 @@ for (const path of ["/demo/forecast", "/demo/plans", "/demo/calendar", "/demo/wh
   check(errors.length === 0, `what-if checker loads without errors ${errors.join(" | ")}`);
   const answer = await page.locator("#afford-result").innerText();
   check(/Free to spend/i.test(answer) && /(Yes|Not yet)/.test(answer), "what-if checker answers in pay-period free money");
-  await page.getByRole("button", { name: "Visa Rewards" }).click();
+  await page.getByRole("button", { name: "Credit", exact: true }).click();
   await page.waitForTimeout(300);
   check(/statement ·/i.test(await page.locator("#afford-result").innerText()) && /max/.test(await page.locator("#afford-result").innerText()), "paying by card shows the statement against its cap");
   check((await page.locator("#afford button[aria-pressed]").filter({ hasText: "·" }).count()) > 0, "calendar plans appear as presets with their dates");
