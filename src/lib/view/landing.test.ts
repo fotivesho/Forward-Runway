@@ -97,8 +97,11 @@ describe("can I afford it: pay-period free money", () => {
           expect(check(amount, date).verdict).toBe("yes");
         }
         if (a.kind === "skip_plan") {
-          const freed = Number(a.detail.match(/\$([\d,]+(?:\.\d\d)?)/)![1]!.replace(/,/g, "")) * 100;
-          expect(freed).toBeGreaterThanOrEqual(r.room.shortfall);
+          const amount = (text: string) => Number(text.match(/\$([\d,]+(?:\.\d\d)?)/)![1]!.replace(/,/g, "")) * 100;
+          const freed = amount(a.detail);
+          // "Skip X and move $Y": the skipped plan plus the smaller savings move cover it together.
+          const moved = / and move \$/.test(a.title) ? amount(a.title.slice(a.title.indexOf(" and move "))) : 0;
+          expect(freed + moved).toBeGreaterThanOrEqual(r.room.shortfall);
         }
       }
     }
@@ -129,10 +132,39 @@ describe("card statement cap", () => {
   });
 
   it("staying under the cap needs no savings; going over it is short by exactly the overage", () => {
-    const small = checkAffordability(ctx, { amountCents: 50_000, date: "2026-11-29", paymentAccountId: visa });
+    const probe = checkAffordability(ctx, { amountCents: 100, date: "2026-11-29", paymentAccountId: visa });
+    const underCap = Math.floor((probe.card!.capCents - probe.card!.usualCents) / 2);
+    const small = checkAffordability(ctx, { amountCents: underCap, date: "2026-11-29", paymentAccountId: visa });
     expect(small.card!.withCents).toBeLessThanOrEqual(small.card!.capCents);
     expect([small.action, ...small.alternatives].some((a) => a.kind === "move")).toBe(false);
     const big = checkAffordability(ctx, { amountCents: 170_000, date: "2026-11-29", paymentAccountId: visa });
     expect(big.card!.withCents - big.card!.capCents).toBe(big.room.shortfall);
+  });
+});
+
+describe("skip a plan and save up", () => {
+  const today = "2026-11-25";
+  const d = buildLanding(today, `${today}T15:00:00Z`);
+  const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
+  const visa = d.snapshot.accounts.find((a) => a.kind === "credit_card")!.id;
+
+  it("suggests skipping a plan already budgeted in that pay period", () => {
+    const r = checkAffordability(ctx, { amountCents: 180_000, date: "2026-11-28", paymentAccountId: visa });
+    const skip = [r.action, ...r.alternatives].find((a) => a.kind === "skip_plan");
+    expect(skip).toBeTruthy();
+    expect(skip!.title).toMatch(/Skip (Birthday dinner for Maya|Weekend getaway to the coast)/);
+  });
+
+  it("offers to save up when even savings can't cover it, at a pace that fits", () => {
+    const r = checkAffordability(ctx, { amountCents: 1_500_000, date: "2026-11-28" });
+    expect(r.verdict).toBe("not_yet");
+    expect(r.action.kind).toBe("goal");
+    expect(r.headline).toBe("Not yet.");
+    expect(r.action.detail).toMatch(/Ready by [A-Z][a-z]+ \d{4}/);
+  });
+
+  it("never offers saving up when savings could cover it today", () => {
+    const r = checkAffordability(ctx, { amountCents: 90_000, date: "2026-11-25" });
+    expect([r.action, ...r.alternatives].some((a) => a.kind === "goal")).toBe(false);
   });
 });

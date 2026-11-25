@@ -1,4 +1,7 @@
-import { diffDays, formatShort, maxDate, type ISODate } from "../dates";
+import { addMonths, diffDays, formatShort, maxDate, parts as dateParts, type ISODate } from "../dates";
+
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const formatMonthYear = (d: ISODate) => `${MONTHS[dateParts(d).m - 1]} ${dateParts(d).y}`;
 import { formatCents, friendlyRoundDown, type Cents } from "../money";
 import { planDailySpending, type PlannedEvent } from "./advisor";
 import { buildForecast } from "./forecast";
@@ -22,7 +25,7 @@ import type { EngineInput } from "./types";
 export type AffordVerdict = "yes" | "yes_with_plan" | "not_yet";
 
 export interface AffordAction {
-  kind: "go" | "move" | "lean" | "skip_plan" | "cheaper" | "wait" | "none";
+  kind: "go" | "move" | "lean" | "skip_plan" | "goal" | "cheaper" | "wait" | "none";
   title: string;
   /** The trade-off, in plain words. */
   detail: string;
@@ -35,6 +38,8 @@ export interface AffordCheck {
   /** `borrowed`: a small amount taken from the next pay period(s) in a plain "yes". */
   room: { start: ISODate; end: ISODate; before: Cents; after: Cents; shortfall: Cents; borrowed: Cents };
   lowest: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
+  /** Your cash floor, for showing how much cushion the lowest point keeps. */
+  floorCents: Cents;
   /** When the money actually leaves your cash. */
   cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
   /** Paying by card: the statement it lands on, usual vs. with this purchase (incl. typical card spending). */
@@ -44,7 +49,17 @@ export interface AffordCheck {
    * biggest statement you can pay in full on the due date without savings or squeezing everyday
    * spending (usual + that pay period's free money).
    */
-  card: { name: string; due: ISODate; closes: ISODate; usualCents: Cents; withCents: Cents; typicalCents: Cents; capCents: Cents } | null;
+  card: {
+    name: string;
+    due: ISODate;
+    closes: ISODate;
+    /** Already on the card for this statement: current balance plus card bills before it closes. */
+    onCardCents: Cents;
+    typicalCents: Cents;
+    usualCents: Cents;
+    withCents: Cents;
+    capCents: Cents;
+  } | null;
   action: AffordAction;
   alternatives: AffordAction[];
   plan: PurchasePlan;
@@ -109,7 +124,16 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       const daysLeftInCycle = Math.max(0, diffDays(input.today, stmtNow.closingDate));
       const typical = avgDailyCardSpend(input, payAcct.id) * daysLeftInCycle;
       const usual = stmtNow.balanceCents + typical;
-      card = { name: payAcct.name, due: stmtNow.dueDate, closes: stmtNow.closingDate, usualCents: usual, withCents: usual + req.amountCents, typicalCents: typical, capCents: usual };
+      card = {
+        name: payAcct.name,
+        due: stmtNow.dueDate,
+        closes: stmtNow.closingDate,
+        onCardCents: stmtNow.balanceCents,
+        typicalCents: typical,
+        usualCents: usual,
+        withCents: usual + req.amountCents,
+        capCents: usual,
+      };
     } else cash.beyondHorizon = true;
   }
 
@@ -130,6 +154,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     headline,
     room,
     lowest,
+    floorCents: floor,
     cash,
     card,
     action,
@@ -183,28 +208,41 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
 
   // --- Options, each with its trade-off ----------------------------------------------------------
   const options: Array<AffordAction & { rank: number }> = [];
+  const spanDays = Math.max(1, diffDays(pots[0]!.start, pots[pots.length - 1]!.end) + 1);
+  /** Typical free flexible money per month, across the forecast. */
+  const monthlyFree = (pots.reduce((t, p) => t + p.free, 0) / spanDays) * 30;
+  const rebuildMonths = (cents: Cents) => [2, 3, 6, 12].find((m) => cents / m <= monthlyFree * 0.25) ?? 12;
+  const round10 = (c: Cents) => Math.ceil(c / 1_000) * 1_000;
 
-  // 1. Use savings (unprotected only; the wedding fund is never suggested).
+  // Unprotected savings only: the wedding fund (and any protected goal) is never suggested.
   const unprotected = plan.sources.filter((s) => !s.protected && s.availableCents > 0);
   const available = unprotected.reduce((t, s) => t + s.availableCents, 0);
-  const needFromSavings = Math.min(available, Math.ceil(Math.max(shortfall, floorShort) / 1_000) * 1_000);
-  if (needFromSavings > 0 && available >= Math.max(shortfall, floorShort)) {
+  const savingsTitle = (cents: Cents) => {
     const parts: string[] = [];
-    let left = needFromSavings;
+    let left = cents;
     for (const s of unprotected) {
       if (left <= 0) break;
       const take = Math.min(left, s.availableCents);
       parts.push(`${money(take)} from ${s.name}`);
       left -= take;
     }
-    const spanDays = Math.max(1, diffDays(pots[0]!.start, pots[pots.length - 1]!.end) + 1);
-    const monthlyFree = (pots.reduce((t, p) => t + p.free, 0) / spanDays) * 30;
-    const months = [2, 3, 6, 12].find((m) => needFromSavings / m <= monthlyFree * 0.25) ?? 12;
+    return parts.join(" and ");
+  };
+  const rebuildText = (cents: Cents) => {
+    const m = rebuildMonths(cents);
+    return `rebuild it with ${money(Math.ceil(cents / m / 100) * 100)}/month for ${m} months`;
+  };
+
+  // 1. Use savings.
+  const gap = Math.max(shortfall, floorShort);
+  const needFromSavings = Math.min(available, round10(gap));
+  const savingsCovers = gap > 0 && available >= gap;
+  if (savingsCovers) {
     options.push({
       kind: "move",
       rank: 3,
-      title: `Move ${parts.join(" and ")} by ${formatShort(cash.date)}`,
-      detail: `Rebuild it with ${money(Math.ceil(needFromSavings / months / 100) * 100)}/month for ${months} months.`,
+      title: `Move ${savingsTitle(needFromSavings)} by ${formatShort(cash.date)}`,
+      detail: `${rebuildText(needFromSavings).replace(/^r/, "R")}.`,
     });
   }
 
@@ -212,28 +250,32 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   if (floorShort === 0) {
     // 2. Run lean: borrow from the next pay periods' everyday money.
     if (next.length && nextDays > 0 && shortfall <= nextFree * 0.6) {
-      const normal = normalPerDay;
-      const lean = leanPerDay;
       options.push({
         kind: "lean",
         rank: shortfall <= nextFree * 0.25 ? 1 : 4,
         title: `Run lean until ${formatShort(next[next.length - 1]!.end)}`,
-        detail: `Nothing extra until ${formatShort(pot.end)}, then about ${formatCents(lean)} a day instead of ${formatCents(normal)}.`,
+        detail: `Nothing extra until ${formatShort(pot.end)}, then about ${formatCents(leanPerDay)} a day instead of ${formatCents(normalPerDay)}.`,
       });
     }
 
-    // 3. Skip a plan that's already budgeted in the same period.
+    // 3. Skip a plan that's already budgeted in that pay period (your calendar's planned spending).
     const cuttable = pot.plans.filter((x) => !x.e.essential).sort((a, b) => a.a.capCents - b.a.capCents);
     const single = cuttable.find((x) => x.a.capCents >= shortfall);
     const pair = !single && cuttable.length >= 2 ? cuttable.slice(-2) : null;
     if (single) {
-      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${formatCents(single.a.capCents)} on ${formatShort(single.e.date)}.` });
+      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.` });
     } else if (pair && pair[0]!.a.capCents + pair[1]!.a.capCents >= shortfall) {
+      const freed = pair[0]!.a.capCents + pair[1]!.a.capCents;
+      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.` });
+    } else if (cuttable.length && savingsCovers) {
+      // Not enough on its own: skip the biggest plan and cover the rest from savings (a smaller move).
+      const biggest = cuttable[cuttable.length - 1]!;
+      const rest = Math.min(available, round10(shortfall - biggest.a.capCents));
       options.push({
         kind: "skip_plan",
-        rank: 5,
-        title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`,
-        detail: `Frees ${formatCents(pair[0]!.a.capCents + pair[1]!.a.capCents)} that pay period.`,
+        rank: 3.5,
+        title: `Skip ${biggest.e.title} and move ${money(rest)}`,
+        detail: `Skipping it frees ${money(biggest.a.capCents)}, so less comes from savings: ${rebuildText(rest)}.`,
       });
     }
 
@@ -244,7 +286,20 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     }
   }
 
-  // 5. Cut it down to what fits as is.
+  // 5. Too big for savings: make it a goal you save for, at a pace your budget can carry.
+  if (!savingsCovers && gap > 0 && monthlyFree > 0) {
+    const monthly = Math.max(1_000, round10(Math.min(monthlyFree * 0.4, req.amountCents)));
+    const months = Math.max(1, Math.ceil(amt / monthly));
+    const ready = addMonths(input.today, months);
+    options.push({
+      kind: "goal",
+      rank: 0,
+      title: `Save up: ${money(monthly)}/month`,
+      detail: `Ready by ${formatMonthYear(ready)} without touching savings. That's about ${formatCents(Math.ceil(monthly / 30))} a day less flexible spending.`,
+    });
+  }
+
+  // 6. Cut it down to what fits as is.
   const cheaper = friendlyRoundDown(reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor)));
   if (cheaper >= 500 && cheaper < req.amountCents) {
     options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `That fits ${range(pot.start, pot.end)} with nothing else changing.` });
@@ -253,8 +308,12 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   options.sort((a, b) => a.rank - b.rank);
   const strip = ({ rank: _r, ...a }: AffordAction & { rank: number }): AffordAction => a;
   const [first, ...rest] = options;
-  if (options.some((o) => o.kind !== "cheaper")) {
-    return result("yes_with_plan", "Yes, with a plan.", strip(first!), rest.map(strip));
+  // "With a plan" needs a way to buy it now; saving up or buying something cheaper means "not yet".
+  if (options.some((o) => o.kind !== "cheaper" && o.kind !== "goal")) {
+    const nowFirst = options.filter((o) => o.kind !== "goal");
+    const later = options.filter((o) => o.kind === "goal");
+    const [primary, ...others] = [...nowFirst, ...later];
+    return result("yes_with_plan", "Yes, with a plan.", strip(primary!), others.map(strip));
   }
   return result(
     "not_yet",

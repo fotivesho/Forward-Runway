@@ -48,7 +48,7 @@ async function unlabeled(page) {
   await page.getByRole("button", { name: /New laptop/ }).click();
   await page.waitForTimeout(300);
   const verdict = await page.locator("[aria-live=polite]").first().innerText();
-  check(/\$2,400\.00/.test(verdict) && /(Yes, it fits|Yes, with a plan|Not yet)/.test(verdict) && /Suggested move/i.test(verdict), "affordability calculator answers the laptop preset with a suggested move");
+  check(/\$2,400\.00/.test(verdict) && /(Yes, it fits|Yes, with a plan|Not yet)/.test(verdict) && /(Go ahead|Move \$|Run lean|Skip |Save up|Cut it to)/.test(verdict), "affordability calculator answers the laptop preset with a suggested move");
   await page.fill("#afford-amount", "25");
   await page.waitForTimeout(200);
   check(/Yes, it fits/.test(await page.locator("[aria-live=polite]").first().innerText()), "a small purchase fits");

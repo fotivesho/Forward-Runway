@@ -125,6 +125,9 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       demoEvent("e6", ID.calShared, inDays(11), "Cake tasting"),
       demoEvent("e7", ID.calPersonal, inDays(13), "Weekend trip to the lake"),
       demoEvent("e8", ID.calPersonal, inDays(16), "Pottery workshop"),
+      // Further-out plans, so "skip a plan" has something real to suggest for later purchases.
+      demoEvent("e9", ID.calShared, inDays(48), "Birthday dinner for Maya"),
+      demoEvent("e10", ID.calPersonal, inDays(51), "Weekend getaway to the coast"),
     ],
     corrections: [
       { id: "00000000-0000-4000-d000-000000000001", kind: "event_estimate", matchKey: "dinner sam", value: { estimateCents: 7_000 }, updatedAt: hoursAgo(240) },
