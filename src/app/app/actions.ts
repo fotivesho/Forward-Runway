@@ -266,6 +266,17 @@ export async function saveTransaction(_: ActionState, form: FormData): Promise<A
   return ok(id ? "Transaction updated." : finalRow.status === "posted" && finalRow.direction === "out" ? "Spending logged. Caps recalculated." : "Planned. It's in your forecast.");
 }
 
+/** One tap in a transaction's pop-up: just its category (bank or hand-entered). */
+export async function setTransactionCategory(id: string, category: string): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await session();
+  const clean = category.trim().slice(0, 40) || null;
+  if (!id) return { ok: false, error: "Couldn't find that transaction." };
+  const { error } = await supabase.from("transactions").update({ category: clean }).eq("id", id);
+  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 /** "Not repeating": stop suggesting this one (remembered, so it doesn't come back). */
 export async function dismissRecurring(form: FormData) {
   const { supabase } = await session();

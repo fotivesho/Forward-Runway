@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { deleteTransaction } from "@/app/app/actions";
+import { useContext, useState, useTransition } from "react";
+import { deleteTransaction, setTransactionCategory } from "@/app/app/actions";
 import { formatLong, formatShort, type ISODate } from "@/lib/dates";
 import type { Account, OneTimeTransaction } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
 import { addMonths } from "@/lib/dates";
-import { QuickAction } from "./form";
+import { DemoCtx, QuickAction } from "./form";
 import { Modal } from "./modal";
 import { CategoryTrend } from "./spend-insights";
 import type { CategoryBucket } from "@/lib/view/spend";
@@ -17,7 +17,7 @@ import { Info } from "./info";
 import { txnHistory } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
-import { isNotSpending } from "@/lib/categories";
+import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
@@ -125,7 +125,6 @@ export function TransactionList({
             <>
               <Money cents={current.direction === "in" ? current.amountCents : -current.amountCents} sign tone="auto" className="font-semibold" /> · {formatShort(current.date)} · {name(current.accountId)}
               <span className="mt-1 flex flex-wrap gap-1">
-                {current.category && <Badge>{current.category}</Badge>}
                 {current.status === "planned" && <Badge tone="info">Planned</Badge>}
                 {current.cleared && <Badge title="Already reflected in the balance">In balance</Badge>}
                 {current.isEstimate && <Badge tone="warn">Estimate</Badge>}
@@ -155,7 +154,7 @@ export function TransactionList({
               />
             </>
           ) : (
-            <TxnBody key={current.id} txn={current} txns={txns} today={today} onRepeat={() => setRepeat(true)}>
+            <TxnBody key={current.id} txn={current} txns={txns} today={today} categories={categories} onRepeat={() => setRepeat(true)}>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
               <div className="mt-4 flex justify-end border-t border-line pt-4">
                 <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
@@ -169,12 +168,13 @@ export function TransactionList({
 }
 
 /** Inside a transaction: every time it showed up and what's likely next, then the edit form folded away. */
-function TxnBody({ txn, txns, today, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; onRepeat: () => void; children: React.ReactNode }) {
+function TxnBody({ txn, txns, today, categories, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; onRepeat: () => void; children: React.ReactNode }) {
   const h = txnHistory(txn, txns, today);
   const [sel, setSel] = useState<string | null>(h ? (h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null) : null);
   const canRepeat = !isNotSpending(txn.category);
   return (
     <div className="space-y-4">
+      {txn.direction === "out" && <QuickCategory txn={txn} categories={categories} />}
       {h ? (
         <section aria-label="This over time">
           <ul className="mb-3 grid grid-cols-3 gap-2 text-center">
@@ -210,7 +210,54 @@ function TxnBody({ txn, txns, today, onRepeat, children }: { txn: OneTimeTransac
           <span aria-hidden className="text-faint">›</span>
         </button>
       )}
-      <Disclosure summary="Edit category, name or amount">{children}</Disclosure>
+      <Disclosure summary={txn.direction === "out" ? "Edit name, amount or date" : "Edit details"}>{children}</Disclosure>
+    </div>
+  );
+}
+
+/** The category as one tappable pill; tap to pick another, saved on the spot. */
+function QuickCategory({ txn, categories }: { txn: OneTimeTransaction; categories: string[] }) {
+  const demo = useContext(DemoCtx);
+  const [cat, setCat] = useState(txn.category ?? null);
+  const [picking, setPicking] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const choices = [...new Set([...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 14);
+  const pick = (c: string) => {
+    const before = cat;
+    setCat(c);
+    setPicking(false);
+    if (demo) return setNote("Demo: changes aren't saved.");
+    start(async () => {
+      const r = await setTransactionCategory(txn.id, c);
+      if (!r.ok) {
+        setCat(before);
+        setNote(r.error ?? "Couldn't save that.");
+      } else setNote(null);
+    });
+  };
+  return (
+    <div>
+      <button type="button" onClick={() => setPicking((p) => !p)} aria-expanded={picking} className="flex w-full items-center gap-3 rounded-2xl border border-line px-3 py-2.5 text-left transition hover:border-brand/60">
+        <Glyph name={cat ?? "spend"} size="sm" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] text-faint">Category</span>
+          <span className="block text-sm font-semibold text-ink">{cat ?? "Uncategorized"}{pending && <span className="ml-2 text-xs font-normal text-faint">Saving…</span>}</span>
+        </span>
+        <span className="text-xs font-semibold text-brand">{picking ? "Close" : "Change"}</span>
+      </button>
+      {picking && (
+        <ul className="fade-up mt-2 flex flex-wrap gap-1.5" aria-label="Pick a category">
+          {choices.map((c) => (
+            <li key={c}>
+              <button type="button" onClick={() => pick(c)} aria-pressed={c === cat} className={chip(c === cat)}>
+                <Glyph name={c} size="xs" bare /> {c}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {note && <p className="mt-1.5 text-xs text-muted" aria-live="polite">{note}</p>}
     </div>
   );
 }

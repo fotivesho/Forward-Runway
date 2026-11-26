@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** Money's sub-tabs: Overview · Budget · Patterns · Reports. */
+/** Money's sub-tabs: This month · Budget · Patterns · Reports. */
 export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
   const path = usePathname();
   const tabs = [
-    { href: `${base}/spend`, label: "Overview" },
+    { href: `${base}/spend`, label: "This month" },
     { href: `${base}/spend/transactions`, label: "Activity" },
     { href: `${base}/spend/budget`, label: "Budget" },
     { href: `${base}/spend/patterns`, label: "Patterns" },
@@ -22,7 +22,7 @@ export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
             key={t.href}
             href={t.href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-10 flex-1 items-center justify-center rounded-lg px-1 text-[13px] font-medium sm:text-sm transition ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`}
+            className={`flex min-h-10 flex-auto items-center justify-center whitespace-nowrap rounded-lg px-1.5 text-[13px] font-medium sm:text-sm transition ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`}
           >
             {t.label}
           </Link>

@@ -68,8 +68,8 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
       const cents = same.filter((t) => t.date >= from && t.date < to).reduce((s, t) => s + t.amountCents, 0);
       bars.push({ key: from, label: MONTHS[parts(from).m - 1]!, title: MONTHS_LONG[parts(from).m - 1]!, cents, kind: "past" });
     }
-    // Drop empty months before it started.
-    while (bars.length && bars[0]!.cents === 0) bars.shift();
+    // Drop empty months before it started, and the month it started in if that was partway through.
+    while (bars.length && (bars[0]!.cents === 0 || bars[0]!.key < startOfMonth(addDays(same[0]!.date, -3)) || (bars[0]!.key === startOfMonth(same[0]!.date) && parts(same[0]!.date).d > 7))) bars.shift();
     const perDay = recent.reduce((s, t) => s + t.amountCents, 0) / 90;
     const { y, m, d } = parts(today);
     const left = daysInMonth(y, m) - d;

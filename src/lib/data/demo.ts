@@ -108,6 +108,12 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
   add(152, 26_000, "Car", "Tire shop");
   add(63, 31_000, "Car", "Auto service");
   for (let k = 0; k < 6; k++) add(9 + 30 * k, k < 2 ? 1_199 : 1_099, "Subscriptions", "Music app");
+  // Weekday lunches, so tapping today's lunch shows a real history.
+  const lunch = lcg(23);
+  for (let i = 150; i >= 1; i--) {
+    const wd = new Date(`${daysAgo(i)}T12:00:00Z`).getUTCDay();
+    if (wd >= 1 && wd <= 5 && lunch() < 0.4) add(i, 1_050 + lunch() * 550, "Dining", "Lunch", ID.checking);
+  }
   // What those finished plans really cost.
   for (const [n, ago, cents, description, category] of [
     [1, 4, 9_120, "Osteria Nove", "Dining"],
