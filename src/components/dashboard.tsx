@@ -15,7 +15,7 @@ import { Badge, Card, Disclosure, EmptyState, Notice } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
-const SOURCE: Record<string, string> = { manual: "Entered by you", statement: "From a statement", import: "Imported", onboarding: "From setup" };
+const SOURCE: Record<string, string> = { manual: "Entered by you", statement: "From a statement", import: "Imported", onboarding: "From setup", bank: "From your bank" };
 
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
   const [horizon, setHorizon] = useState<number>(snapshot.settings.defaultHorizonDays);

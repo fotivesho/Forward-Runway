@@ -18,7 +18,7 @@ import type { Cents } from "../money";
 
 export type AccountKind = "checking" | "savings" | "cash" | "credit_card" | "loan";
 
-export type BalanceSource = "manual" | "statement" | "import" | "onboarding";
+export type BalanceSource = "manual" | "statement" | "import" | "onboarding" | "bank";
 
 export interface Account {
   id: string;
@@ -43,6 +43,8 @@ export interface Account {
   aprBps?: number | null; // 2499 = 24.99%
   minimumPaymentCents?: Cents | null;
   archived?: boolean;
+  /** Kept up to date by a connected bank. */
+  bankConnectionId?: string | null;
 }
 
 export type Frequency = "once" | "weekly" | "biweekly" | "monthly" | "semimonthly";
@@ -116,6 +118,10 @@ export interface OneTimeTransaction {
   /** Discretionary spending (counts against the daily allowance in spending history). */
   flexible?: boolean;
   calendarEventId?: string | null;
+  /** From a connected bank and not yet final. */
+  pending?: boolean;
+  /** The bank's own id, when it came from a connected bank. */
+  externalId?: string | null;
 }
 
 export interface Transfer {

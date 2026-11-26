@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { disconnectAllBanks } from "@/lib/plaid/sync";
 import { normalizeTitle } from "@/lib/calendar/estimate";
 import { syncSource } from "@/lib/calendar/sync";
 import { todayInZone } from "@/lib/dates";
@@ -576,8 +577,10 @@ export async function importData(_: ActionState, form: FormData): Promise<Action
 }
 
 export async function deleteAllData(_: ActionState, form: FormData): Promise<ActionState> {
-  const { supabase } = await session();
+  const { supabase, user } = await session();
   if (form.get("confirm") !== "DELETE") return invalid({ confirm: "Type DELETE to confirm." });
+  // Disconnect banks at Plaid first, so nothing keeps access after your data is gone.
+  await disconnectAllBanks(supabase, user.id).catch(() => {});
   const { error } = await supabase.rpc("delete_my_data");
   if (error) return dbError(error);
   revalidatePath("/app", "layout");
@@ -587,6 +590,7 @@ export async function deleteAllData(_: ActionState, form: FormData): Promise<Act
 export async function deleteMyAccount(_: ActionState, form: FormData): Promise<ActionState> {
   const { supabase, user } = await session();
   if (form.get("confirm") !== "DELETE MY ACCOUNT") return invalid({ confirm: "Type DELETE MY ACCOUNT to confirm." });
+  await disconnectAllBanks(supabase, user.id).catch(() => {});
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   // Always wipe financial data first, under the user's own RLS session.

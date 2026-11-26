@@ -8,6 +8,7 @@ import type { Cents } from "../money";
 import { ruleOccurrences, type RecurringRule } from "../engine";
 import type { Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
+import { isNotSpending } from "../categories";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (d: ISODate, today: ISODate) => (parts(d).y === parts(today).y ? MONTHS[parts(d).m - 1]! : `${MONTHS[parts(d).m - 1]} ’${String(parts(d).y).slice(2)}`);
@@ -72,6 +73,8 @@ export interface FlowBucket extends Bucket {
 
 /** Money in vs money out per bucket. Past: what happened. Current bucket: so far plus what's scheduled. */
 export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBucket[] {
+  // A connected bank shows what actually happened, so its accounts' past bills come from it, not the schedule.
+  const bankAccounts = new Set(s.accounts.filter((a) => a.balanceSource === "bank").map((a) => a.id));
   return buckets.map((b) => {
     let inC = 0;
     let outC = 0;
@@ -83,6 +86,7 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
       for (const o of ruleOccurrences(r, s.overrides, b.start, b.end)) {
         if (o.date < b.start || o.date > b.end) continue;
         if (pastSkipsEstimate && o.date < today) continue;
+        if (o.date < today && bankAccounts.has(r.accountId)) continue;
         if (r.kind === "income") inC += o.amountCents;
         else {
           outC += o.amountCents;
@@ -94,6 +98,7 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
       if (t.date < b.start || t.date > b.end) continue;
       if (t.status === "planned" && t.date < today) continue;
       if (t.status !== "planned" && t.date > today) continue;
+      if (isNotSpending(t.category)) continue;
       if (t.direction === "in") inC += t.amountCents;
       else outC += t.amountCents;
     }

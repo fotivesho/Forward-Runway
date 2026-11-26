@@ -80,6 +80,7 @@ Then add `app` under Project Settings → Data API → Exposed schemas. All tabl
 npm test             # engine, calendar, validation, import/export unit tests (Vitest)
 npm run typecheck
 npm run test:db      # applies migrations to a throwaway Postgres 15+ and runs the RLS suite
+npm run test:bank    # bank sync end to end: real migrations + PostgREST (Docker) + the fake bank
 npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   # browser smoke test (Playwright)
 ```
 
@@ -112,6 +113,13 @@ npm run build && npm start &  BASE_URL=http://localhost:3000 npm run test:e2e   
 6. Visit `/login`, create an account and complete onboarding. Install it as an app from the browser menu ("Add to Home Screen").
 
 Any Node host works: `npm run build && npm start` behind HTTPS. Calendar sync needs outbound HTTPS to calendar providers.
+
+## Bank connections (Plaid)
+
+Optional and off until the Plaid keys are set; see [docs/PLAID.md](docs/PLAID.md) for setup, how
+synced data avoids double counting, and the security model. `PLAID_ENV=mock` gives a fake bank for
+local development. A draft security policy for Plaid's review is in
+[docs/SECURITY-POLICY.md](docs/SECURITY-POLICY.md).
 
 ## Known limits (v1.0)
 

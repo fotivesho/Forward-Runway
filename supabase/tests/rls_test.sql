@@ -119,9 +119,55 @@ do $$ begin
 end $$;
 reset role;
 
+-- Bank connections: users see their own connection, never the bank token; nobody else sees either.
+reset role;
+insert into app.bank_connections (id, user_id, institution_name)
+values ('cccccccc-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'Test Bank');
+insert into app.bank_secrets (connection_id, user_id, item_id, access_token_enc)
+values ('cccccccc-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'item-alice', 'v1:encrypted');
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+select pg_temp.assert((select count(*) = 1 from app.bank_connections), 'alice sees her bank connection');
+do $$ begin
+  begin
+    perform count(*) from app.bank_secrets;
+    raise exception 'ASSERTION FAILED: a signed-in user could read bank secrets';
+  exception when insufficient_privilege then raise notice 'ok: bank tokens are unreadable from the browser, even your own';
+  end;
+  begin
+    insert into app.bank_connections (institution_name) values ('Fake');
+    raise exception 'ASSERTION FAILED: user could create a bank connection directly';
+  exception when insufficient_privilege then raise notice 'ok: only the server can create bank connections';
+  end;
+  begin
+    update app.bank_connections set status = 'ok';
+    raise exception 'ASSERTION FAILED: user could edit a bank connection directly';
+  exception when insufficient_privilege then raise notice 'ok: only the server can change a connection''s status';
+  end;
+end $$;
+reset role;
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+select pg_temp.assert((select count(*) = 0 from app.bank_connections), 'bob cannot see alice''s bank connection');
+delete from app.bank_connections;
+reset role;
+select pg_temp.assert((select count(*) = 1 from app.bank_connections where user_id = '11111111-1111-1111-1111-111111111111'), 'bob cannot disconnect alice''s bank');
+set role anon;
+do $$ begin
+  begin
+    perform count(*) from app.bank_connections;
+    raise exception 'ASSERTION FAILED: anon could read bank connections';
+  exception when insufficient_privilege then raise notice 'ok: anonymous visitors cannot see bank connections';
+  end;
+end $$;
+reset role;
+set role service_role;
+select pg_temp.assert((select count(*) = 1 from app.bank_secrets), 'the server (service role) can read the token to sync');
+reset role;
+
 -- Deleting a user cascades everything.
 delete from auth.users where id = '11111111-1111-1111-1111-111111111111';
 select pg_temp.assert((select count(*) = 0 from app.accounts where user_id = '11111111-1111-1111-1111-111111111111'),
   'account deletion removes all data');
+select pg_temp.assert((select count(*) = 0 from app.bank_secrets where user_id = '11111111-1111-1111-1111-111111111111'),
+  'account deletion removes bank tokens too');
 
 \echo 'ALL RLS TESTS PASSED'

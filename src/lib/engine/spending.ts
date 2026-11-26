@@ -2,6 +2,7 @@ import { addDays, dayOfWeek, diffDays, endOfMonth, startOfMonth, type ISODate } 
 import type { Cents } from "../money";
 import { ruleOccurrences } from "./schedule";
 import type { Account, EngineInput, OneTimeTransaction } from "./types";
+import { isNotSpending } from "../categories";
 
 export interface CategoryTotal {
   category: string;
@@ -38,13 +39,15 @@ export function spendingByCategory(input: EngineInput, from: ISODate, to: ISODat
   for (const t of input.transactions) {
     if (t.status !== "posted" || t.date < from || t.date > until) continue;
     const acct = accounts.get(t.accountId);
-    if (!acct || acct.kind === "loan") continue;
+    if (!acct || acct.kind === "loan" || isNotSpending(t.category)) continue;
     if (t.direction === "out") add(t.category, t.amountCents, acct, false);
     else if (acct.kind === "credit_card") add(t.category, -t.amountCents, acct, false); // refund
   }
   for (const r of input.rules) {
     if (!SPENDING_RULE_KINDS.has(r.kind) || r.toAccountId) continue;
     const acct = accounts.get(r.accountId);
+    // A connected bank already shows what was actually paid; counting the bill too would double it.
+    if (acct?.balanceSource === "bank") continue;
     for (const o of ruleOccurrences(r, input.overrides, from, until)) add(r.category ?? r.name, o.amountCents, acct, true);
   }
   return [...totals.values()].filter((t) => t.cents !== 0).sort((a, b) => b.cents - a.cents || a.category.localeCompare(b.category));

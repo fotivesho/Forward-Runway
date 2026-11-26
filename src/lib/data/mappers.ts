@@ -70,6 +70,7 @@ export const mapAccount = (r: Row): Account => ({
   aprBps: n(r.apr_bps),
   minimumPaymentCents: n(r.minimum_payment_cents),
   archived: !!r.archived,
+  bankConnectionId: s(r.bank_connection_id),
 });
 
 export const mapRule = (r: Row): RecurringRule => ({
@@ -115,6 +116,8 @@ export const mapTransaction = (r: Row): OneTimeTransaction => ({
   isEstimate: !!r.is_estimate,
   flexible: r.flexible !== false,
   calendarEventId: s(r.calendar_event_id),
+  pending: !!r.pending,
+  externalId: s(r.external_id),
 });
 
 export const mapTransfer = (r: Row): Transfer => ({

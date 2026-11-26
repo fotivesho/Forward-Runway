@@ -47,7 +47,7 @@ const accountZ = z.object({
   kind: z.enum(["checking", "savings", "cash", "credit_card", "loan"]),
   balanceCents: cents.nullable(),
   balanceAsOf: nullableDate,
-  balanceSource: z.enum(["manual", "statement", "import", "onboarding"]).optional(),
+  balanceSource: z.enum(["manual", "statement", "import", "onboarding", "bank"]).optional(),
   isSpendable: z.boolean(),
   creditLimitCents: cents.nonnegative().nullable().optional(),
   statementCloseDay: dom,
