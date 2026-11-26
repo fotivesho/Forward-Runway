@@ -1,6 +1,8 @@
 import { formatShort, type ISODate } from "@/lib/dates";
 import type { Insight, lifeAhead, rhythm } from "@/lib/view/patterns";
 import { Info } from "./info";
+import { PatternExplorer } from "./pattern-explorer";
+import type { ExploreData } from "@/lib/view/explore";
 import { Money } from "./privacy";
 import { Glyph } from "@/components/icon";
 import { Badge, EmptyState } from "./ui";
@@ -36,6 +38,7 @@ export function PatternsView({
   periodEnd,
   spendingMoneyCents,
   learnedDays,
+  explore,
 }: {
   insights: Insight[];
   ahead: ReturnType<typeof lifeAhead>;
@@ -45,6 +48,7 @@ export function PatternsView({
   periodEnd: ISODate;
   spendingMoneyCents: number;
   learnedDays: number;
+  explore?: ExploreData;
 }) {
   if (!week) {
     return (
@@ -101,21 +105,7 @@ export function PatternsView({
         </section>
       )}
 
-      {/* Your week */}
-      <section className="card p-4" aria-labelledby="week-title">
-        <h2 id="week-title" className="text-base font-bold text-ink">
-          Your week <Info label="Your week">Each bar is what you usually spend on everyday things on that day of the week. The &ldquo;Pay&rdquo; bar is a typical day right after payday. Taller bars are the days your money goes fastest.</Info>
-        </h2>
-        <div className="mt-3 grid grid-cols-8 items-end gap-1.5" aria-hidden>
-          {[...week.weekday.map((c, i) => ({ c, l: WD[i]!, pay: false })), { c: week.payday, l: "Pay", pay: true }].map((d, i) => (
-            <div key={i} className="flex flex-col items-center gap-1">
-              <span className="text-[10px] tabular text-faint">${Math.round(d.c / 100)}</span>
-              <span className={`w-full rounded-md ${d.pay ? "bg-warn" : d.c === Math.max(...week.weekday) ? "bg-brand" : "bg-brand/40"}`} style={{ height: `${Math.max(6, (d.c / maxDay) * 72)}px` }} />
-              <span className={`text-[11px] font-semibold ${d.pay ? "text-warn" : "text-muted"}`}>{d.l}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {explore && <PatternExplorer data={explore} />}
 
       {/* The next 30 days */}
       <section className="card p-4" aria-labelledby="ahead-title">

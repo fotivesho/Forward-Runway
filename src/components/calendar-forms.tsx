@@ -12,6 +12,7 @@ import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { PlanImpact } from "./afford-result";
 import { Modal } from "./modal";
+import { PlanBuilder } from "./plan-builder";
 import { ActionForm, CheckboxField, DemoCtx, Field, FileField, MoneyField, Submit } from "./form";
 
 export function AddCalendarForm() {
@@ -51,7 +52,12 @@ export const PlanCtx = createContext<PlanContext | null>(null);
  * What-if checker does. The cap is always worked out from your numbers when you save.
  * In the demo you can try it; only saving is off.
  */
-export function PlanForm({ snapshot, today, nextPayday, events, calendarIncomplete, view, onDone }: PlanContext & { view?: EventView; onDone?: () => void }) {
+export function PlanForm(props: PlanContext & { view?: EventView; onDone?: () => void }) {
+  if (!props.view) return <PlanBuilder {...props} />;
+  return <EditPlanForm {...props} />;
+}
+
+function EditPlanForm({ snapshot, today, nextPayday, events, calendarIncomplete, view, onDone }: PlanContext & { view?: EventView; onDone?: () => void }) {
   const demo = useContext(DemoCtx);
   const ev = view?.event;
   const [title, setTitle] = useState(ev?.title ?? "");
@@ -79,7 +85,7 @@ export function PlanForm({ snapshot, today, nextPayday, events, calendarIncomple
     <ActionForm action={ev ? correctEvent : addManualEvent} demoPreview demoNote={false} onSuccess={onDone} className="grid gap-3" aria-label={ev ? `Change ${ev.title}` : "Add a plan"}>
       {ev && <input type="hidden" name="eventId" value={ev.id} />}
       <Field name="title" label="What's the plan?" placeholder="Birthday dinner, concert, weekend away…" maxLength={200} required value={title} onChange={(e) => setTitle(e.target.value)} />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-3 [&_input]:min-w-0 [&_input]:w-full">
         <Field name="date" type="date" label="When" min={today} required value={date} onChange={(e) => setDate(e.target.value)} />
         <MoneyField name="estimate" label="About how much?" value={notSpending ? "0" : amount} disabled={notSpending} onChange={(e) => setAmount(e.target.value)} />
       </div>
@@ -208,7 +214,7 @@ export function AddPlanButton(props: Omit<React.ComponentProps<typeof AddPlanFor
       <button type="button" className={className} onClick={() => setOpen(true)}>
         + Add
       </button>
-      <Modal open={open} onClose={() => setOpen(false)} icon="📅" title="Add a plan" subtitle="For anything that isn't on a calendar. See if it fits before you save it.">
+      <Modal open={open} onClose={() => setOpen(false)} icon="📅" title="Add a plan" subtitle="Three quick steps. You'll see if it fits before you save it.">
         <AddPlanForm {...form} onDone={() => setOpen(false)} />
       </Modal>
     </>

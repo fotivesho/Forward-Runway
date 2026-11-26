@@ -7,6 +7,7 @@ import { buildDashboard } from "@/lib/view/dashboard";
 import { buildBudget, categoryItems, groupOf, spendingReport } from "@/lib/view/budget";
 import { PatternsView } from "@/components/patterns-view";
 import { lifeSummary } from "@/lib/view/life";
+import { exploreData } from "@/lib/view/explore";
 
 export function PatternsPage({ snapshot, today, nowIso, demo = false }: ViewProps) {
   const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
@@ -15,7 +16,7 @@ export function PatternsPage({ snapshot, today, nowIso, demo = false }: ViewProp
     <>
       <PageHeader title="Money" subtitle="Habits we noticed in your spending, and what your everyday life will likely cost in the weeks ahead. Nothing here is a judgment: it just helps the numbers match real life." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
-      <PatternsView {...life} />
+      <PatternsView {...life} explore={exploreData(snapshot, today)} />
     </>
   );
 }

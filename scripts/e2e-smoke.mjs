@@ -135,8 +135,21 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/patterns", "/d
   const { page, errors } = await visit("/demo/calendar?add=1", 390);
   await page.waitForTimeout(400);
   check(errors.length === 0 && (await page.getByRole("dialog", { name: "Add a plan" }).isVisible()), "demo plans open with Add a plan ready");
+  {
+    const dlg = page.getByRole("dialog", { name: "Add a plan" });
+    check(/Free to plan with/.test(await dlg.innerText()), "add a plan starts from the paycheck: what's free");
+    await dlg.getByRole("button", { name: /^Dining$/ }).click();
+    await page.waitForTimeout(300);
+    check(/You usually spend/.test(await dlg.innerText()), "picking a category brings in your history for it");
+    await dlg.getByRole("button", { name: /^Usual/ }).click();
+    await page.waitForTimeout(400);
+    check(/(You're good|Doable|Not yet|Already covered)/.test(await dlg.innerText()), "a suggested amount gets an answer before saving");
+  }
   await page.goto(BASE + "/demo/forecast", { waitUntil: "networkidle" });
   check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
+  await page.goto(BASE + "/demo/spend/patterns", { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: "Day", exact: true }).click();
+  check(/on a usual/.test(await page.locator("main").innerText()), "patterns explorer drills into a weekday");
   await page.close();
 }
 

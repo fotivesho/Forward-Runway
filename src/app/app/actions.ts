@@ -505,6 +505,7 @@ export async function addManualEvent(_: ActionState, form: FormData): Promise<Ac
     estimate_source: v.estimate != null ? "user" : null,
     estimate_confirmed: v.estimate != null,
     payment_account_id: v.paymentAccountId ?? null,
+    category: v.category ?? null,
     user_corrected: true,
   });
   if (error) return dbError(error);
