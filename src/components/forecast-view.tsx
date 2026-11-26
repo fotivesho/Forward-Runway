@@ -48,39 +48,38 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
   return (
     <>
       <PageHeader title="Forecast" />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <section className="card overflow-hidden" aria-labelledby="fc-title">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="fc-title" className="text-base font-bold text-ink">
-                Cash on {formatShort(f.endDate)}
+              <h2 id="fc-title" className="text-sm font-bold text-muted">
+                Lowest ahead
                 <Info label="How this is worked out">
                   Your spendable cash, with paychecks, bills, card payments and plans{life.hasModel ? ", plus your usual everyday spending learned from your patterns" : ""}. The faint line is scheduled items only.
                 </Info>
               </h2>
-              <div role="group" aria-label="Forecast horizon" className="flex rounded-full border border-line p-0.5">
+              <div role="group" aria-label="Forecast horizon" className="flex rounded-full bg-surface-3 p-1">
                 {HORIZONS.map((h) => (
                   <button key={h} type="button" onClick={() => setHorizon(h)} aria-pressed={horizon === h}
-                    className={`min-h-8 rounded-full px-3 text-xs font-semibold ${horizon === h ? "bg-brand text-brand-ink" : "text-muted"}`}>
+                    className={`min-h-8 rounded-full px-3.5 text-xs font-bold transition ${horizon === h ? "bg-brand text-brand-ink shadow" : "text-faint hover:text-ink"}`}>
                     {h}d
                   </button>
                 ))}
               </div>
             </div>
-            <p className={`mt-1 text-5xl font-bold tracking-tight tabular ${end < 0 ? "text-danger" : "text-ink"}`}><Money cents={end} whole sign={end < 0} /></p>
-            <p className="mt-1 text-sm text-muted">
-              <Money cents={end - f.startingCashCents} whole sign tone="auto" className="font-semibold" /> from today
-              {below ? (
-                <span className="font-semibold text-warn"> · under your floor {formatShort(life.low.date)}</span>
-              ) : (
-                <span className="font-semibold text-brand"> · above your floor</span>
-              )}
+            <p className={`font-display mt-3 text-6xl leading-none tracking-tight tabular ${below ? "text-warn" : "text-ink"}`}><Money cents={life.low.cents} whole sign={life.low.cents < 0} /></p>
+            <p className="mt-2 text-sm">
+              <span className={`font-semibold ${below ? "text-warn" : "text-brand"}`}>
+                {below ? <><Money cents={f.floorCents - life.low.cents} whole /> under your floor</> : <><Money cents={life.low.cents - f.floorCents} whole /> above your floor</>}
+              </span>
+              <span className="text-faint"> · {formatShort(life.low.date)}</span>
             </p>
-            <div className="mt-3">
+            <div className="mt-4">
               <CashPath
                 dates={f.days.map((d) => d.date)}
                 floorCents={f.floorCents}
-                height={140}
+                height={150}
+                markLowest
                 lines={[
                   ...(life.hasModel ? [{ id: "sched", label: "Scheduled", cents: f.days.map((d) => d.closingCents), color: "text-muted", faint: true }] : []),
                   { id: "real", label: life.hasModel ? "Real life" : "Cash", cents: life.real, color: below ? "text-warn" : "text-brand" },
@@ -93,11 +92,11 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
               { label: "Paydays", v: inCents, tone: "in" as const, sub: `${paydays.length}×` },
               { label: "Out", v: -outCents, tone: "out" as const, sub: `${bills.length} items` },
               { label: "Everyday", v: -life.everyday, tone: "out" as const, sub: life.hasModel ? "expected" : "—" },
-              { label: "Lowest", v: life.low.cents, tone: undefined, sub: formatShort(life.low.date) },
+              { label: `On ${formatShort(f.endDate)}`, v: end, tone: undefined, sub: "end" },
             ].map((t) => (
               <div key={t.label} className="min-w-0 px-1 py-2">
                 <dt className="truncate text-[11px] font-bold text-ink">{t.label}</dt>
-                <dd className="truncate text-sm font-extrabold tabular"><Money cents={t.v} whole tone={t.tone} className={t.label === "Lowest" && below ? "text-warn" : ""} /></dd>
+                <dd className="truncate text-sm font-extrabold tabular"><Money cents={t.v} whole tone={t.tone} /></dd>
                 <dd className="truncate text-[10px] text-faint">{t.sub}</dd>
               </div>
             ))}

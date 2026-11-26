@@ -63,7 +63,7 @@ export function PatternsView({
   const short = pace && pace.gapCents < 0;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {/* Until payday, at your usual pace */}
       {pace && (
         <section className="card overflow-hidden" aria-labelledby="pace-title">
@@ -77,7 +77,7 @@ export function PatternsView({
               </h2>
               {short ? <Badge tone="warn">Tight</Badge> : <Badge tone="good">Covered</Badge>}
             </div>
-            <p className="mt-2 text-5xl font-bold tracking-tight text-ink">~<Money cents={pace.usualCents} whole /></p>
+            <p className="mt-2 font-display text-6xl leading-none tracking-tight text-ink">~<Money cents={pace.usualCents} whole /></p>
             <p className="mt-1 text-sm text-muted">
               You have <Money cents={spendingMoneyCents} whole className="font-semibold text-ink" /> ·{" "}
               {short ? (

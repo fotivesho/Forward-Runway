@@ -13,7 +13,6 @@ const LINKS: Array<{ href: string; label: string; Icon: LucideIcon }> = [
   { href: "/app/settings", label: "Settings", Icon: Settings },
 ];
 const MOBILE = ["/app", "/app/spend", "/app/calendar", "/app/what-if", "/app/forecast", "/app/accounts"];
-const CENTER = "/app/what-if";
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();
@@ -38,35 +37,22 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
         </ul>
       </nav>
 
-      {/* Phones: a floating dock. The current tab grows into a pill with its name; What if sits raised in the middle. */}
+      {/* Phones: a calm floating dock. Every tab is equal; the current one sits on a soft tile. */}
       <nav aria-label="Main" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:hidden">
-        <ul className="mx-auto flex max-w-md items-center justify-between rounded-[26px] border border-line/80 bg-surface/85 px-2 py-1.5 shadow-[0_10px_40px_-8px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+        <ul className="mx-auto grid max-w-md grid-cols-6 rounded-[28px] border border-line/70 bg-surface/90 p-1.5 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-xl">
           {LINKS.filter((l) => MOBILE.includes(l.href)).map(({ href, label, Icon }) => {
             const on = active(href);
-            if (href === CENTER)
-              return (
-                <li key={href} className="-mt-7">
-                  <Link
-                    href={to(href)}
-                    aria-label={label}
-                    aria-current={on ? "page" : undefined}
-                    className={`flex h-14 w-14 flex-col items-center justify-center rounded-full bg-brand text-brand-ink shadow-[0_8px_24px_-6px_var(--color-brand)] ring-4 ring-bg transition active:scale-95 ${on ? "scale-105" : ""}`}
-                  >
-                    <Icon aria-hidden size={22} strokeWidth={2.4} />
-                    <span className="text-[9px] font-bold leading-tight">{label}</span>
-                  </Link>
-                </li>
-              );
             return (
               <li key={href}>
                 <Link
                   href={to(href)}
-                  aria-label={label}
                   aria-current={on ? "page" : undefined}
-                  className={`flex h-11 items-center justify-center gap-1.5 rounded-full transition-all duration-200 ${on ? "bg-brand/15 px-3 text-brand" : "w-11 text-muted hover:text-ink"}`}
+                  className="group flex flex-col items-center gap-0.5 py-1"
                 >
-                  <Icon aria-hidden size={20} strokeWidth={on ? 2.5 : 2} />
-                  {on && <span className="text-xs font-bold">{label}</span>}
+                  <span className={`flex h-9 w-12 items-center justify-center rounded-2xl transition ${on ? "bg-brand/25 text-ink" : "text-muted group-hover:text-ink"}`}>
+                    <Icon aria-hidden size={20} strokeWidth={on ? 2.2 : 1.8} />
+                  </span>
+                  <span className={`text-[10.5px] leading-tight ${on ? "font-semibold text-ink" : "text-muted"}`}>{label}</span>
                 </Link>
               </li>
             );

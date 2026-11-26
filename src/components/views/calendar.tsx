@@ -32,7 +32,7 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
   return (
     <>
       <PageHeader title="Calendar plans" subtitle="Tap a day or a plan." action={ics ? <SyncButton label="Sync all" /> : undefined} />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           {m.coverage.incomplete && (
             <Notice tone="warn" title={m.coverage.status === "none" ? "No calendars connected" : "Calendar coverage is incomplete"}>

@@ -100,3 +100,21 @@ export function Disclosure({ summary, children, defaultOpen }: { summary: React.
     </details>
   );
 }
+
+const PILL = {
+  good: "bg-brand/12 text-brand [--dot:var(--color-brand)]",
+  warn: "bg-warn/12 text-warn [--dot:var(--color-warn)]",
+  bad: "bg-danger/12 text-danger [--dot:var(--color-danger)]",
+  info: "bg-info/12 text-info [--dot:var(--color-info)]",
+  neutral: "bg-surface-3 text-muted [--dot:var(--color-faint)]",
+} as const;
+
+/** One status look everywhere: a soft pill with a colored dot. */
+export function StatusPill({ tone, children }: { tone: keyof typeof PILL; children: React.ReactNode }) {
+  return (
+    <span className={`inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-semibold ${PILL[tone]}`}>
+      <span aria-hidden className="h-1.5 w-1.5 rounded-full" style={{ background: "var(--dot)" }} />
+      {children}
+    </span>
+  );
+}

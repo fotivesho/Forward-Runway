@@ -75,7 +75,7 @@ export function ReportsView({
   const periodName = (m: SpendingReport[number]) => (by === "month" ? `${m.label} ${m.month.slice(0, 4)}` : m.label);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <section className="card p-4 sm:p-5" aria-labelledby="rep-title">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="rep-title" className="text-base font-bold text-ink">{title}</h2>

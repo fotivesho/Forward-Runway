@@ -72,7 +72,7 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
     <>
       <PageHeader title="Money" subtitle="What repeats and every transaction." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
-      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
           <Summary label="Spent this month" value={<Money cents={spentThisMonth} whole />} />
           <Summary label="In this month" value={<Money cents={thisMonth.inCents} whole tone="in" />} />

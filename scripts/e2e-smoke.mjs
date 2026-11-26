@@ -69,8 +69,8 @@ for (const width of [390, 1280]) {
   check(!overflow, `no horizontal scroll at ${width}px`);
   check((await unlabeled(page)) === 0, `every demo input has a label at ${width}px`);
   check((await page.locator("form button[type=submit]:enabled").count()) === 0, "demo forms can't save");
-  await page.getByRole("button", { name: "60d" }).click();
-  check(await page.getByText("In 60 days").isVisible(), "horizon toggle switches to 60 days");
+  check(/(above|under) your floor/.test(await page.locator("main").innerText()), "today shows the floor takeaway");
+  check((await page.getByRole("link", { name: "Can I afford it?" }).count()) > 0, "can I afford it sits in the hero");
   await page.close();
 }
 

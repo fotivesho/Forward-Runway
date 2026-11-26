@@ -116,7 +116,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   if (!hasAccounts) return <EmptyState title="Add a cash account first">What if needs a checking balance to work from.</EmptyState>;
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {/* The question, big: like Safe to spend on Today */}
       <section className="card overflow-hidden" aria-labelledby="wi-q">
         <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
@@ -133,7 +133,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             <input
               id="wi-amount"
               aria-label="How much"
-              className="w-full min-w-0 bg-transparent text-5xl font-bold tracking-tight text-ink tabular outline-none placeholder:text-faint"
+              className="w-full min-w-0 bg-transparent font-display text-6xl leading-none tracking-tight text-ink tabular outline-none placeholder:text-faint"
               inputMode="decimal"
               value={amount}
               placeholder="0"

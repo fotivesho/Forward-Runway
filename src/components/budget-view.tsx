@@ -86,7 +86,7 @@ export function BudgetView({
   const monthName = new Date(`${plan.month}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
   const spendingBudget = plan.groups.needs.budgetCents + plan.groups.wants.budgetCents;
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {/* Where the month's income goes. */}
       <section className="card p-4 sm:p-5" aria-labelledby="split-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

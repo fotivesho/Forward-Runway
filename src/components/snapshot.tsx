@@ -75,7 +75,7 @@ function SnapTile({ icon, label, value, sub, bar, title }: { icon: string; label
           <div className="h-1.5 rounded-full bg-brand" style={{ width: `${Math.min(100, bar)}%` }} />
         </div>
       )}
-      <p className="mt-0.5 truncate text-[11px] text-muted sm:text-xs">{sub}</p>
+      <p className="mt-0.5 truncate text-[11px] text-faint sm:text-xs">{sub}</p>
     </li>
   );
 }

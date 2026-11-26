@@ -8,7 +8,7 @@ import type { Account } from "@/lib/engine";
 import type { EventView, Question } from "@/lib/view/dashboard";
 import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
-import { Badge, Disclosure } from "./ui";
+import { Badge, StatusPill, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
 import { Modal } from "./modal";
@@ -133,16 +133,15 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const betterOther = other && check && rank[other.verdict] < rank[check.verdict];
   const needs = !duplicate && estimate.needsInput && event.capCents == null;
   const cents = check ? view.plannedCents : (advice?.capCents ?? estimate.cents);
+  const verdictLabel = saved ? (saved.verdict === "yes" ? (saved.headline === "Yes, it's already planned." ? "Covered" : "You're good") : saved.verdict === "yes_with_plan" ? "Doable" : "Not yet") : "";
   const badge = needs ? (
-    <Badge tone="warn">Needs a cost</Badge>
+    <StatusPill tone="info">Needs a cost</StatusPill>
   ) : saved && !advice?.userDecided ? (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[saved.verdict].badge}`}>
-      {LOOK[saved.verdict].icon} {saved.verdict === "yes" ? (saved.headline === "Yes, it's already planned." ? "Covered" : "You're good") : saved.verdict === "yes_with_plan" ? "Doable" : "Not yet"}
-    </span>
+    <StatusPill tone={saved.verdict === "yes" ? "good" : saved.verdict === "yes_with_plan" ? "warn" : "bad"}>{verdictLabel}</StatusPill>
   ) : advice && !duplicate ? (
-    <Badge tone={REC_TONE[advice.recommendation]}>{advice.userDecided ? "Your call: " : ""}{REC_LABEL[advice.recommendation]}</Badge>
+    <StatusPill tone={({ good: "good", warn: "warn", bad: "bad", info: "info", neutral: "neutral" } as const)[REC_TONE[advice.recommendation] as "good"] ?? "neutral"}>{advice.userDecided ? "✓ " : ""}{REC_LABEL[advice.recommendation]}</StatusPill>
   ) : duplicate ? (
-    <Badge tone="info">Duplicate?</Badge>
+    <StatusPill tone="neutral">Duplicate?</StatusPill>
   ) : null;
   return (
     <li className="list-none">
@@ -153,11 +152,11 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
         className={`flex w-full items-center gap-3 rounded-xl border border-l-4 border-line bg-surface-2/40 px-3 py-2.5 text-left transition hover:bg-surface-2 ${needs ? "border-l-info" : saved ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[saved.verdict] : "border-l-line"}`}
       >
           <span className="min-w-0 flex-1">
-            <span className="block font-medium leading-snug text-ink [overflow-wrap:anywhere]">{event.title}</span>
-            <span className="block text-sm font-semibold text-ink/80">
+            <span className="block text-sm font-semibold leading-snug text-ink/85 [overflow-wrap:anywhere]">{event.title}</span>
+            <span className="block text-base font-bold tabular text-ink">
+              {!needs && cents > 0 && <><Money cents={cents} whole /> · </>}
               {formatShort(event.date)}
-              {!needs && cents > 0 && <> · <Money cents={cents} whole className="text-ink" /></>}
-              {event.missingFromFeed && " · removed from calendar"}
+              {event.missingFromFeed && <span className="text-xs font-normal text-faint"> · removed from calendar</span>}
             </span>
           </span>
           {badge}
@@ -186,8 +185,8 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                   <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">No cost yet</span>
                 ) : (
                   <>
-                    {(advice?.capCents ?? 0) > 0 && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-ink">Cap <Money cents={advice!.capCents} whole /></span>}
-                    <span className="rounded-full bg-surface-3 px-2 py-0.5 text-muted" title={estimate.basis}>{SOURCE_LABEL[estimate.source] ?? "Estimate"}</span>
+                    {(advice?.capCents ?? 0) > 0 && <span className="text-faint">Cap <Money cents={advice!.capCents} whole /> ·</span>}
+                    <span className="text-faint" title={estimate.basis}>{SOURCE_LABEL[estimate.source] ?? "Estimate"}</span>
                   </>
                 )}
                 {!check && advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
