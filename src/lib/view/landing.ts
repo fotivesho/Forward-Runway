@@ -58,6 +58,12 @@ export interface LandingData {
   bias: Record<string, number>;
   /** The next few pay periods and what's free in each. */
   planPeriods: Array<{ start: ISODate; end: ISODate; freeCents: Cents }>;
+  /** The story: the calendar as it is, the same plans priced, and one plan that needs a trade-off. */
+  story: {
+    calendar: Array<{ title: string; date: ISODate }>;
+    priced: Array<{ title: string; date: ISODate; cents: Cents; verdict: "yes" | "yes_with_plan" | "not_yet" }>;
+    tradeoff: { title: string; date: ISODate; cents: Cents; options: string[] } | null;
+  };
   /** The guided planner, filled in for one sample dinner. */
   planner: {
     period: { start: ISODate; end: ISODate; freeCents: Cents; perDayCents: Cents };
@@ -92,6 +98,18 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     snapshot,
     afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
+    story: (() => {
+      const upcoming = m.allEvents.filter((v) => !v.duplicate && v.event.date >= today).sort((a, b) => (a.event.date < b.event.date ? -1 : 1));
+      const priced = upcoming.filter((v) => v.plannedCents > 0 && v.check);
+      const t = priced.find((v) => v.check!.verdict === "yes_with_plan");
+      return {
+        calendar: upcoming.slice(0, 5).map((v) => ({ title: v.event.title, date: v.event.date })),
+        priced: priced.slice(0, 5).map((v) => ({ title: v.event.title, date: v.event.date, cents: v.plannedCents, verdict: v.check!.verdict })),
+        tradeoff: t
+          ? { title: t.event.title, date: t.event.date, cents: t.plannedCents, options: [t.check!.action, ...t.check!.alternatives].filter((o) => o.kind !== "none").slice(0, 3).map((o) => o.title.replace(/\.$/, "")) }
+          : null,
+      };
+    })(),
     insights: insights(snapshot, today).slice(0, 4),
     habits: everydayHabits(snapshot, today, 7).slice(0, 4),
     explore: exploreData(snapshot, today),
