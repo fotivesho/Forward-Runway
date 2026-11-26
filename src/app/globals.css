@@ -282,13 +282,41 @@ select.input {
   .fr-modal[open], .fr-modal[open]::backdrop { animation: none; }
 }
 
-/* ⓘ bubbles: a soft, neutral grey card in light mode, a quiet charcoal in dark. */
-.info-bubble { animation: fr-fade-up 180ms ease both; background: #f0f0ee; color: #2b2f2c; border: 1px solid rgb(0 0 0 / 0.06); }
-.info-bubble-x { color: #5c625e; background: rgb(0 0 0 / 0.05); }
-.info-bubble-x:hover { background: rgb(0 0 0 / 0.1); color: #2b2f2c; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .info-bubble { background: #2c302d; color: #ecebe6; border-color: rgb(255 255 255 / 0.08); }
-  :root:not([data-theme="light"]) .info-bubble-x { color: #c9cbc6; background: rgb(255 255 255 / 0.08); }
+/* ⓘ bubbles: frosted glass with a faint metallic sheen. Light: pale silver. Dark: smoked graphite. */
+.info-bubble {
+  animation: fr-fade-up 160ms ease both;
+  color: #23272a;
+  background:
+    linear-gradient(135deg, rgb(255 255 255 / 0.72) 0%, rgb(236 238 240 / 0.58) 45%, rgb(214 218 222 / 0.62) 100%);
+  border: 1px solid rgb(255 255 255 / 0.7);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 -1px 0 rgb(0 0 0 / 0.04), 0 18px 40px -16px rgb(20 30 25 / 0.35);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
 }
-:root[data-theme="dark"] .info-bubble { background: #2c302d; color: #ecebe6; border-color: rgb(255 255 255 / 0.08); }
-:root[data-theme="dark"] .info-bubble-x { color: #c9cbc6; background: rgb(255 255 255 / 0.08); }
+.info-bubble-title { color: #5b6166; letter-spacing: 0.06em; text-transform: uppercase; }
+.info-bubble-x { color: #6b7176; background: rgb(255 255 255 / 0.55); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06); }
+.info-bubble-x:hover { color: #23272a; background: rgb(255 255 255 / 0.85); }
+.info-dot {
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.5), rgb(200 205 208 / 0.25));
+  box-shadow: inset 0 0 0 1px rgb(120 128 132 / 0.45);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .info-bubble {
+    color: #eceeef;
+    background: linear-gradient(135deg, rgb(70 76 80 / 0.55) 0%, rgb(40 44 47 / 0.5) 50%, rgb(28 31 33 / 0.6) 100%);
+    border-color: rgb(255 255 255 / 0.12);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -14px rgb(0 0 0 / 0.6);
+  }
+  :root:not([data-theme="light"]) .info-bubble-title { color: #a9afb3; }
+  :root:not([data-theme="light"]) .info-bubble-x { color: #c4c9cc; background: rgb(255 255 255 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1); }
+  :root:not([data-theme="light"]) .info-dot { background: linear-gradient(145deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.02)); box-shadow: inset 0 0 0 1px rgb(200 205 208 / 0.35); }
+}
+:root[data-theme="dark"] .info-bubble {
+  color: #eceeef;
+  background: linear-gradient(135deg, rgb(70 76 80 / 0.55) 0%, rgb(40 44 47 / 0.5) 50%, rgb(28 31 33 / 0.6) 100%);
+  border-color: rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -14px rgb(0 0 0 / 0.6);
+}
+:root[data-theme="dark"] .info-bubble-title { color: #a9afb3; }
+:root[data-theme="dark"] .info-bubble-x { color: #c4c9cc; background: rgb(255 255 255 / 0.08); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1); }
+:root[data-theme="dark"] .info-dot { background: linear-gradient(145deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0.02)); box-shadow: inset 0 0 0 1px rgb(200 205 208 / 0.35); }

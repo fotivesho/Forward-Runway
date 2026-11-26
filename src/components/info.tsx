@@ -24,12 +24,12 @@ export function InfoBubble({ id, label, place, onClose, children }: { id?: strin
       aria-label={label}
       style={place}
       onClick={(e) => e.stopPropagation()}
-      className="info-bubble fixed inset-x-4 z-[60] mx-auto block max-w-sm rounded-2xl p-3.5 pr-10 text-left text-[13px] font-normal normal-case leading-relaxed tracking-normal shadow-[0_12px_40px_-12px_rgba(0,0,0,0.45)]"
+      className="info-bubble fixed inset-x-5 z-[60] mx-auto block max-w-xs rounded-[20px] px-4 py-3 pr-10 text-left text-[13px] font-normal normal-case leading-relaxed tracking-normal"
     >
-      <span className="mb-1 block text-xs font-bold">{label}</span>
+      <span className="info-bubble-title mb-1 block text-[10px] font-semibold">{label}</span>
       {children}
-      <button type="button" onClick={onClose} aria-label="Close" className="info-bubble-x absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full">
-        <X size={14} strokeWidth={2.4} aria-hidden />
+      <button type="button" onClick={onClose} aria-label="Close" className="info-bubble-x absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full transition">
+        <X size={12} strokeWidth={2.2} aria-hidden />
       </button>
     </span>
   );
@@ -67,8 +67,8 @@ export function Info({ children, label = "More info", className = "", color }: {
           e.stopPropagation();
           setPlace((p) => (p ? null : placeFor(e.currentTarget as HTMLElement)));
         }}
-        className={`relative ml-1 inline-flex h-[15px] w-[15px] items-center justify-center rounded-full border font-serif text-[10px] italic leading-none transition before:absolute before:-inset-2 before:content-[''] ${color ? "" : "border-faint/50 text-faint hover:border-brand hover:text-brand"}`}
-        style={color ? { borderColor: `${color}80`, color } : undefined}
+        className={`info-dot relative ml-1 inline-flex h-[14px] w-[14px] items-center justify-center rounded-full font-serif text-[9px] italic leading-none transition hover:opacity-100 before:absolute before:-inset-2 before:content-[''] ${color ? "opacity-80" : "text-faint opacity-80"}`}
+        style={color ? { color } : undefined}
       >
         i
       </button>
