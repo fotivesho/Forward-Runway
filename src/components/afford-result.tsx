@@ -183,20 +183,40 @@ export function AffordTiles({
 
 /** A calendar plan's answer, in the same shape as "Can I afford it?": verdict, tiles, and the suggested move. */
 /** A small labelled meter: value, a bar with the limit line, and a one-word status. */
-function Meter({ label, value, pos, tone, status }: { label: string; value: string; pos: number; tone: "good" | "warn" | "bad"; status: string }) {
+function Meter({ label, when, value, pos, tone, status }: { label: string; when?: string; value: string; pos: number; tone: "good" | "warn" | "bad"; status: string }) {
   const bar = { good: "bg-brand", warn: "bg-warn", bad: "bg-danger" }[tone];
   const text = { good: "text-brand", warn: "text-warn", bad: "text-danger" }[tone];
   return (
-    <div className="min-w-0 flex-1">
-      <p className="text-[11px] text-faint">{label}</p>
-      <p className="text-lg font-bold leading-tight tabular text-ink">{value}</p>
-      <div className="relative mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
+    <div className="min-w-0 flex-1 rounded-xl bg-surface px-2.5 py-2 shadow-sm">
+      <p className="text-[11px] font-semibold leading-tight text-muted">{label}</p>
+      {when && <p className="text-[10px] leading-tight text-faint">{when}</p>}
+      <p className="text-2xl font-extrabold leading-tight tabular text-ink">{value}</p>
+      <div className="relative mt-1 h-2 rounded-full bg-surface-3" aria-hidden>
         <span className={`absolute inset-y-0 left-0 rounded-full ${bar}`} style={{ width: `${Math.max(0, Math.min(100, pos))}%` }} />
         <LimitLine />
       </div>
-      <p className={`mt-0.5 truncate text-[11px] ${text}`}>{status}</p>
+      <p className={`mt-1 text-[11px] font-semibold leading-tight ${text}`}>{status}</p>
     </div>
   );
+}
+
+/** A one-line "doable" headline from the main option. */
+function doableTitle(a: AffordCheck["action"]): string {
+  const amt = a.title.match(/\$[\d,]+(?:\.\d\d)?/)?.[0];
+  switch (a.kind) {
+    case "move":
+      return amt ? `Doable with ${amt} from savings` : "Doable with savings";
+    case "skip_plan":
+      return "Doable if you skip a plan";
+    case "lean":
+      return "Doable if you run lean";
+    case "wait":
+      return "Doable if you wait";
+    case "cheaper":
+      return amt ? `Doable at ${amt}` : "Doable for less";
+    default:
+      return "Doable";
+  }
 }
 
 /** The answer in plain words: a short headline and one sentence of why, with the real numbers. */
@@ -209,26 +229,25 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
   const days = Math.max(1, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 86_400_000) + 1);
   const perDay = dollars(Math.floor(r.after / days));
-  const moveTitle = check.action.title.replace(/ by [A-Z][a-z]{2} \d+$/, "");
 
   if (check.verdict === "yes") {
     if (reservedCents > 0 && check.headline === "Yes, it's already planned.") {
-      return { title: "Already in your budget", why: `Your spending plan already holds ${dollars(reservedCents)} for this, so nothing else changes.` };
+      return { title: "Already covered", why: `Your spending plan already holds ${dollars(reservedCents)} for this, so nothing else changes.` };
     }
     if (card) {
-      return { title: "Fits", why: `It goes on your ${card.name.split(" ")[0]}. The bill due ${formatShort(card.due)} would be ${dollars(card.withCents)}, which you can pay in full.` };
+      return { title: "You're good", why: `It goes on your ${card.name.split(" ")[0]}. The bill due ${formatShort(card.due)} would be ${dollars(card.withCents)}, which you can pay in full.` };
     }
     if (r.borrowed > 0) {
-      return { title: "Fits, just", why: `It's ${dollars(r.borrowed)} more than your spending money for ${period}, so the next pay period gives up about that much.` };
+      return { title: "You're good, just", why: `It's ${dollars(r.borrowed)} more than your spending money for ${period}, so the next pay period gives up about that much.` };
     }
-    return { title: "Fits", why: `You'd still have ${dollars(r.after)} to spend ${period}, about ${perDay} a day.` };
+    return { title: "You're good", why: `You'd still have ${dollars(r.after)} to spend ${period}, about ${perDay} a day.` };
   }
   const gap = below
     ? `It would take your lowest balance to ${dollars(after)}, below the ${dollars(floor)} cushion you keep.`
     : card
       ? `The ${card.name.split(" ")[0]} bill due ${formatShort(card.due)} would be ${dollars(card.withCents)}, ${dollars(card.withCents - card.capCents)} more than you can pay in full.`
       : `It's ${dollars(r.shortfall)} more than the ${dollars(r.before)} you have to spend ${period}.`;
-  if (check.verdict === "yes_with_plan") return { title: `Doable: ${moveTitle.charAt(0).toLowerCase()}${moveTitle.slice(1)}`, why: gap };
+  if (check.verdict === "yes_with_plan") return { title: doableTitle(check.action), why: gap };
   return { title: "Not yet", why: `${gap} Even your savings can't cover it right now.` };
 }
 
@@ -248,16 +267,16 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
   const days = Math.max(1, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 86_400_000) + 1);
   return (
     <div className={`mt-2 rounded-xl border p-3 ${look.panel}`}>
-      <p className={`flex items-start gap-1.5 text-base font-bold leading-tight ${look.word}`}>
+      <p className={`flex items-center gap-1.5 truncate whitespace-nowrap text-base font-bold leading-tight ${look.word}`}>
         <span aria-hidden>{look.icon}</span>
-        <span>{title}</span>
+        <span className="truncate">{title}</span>
       </p>
-      <p className="mt-1 text-sm text-ink/90">{why}</p>
-      {check.verdict === "yes_with_plan" && <p className="mt-0.5 text-xs text-muted">{check.action.detail}</p>}
+      <p className="mt-0.5 text-xs leading-snug text-muted">{why}</p>
       <div className="mt-3 flex gap-3">
         {card ? (
           <Meter
-            label={`${card.name.split(" ")[0]} bill · ${formatShort(card.due)}`}
+            label={`${card.name.split(" ")[0]} bill`}
+            when={`due ${formatShort(card.due)}`}
             value={dollars(card.withCents)}
             pos={gauge(card.withCents, card.capCents, card.capCents)}
             tone={card.withCents > card.capCents ? (check.verdict === "yes" ? "warn" : "bad") : "good"}
@@ -265,15 +284,17 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
           />
         ) : (
           <Meter
-            label={`Spending money left · ${span(r.start, r.end)}`}
+            label="Spending money left"
+            when={span(r.start, r.end)}
             value={dollars(r.after)}
             pos={gauge(used, r.before, r.before)}
             tone={r.shortfall > 0 ? "warn" : "good"}
-            status={r.shortfall > 0 ? `${dollars(r.shortfall)} short` : `of ${dollars(r.before)} · ~${dollars(Math.floor(r.after / days))}/day`}
+            status={r.shortfall > 0 ? `${dollars(r.shortfall)} short` : `~${dollars(Math.floor(r.after / days))}/day of ${dollars(r.before)}`}
           />
         )}
         <Meter
-          label={`Lowest balance ahead · ${formatShort(check.lowest.after.date)}`}
+          label="Lowest balance ahead"
+          when={formatShort(check.lowest.after.date)}
           value={dollars(after)}
           pos={gauge(after, floor, cushionBefore > 0 ? cushionBefore : floor)}
           tone={after < floor ? "bad" : "good"}
@@ -289,16 +310,36 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
         </p>
       </details>
       {check.cash.viaCard && !check.cash.beyondHorizon && <p className="mt-1.5 text-[11px] text-muted">On {check.cash.viaCard.split(" ")[0]}: cash leaves {formatShort(check.cash.date)}</p>}
-      {check.verdict !== "yes" && (check.verdict === "not_yet" ? [check.action, ...check.alternatives] : check.alternatives).filter((x) => x.kind !== "none").length > 0 && (
-        <div className="mt-2 border-t border-line pt-2 text-xs">
-          <p className="font-semibold text-ink">{check.verdict === "not_yet" ? "Ways to make it work" : "Other ways"}</p>
-          <ul className="mt-1 space-y-1 text-muted">
-            {(check.verdict === "not_yet" ? [check.action, ...check.alternatives] : check.alternatives).filter((x) => x.kind !== "none").map((x) => (
-              <li key={x.title}>• <span className="font-medium text-ink">{x.title}.</span> {x.detail}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {check.verdict !== "yes" && (() => {
+        const opts = [check.action, ...check.alternatives].filter((x) => x.kind !== "none");
+        if (!opts.length) return null;
+        const tint: Record<string, string> = {
+          move: "border-warn/50 bg-warn/10",
+          skip_plan: "border-info/50 bg-info/10",
+          lean: "border-brand/50 bg-brand/10",
+          wait: "border-brand/50 bg-brand/10",
+          goal: "border-info/50 bg-info/10",
+          cheaper: "border-line bg-surface-2",
+        };
+        const icon: Record<string, string> = { move: "🛟", skip_plan: "✂️", lean: "🥗", wait: "⏳", goal: "🎯", cheaper: "🏷️" };
+        return (
+          <div className="mt-3">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">{check.verdict === "not_yet" ? "Ways to make it work" : "Options"}</p>
+            <ul className="grid gap-1.5">
+              {opts.map((x, i) => (
+                <li key={x.title} className={`rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
+                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                    <span aria-hidden>{icon[x.kind] ?? "•"}</span>
+                    <span className="min-w-0 flex-1">{x.title}</span>
+                    {i === 0 && <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">best</span>}
+                  </p>
+                  <p className="text-[11px] leading-snug text-muted">{x.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
     </div>
   );
 }
