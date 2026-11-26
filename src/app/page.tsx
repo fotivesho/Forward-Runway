@@ -2,7 +2,8 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
 import { Logo } from "@/components/logo";
 import { HeroAfford } from "@/components/landing/hero-afford";
-import { PlannerShowcase } from "@/components/landing/planner-showcase";
+import { PlannerTry } from "@/components/landing/planner-try";
+import { PatternExplorer } from "@/components/pattern-explorer";
 import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
 import { SnapshotTiles } from "@/components/snapshot";
@@ -83,8 +84,8 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <section className="reveal py-14 sm:py-20" aria-labelledby="plan-title">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Something coming up?</p>
             <h2 id="plan-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Plan it before you live it.</h2>
-            <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">&ldquo;Can I afford it?&rdquo; is for a maybe. This is for the things you&apos;re doing anyway: dinners, trips, birthdays. Three taps and you know what&apos;s free, what it usually costs you, and that it fits.</p>
-            <div className="mt-8"><PlannerShowcase planner={d.planner} /></div>
+            <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">&ldquo;Can I afford it?&rdquo; is for a maybe. This is for the things you&apos;re doing anyway: dinners, trips, birthdays. It knows what they usually cost <em>you</em>, even at a specific place, and shows what&apos;s left of that paycheck. Try it.</p>
+            <div className="mt-8"><PlannerTry periods={d.planPeriods} history={d.explore} /></div>
           </section>
         )}
 
@@ -113,16 +114,17 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="learns-title">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">It learns you</p>
           <h2 id="learns-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-display sm:text-5xl">Plans you made. Habits you didn't notice.</h2>
-          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your calendar covers the planned life. Your history covers the rest: lunch, rides, the payday splurge. Budgets come from both.</p>
+          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your calendar covers the planned life. Your history covers the rest: lunch, rides, the payday splurge. It finds the patterns, explains them in plain words, and turns them into a budget that fits the month ahead.</p>
           <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-            <article className="card p-4 sm:p-5">
+            <article className="card p-4 sm:p-5 lg:col-span-2">
               <h3 className="font-bold text-ink">What it noticed</h3>
-              <ul className="mt-3 grid grid-cols-2 gap-2">
+              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {d.insights.map((i) => (
                   <li key={i.id} className={`rounded-2xl border bg-surface p-3 ${i.tone === "warn" ? "border-warn/50" : "border-line"}`}>
                     <Glyph name={i.icon} size="md" />
                     <p className={`mt-2 text-xl font-extrabold tabular ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</p>
                     <p className="text-xs font-bold leading-snug text-ink">{i.title}</p>
+                    <p className="mt-1 text-[11px] leading-snug text-muted">{i.detail.split(". ")[0]}.</p>
                   </li>
                 ))}
               </ul>
@@ -141,6 +143,10 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                 </>
               )}
             </article>
+            <div>
+              <p className="mb-2 text-sm font-semibold text-muted">Go deeper. Tap anything: what you buy, which day, which month, the days after payday.</p>
+              <PatternExplorer data={d.explore} />
+            </div>
             <article className="card p-4 sm:p-5">
               <h3 className="font-bold text-ink">A budget that knows your life</h3>
               <p className="mt-1 text-sm text-muted">Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your patterns.</p>

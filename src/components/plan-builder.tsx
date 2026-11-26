@@ -8,7 +8,9 @@ import { parseDollars } from "@/lib/money";
 import { checkAffordability, previewOption, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
-import { DOW_SHORT, exploreData, profileCategory, suggestAmounts } from "@/lib/view/explore";
+import { DOW_SHORT, exploreData, profileCategory } from "@/lib/view/explore";
+import { estimatePlan, readTitle } from "@/lib/view/estimate";
+import { EstimateLine, PeopleStepper } from "./estimate-ui";
 import { PlanImpact } from "./afford-result";
 import { ActionForm, DemoCtx, Submit } from "./form";
 import { Glyph } from "./icon";
@@ -49,7 +51,19 @@ export function PlanBuilder({ snapshot, today, nextPayday, events, calendarIncom
   const [payWith, setPayWith] = useState("");
   const cards = snapshot.accounts.filter((a) => !a.archived && a.kind === "credit_card");
   const profile = useMemo(() => (cat ? profileCategory(x, cat) : null), [x, cat]);
-  const suggestions = useMemo(() => (cat ? suggestAmounts(profile, cat) : []), [profile, cat]);
+  const [people, setPeople] = useState(1);
+  const [peopleTouched, setPeopleTouched] = useState(false);
+  const [amountTouched, setAmountTouched] = useState(false);
+  // Words in the name fill in what they can ("with Sam" → 2 people, "at Lucia's" → that place).
+  const facts = useMemo(() => readTitle(title, cat), [title, cat]);
+  useEffect(() => {
+    if (!peopleTouched) setPeople(facts.people);
+  }, [facts.people, peopleTouched]);
+  const estimate = useMemo(() => (cat ? estimatePlan({ ...facts, category: cat, people }, x) : null), [facts, cat, people, x]);
+  // Until you type your own, the amount follows the estimate.
+  useEffect(() => {
+    if (estimate && !amountTouched) setAmount(String(estimate.cents / 100));
+  }, [estimate, amountTouched]);
   const answerRef = useRef<HTMLDivElement>(null);
 
   // What this paycheck already has to cover.
@@ -203,19 +217,17 @@ export function PlanBuilder({ snapshot, today, nextPayday, events, calendarIncom
               );
             })}
           </div>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {suggestions.map((sg) => {
-              const on = parseDollars(amount) === sg.cents;
-              return (
-                <button key={sg.label} type="button" onClick={() => setAmount(String(sg.cents / 100))} aria-pressed={on} className={chip(on)}>
-                  {sg.label} <Money cents={sg.cents} whole />
-                </button>
-              );
-            })}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <PeopleStepper value={people} onChange={(n) => { setPeople(n); setPeopleTouched(true); }} />
           </div>
+          {estimate && (
+            <div className="mt-2">
+              <EstimateLine e={estimate} selected={parseDollars(amount)} onPick={(c) => { setAmount(String(c / 100)); setAmountTouched(true); }} />
+            </div>
+          )}
           <label className="mt-2 flex items-center gap-2 rounded-2xl border border-line bg-surface px-3 focus-within:border-brand">
             <span className="text-lg text-muted">$</span>
-            <input className="min-w-0 flex-1 bg-transparent py-2.5 text-xl font-bold tabular text-ink outline-none" inputMode="decimal" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} aria-label="About how much" />
+            <input className="min-w-0 flex-1 bg-transparent py-2.5 text-xl font-bold tabular text-ink outline-none" inputMode="decimal" placeholder="0" value={amount} onChange={(e) => { setAmount(e.target.value); setAmountTouched(true); }} aria-label="About how much" />
           </label>
           {cards.length > 0 && (
             <div role="group" aria-label="Pay with" className="mt-2 grid grid-cols-2 gap-1 rounded-full bg-surface-2 p-1">

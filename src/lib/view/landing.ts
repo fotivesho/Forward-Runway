@@ -10,7 +10,7 @@ import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
 import { buildBudget, type BudgetPlan } from "./budget";
 import { everydayHabits, insights, type Habit, type Insight } from "./patterns";
-import { exploreData, profileCategory, suggestAmounts } from "./explore";
+import { exploreData, profileCategory, suggestAmounts, type ExploreData } from "./explore";
 
 export interface LandingStep {
   date: ISODate;
@@ -49,6 +49,10 @@ export interface LandingData {
   insights: Insight[];
   /** Everyday spending the sample person's habits predict for the next 7 days. */
   habits: Habit[];
+  /** The sample person's spending, for the explorer and the estimates on the landing page. */
+  explore: ExploreData;
+  /** The next few pay periods and what's free in each. */
+  planPeriods: Array<{ start: ISODate; end: ISODate; freeCents: Cents }>;
   /** The guided planner, filled in for one sample dinner. */
   planner: {
     period: { start: ISODate; end: ISODate; freeCents: Cents; perDayCents: Cents };
@@ -85,6 +89,8 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
     insights: insights(snapshot, today).slice(0, 4),
     habits: everydayHabits(snapshot, today, 7).slice(0, 4),
+    explore: exploreData(snapshot, today),
+    planPeriods: m.payPeriods.slice(0, 3).map((p) => ({ start: p.start, end: p.end, freeCents: p.freeCents })),
     planner: (() => {
       const period = m.payPeriods[1] ?? m.payPeriods[0];
       if (!period) return null;

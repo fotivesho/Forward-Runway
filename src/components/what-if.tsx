@@ -10,7 +10,11 @@ import { Info } from "./info";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
 import { CashPath } from "./cash-path";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import { Modal } from "./modal";
+import { exploreData } from "@/lib/view/explore";
+import { estimatePlan } from "@/lib/view/estimate";
+import { EstimateLine, PeopleStepper } from "./estimate-ui";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
@@ -25,6 +29,10 @@ const COMMON: Array<{ label: string; emoji: string; cents: number }> = [
   { label: "Weekend away", emoji: "🏕️", cents: 65_000 },
   { label: "New phone", emoji: "📱", cents: 110_000 },
   { label: "Laptop", emoji: "💻", cents: 240_000 },
+];
+const OWN_KINDS: Array<[string | null, string]> = [
+  ["Dining", "Dining out"], ["Shopping", "Shopping"], ["Entertainment", "Event or show"], ["Travel", "Trip"], ["Gifts", "Gift"],
+  ["Celebrations", "Party"], ["Personal care", "Self-care"], ["Home", "Home"], ["Car", "Car"], [null, "Something else"],
 ];
 const VERDICT_SHORT = { yes: "Good", yes_with_plan: "Doable", not_yet: "Not yet" } as const;
 
@@ -46,6 +54,28 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   const [payWith, setPayWith] = useState<string | null>(null);
   const [reserved, setReserved] = useState(0);
   const [added, setAdded] = useState<string | null>(null);
+  // "+ Your own": pick what it is, and the amount starts from what it usually costs you.
+  const history = useMemo(() => exploreData(snapshot, today), [snapshot, today]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [ownCat, setOwnCat] = useState<string | null>(null);
+  const [ownPeople, setOwnPeople] = useState(1);
+  const ownEst = useMemo(() => (ownCat ? estimatePlan({ category: ownCat, people: ownPeople }, history) : null), [ownCat, ownPeople, history]);
+  const chooseOwn = (cat: string | null, label: string) => {
+    setPickerOpen(false);
+    setReserved(0);
+    setAdded(null);
+    setOwnPeople(1);
+    if (!cat) {
+      setOwnCat(null);
+      setWhat("");
+      setAmount("");
+      window.setTimeout(() => document.getElementById("wi-amount")?.focus(), 0);
+      return;
+    }
+    setOwnCat(cat);
+    setWhat(label);
+    setAmount(String(estimatePlan({ category: cat, people: 1 }, history).cents / 100));
+  };
   const cents = parseDollars(useDeferredValue(amount));
   const valid = !!cents && cents > 0 && cents <= 5_000_000 && isISODate(date) && date >= today;
 
@@ -103,6 +133,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
 
   const plans = m.allEvents.filter((v) => v.plannedCents > 0 && v.event.decision !== "skip").slice(0, 4);
   const pick = (label: string, c: number, d?: ISODate, r = 0) => {
+    setOwnCat(null);
     setWhat(label);
     setAmount(String(c / 100));
     if (d) setDate(d);
@@ -149,19 +180,24 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             placeholder="on what?"
             maxLength={80}
           />
+          {ownCat && ownEst && (
+            <div className="mt-3 grid gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => setPickerOpen(true)} className="flex min-h-9 items-center gap-1.5 rounded-full bg-ink px-3 text-[13px] font-bold text-bg">
+                  <Glyph name={ownCat} size="xs" bare /> {OWN_KINDS.find((k) => k[0] === ownCat)?.[1] ?? ownCat} <ChevronDown size={14} aria-hidden />
+                </button>
+                <PeopleStepper value={ownPeople} onChange={(n) => { setOwnPeople(n); setAmount(String(estimatePlan({ category: ownCat, people: n }, history).cents / 100)); }} />
+              </div>
+              <EstimateLine e={ownEst} selected={parseDollars(amount)} onPick={(c) => setAmount(String(c / 100))} />
+            </div>
+          )}
           <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             <button
               type="button"
-              onClick={() => {
-                setWhat("");
-                setAmount("");
-                setReserved(0);
-                setAdded(null);
-                window.setTimeout(() => document.getElementById("wi-amount")?.focus(), 0);
-              }}
+              onClick={() => setPickerOpen(true)}
               className="flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-brand px-3.5 text-[13px] font-bold text-brand-ink shadow-[0_4px_14px_-6px_var(--color-brand)] transition active:scale-95"
             >
-              <Plus size={15} strokeWidth={2.6} aria-hidden /> Your own
+              <Plus size={15} strokeWidth={2.6} aria-hidden /> Your own <ChevronDown size={14} strokeWidth={2.6} aria-hidden />
             </button>
             {plans.map((v) => (
               <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
@@ -300,6 +336,28 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
           </div>
         </section>
       )}
+
+      <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} icon="plan" title="What is it?" subtitle="Amounts start from what you usually spend.">
+        <ul className="divide-y divide-line">
+          {OWN_KINDS.map(([cat, label]) => {
+            const e = cat ? estimatePlan({ category: cat, people: 1 }, history) : null;
+            return (
+              <li key={label}>
+                <button type="button" onClick={() => chooseOwn(cat, label)} className="flex w-full items-center gap-3 py-2.5 text-left">
+                  <Glyph name={cat ?? "plan"} size="md" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-bold text-ink">{label}</span>
+                    <span className="block text-xs text-faint">
+                      {!e ? "type your own amount" : e.basedOn ? <>you usually spend <Money cents={e.perPersonCents} whole /></> : <>typical <Money cents={e.cents} whole /> · no history yet</>}
+                    </span>
+                  </span>
+                  {e && <Money cents={e.cents} whole className="text-sm font-bold tabular text-ink" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </Modal>
 
       <Disclosure summary="Bigger what-ifs: a raise, a new bill, cancelling something">
         <ScenarioBuilder snapshot={snapshot} input={input} today={today} />
