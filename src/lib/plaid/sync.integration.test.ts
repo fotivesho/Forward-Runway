@@ -60,7 +60,7 @@ describe.skipIf(!REST)("bank sync, end to end", () => {
     const checking = accounts.find((a: { kind: string }) => a.kind === "checking");
     const card = accounts.find((a: { kind: string }) => a.kind === "credit_card");
     expect(checking).toMatchObject({ balance_cents: 243_118, balance_source: "bank", is_spendable: true, balance_as_of: today });
-    expect(card).toMatchObject({ balance_cents: 81_240, payment_account_id: checking.id, statement_close_day: 20, payment_due_day: 15, apr_bps: 2499 });
+    expect(card).toMatchObject({ payment_account_id: checking.id, statement_close_day: 20, payment_due_day: 15, apr_bps: 2499 });
 
     const { data: statements } = await user.from("card_statements").select("*");
     expect(statements).toHaveLength(1);
@@ -81,7 +81,18 @@ describe.skipIf(!REST)("bank sync, end to end", () => {
     expect(secret.access_token_enc).not.toContain("access-mock");
   });
 
-  it("syncs again without duplicating anything", async () => {
+  it("counts pending card purchases in what you owe", async () => {
+    const { data: card } = await user.from("accounts").select("id, balance_cents").eq("kind", "credit_card").single();
+    const { data: pending } = await user.from("transactions").select("amount_cents, direction").eq("account_id", card.id).eq("pending", true);
+    const net = pending.reduce((t: number, r: { amount_cents: number; direction: string }) => t + (r.direction === "out" ? Number(r.amount_cents) : -Number(r.amount_cents)), 0);
+    expect(net).toBeGreaterThan(0);
+    expect(Number(card.balance_cents)).toBe(81_240 + net);
+  });
+
+  it("syncs again without duplicating anything, and settles older statements", async () => {
+    const { data: card } = await user.from("accounts").select("id").eq("kind", "credit_card").single();
+    // An older statement left looking unpaid (say the app didn't sync between paying it and the next one closing).
+    await user.from("card_statements").insert({ user_id: USER, account_id: card.id, closing_date: "2020-01-20", due_date: "2020-02-15", statement_balance_cents: 50_000 });
     const before = await user.from("transactions").select("id", { count: "exact", head: true });
     const { data: conn } = await user.from("bank_connections").select("id").single();
     const r = await sync.syncBank(user, USER, conn.id, today);
@@ -90,6 +101,10 @@ describe.skipIf(!REST)("bank sync, end to end", () => {
     expect(after.count).toBe(before.count);
     const { data: accounts } = await user.from("accounts").select("id");
     expect(accounts).toHaveLength(3);
+    const { data: old } = await user.from("card_statements").select("status").eq("closing_date", "2020-01-20").single();
+    expect(old.status).toBe("paid");
+    const { data: latest } = await user.from("card_statements").select("status").neq("closing_date", "2020-01-20").single();
+    expect(latest.status).toBe("unpaid");
   });
 
   it("disconnects: forgets the token, keeps your accounts as manual ones", async () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { plaidMode, plaidSetup } from "./config";
 import { decryptToken, encryptToken, tokenKey } from "./crypto";
-import { accountBalanceCents, accountKind, accountName, categorize, statementRow, transactionRow } from "./map";
+import { accountBalanceCents, accountKind, accountName, categorize, pendingOwedCents, settleStatement, statementRow, transactionRow } from "./map";
 import { mockBank, mockLiabilities, mockTransactions } from "./mock";
 import type { PlaidAccount, PlaidTransaction } from "./types";
 
@@ -123,5 +123,24 @@ describe("fake bank", () => {
     const again = await mockBank.syncTransactions("x", first.next_cursor);
     expect(first.added.length).toBeGreaterThan(50);
     expect(again.added).toHaveLength(0);
+  });
+});
+
+describe("card accuracy", () => {
+  const row = { closing_date: "2026-11-03", statement_balance_cents: 666_367, paid_cents: 0 };
+  it("adds up every payment made since the statement closed", () => {
+    const r = settleStatement(row, [
+      { date: "2026-11-01", cents: 50_000 }, // before it closed: doesn't count toward this statement
+      { date: "2026-11-10", cents: 300_000 },
+      { date: "2026-11-20", cents: 200_000 },
+    ]);
+    expect(r).toMatchObject({ paid_cents: 500_000, status: "partial" });
+    expect(settleStatement(row, [{ date: "2026-11-27", cents: 700_000 }])).toMatchObject({ paid_cents: 666_367, status: "paid" });
+  });
+  it("keeps the bank's own paid figure when it's higher", () => {
+    expect(settleStatement({ ...row, paid_cents: 100_000 }, [])).toMatchObject({ paid_cents: 100_000, status: "partial" });
+  });
+  it("counts pending card purchases in what you owe, minus pending refunds", () => {
+    expect(pendingOwedCents([{ amount_cents: 2_345, direction: "out" }, { amount_cents: 500, direction: "in" }])).toBe(1_845);
   });
 });

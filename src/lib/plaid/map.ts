@@ -133,3 +133,24 @@ export function statementRow(l: PlaidCreditLiability, accountId: string) {
     status: paid >= balance ? ("paid" as const) : paid > 0 ? ("partial" as const) : ("unpaid" as const),
   };
 }
+
+/**
+ * How much of a statement is paid: the larger of what the bank's statement data says and the card
+ * payments it actually received after the statement closed (several smaller payments add up).
+ */
+export function settleStatement<T extends { closing_date: string; statement_balance_cents: number; paid_cents: number }>(
+  row: T,
+  payments: Array<{ date: string; cents: number }>,
+): T & { status: "paid" | "partial" | "unpaid" } {
+  const received = payments.filter((p) => p.date > row.closing_date).reduce((t, p) => t + p.cents, 0);
+  const paid = Math.min(row.statement_balance_cents, Math.max(row.paid_cents, received));
+  return { ...row, paid_cents: paid, status: paid >= row.statement_balance_cents ? "paid" : paid > 0 ? "partial" : "unpaid" };
+}
+
+/**
+ * Pending card activity the bank's "current" balance leaves out: purchases add to what you owe,
+ * refunds and payments reduce it. Cash accounts already use the available balance, which counts them.
+ */
+export function pendingOwedCents(rows: Array<{ amount_cents: number; direction: "in" | "out" }>): number {
+  return rows.reduce((t, r) => t + (r.direction === "out" ? r.amount_cents : -r.amount_cents), 0);
+}

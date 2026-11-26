@@ -6,6 +6,7 @@ import type { ViewProps } from "./types";
 import { BankConnections, type BankConnectionView } from "@/components/bank-connect";
 import { diffDays, formatShort } from "@/lib/dates";
 import { archiveAccount, deleteAccount, deleteGoal, deleteStatement, markStatementPaid } from "@/app/app/actions";
+import { ReplaceWithBankForm } from "@/components/replace-with-bank";
 
 const KIND = { checking: "Checking", savings: "Savings", cash: "Cash", credit_card: "Credit card", loan: "Loan" } as const;
 const SOURCE = { manual: "entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "from your bank" } as const;
@@ -54,6 +55,20 @@ export function AccountsView({
                   {a.aprBps != null && ` · ${(a.aprBps / 100).toFixed(2)}% APR`}
                 </p>
               )}
+              {(() => {
+                // A hand-entered account next to a connected one of the same type is probably the same account.
+                if (a.bankConnectionId || demo) return null;
+                const fam = (k: string) => (k === "credit_card" ? "card" : k === "loan" ? "loan" : "cash");
+                const options = active.filter((b) => b.bankConnectionId && fam(b.kind) === fam(a.kind));
+                if (options.length === 0) return null;
+                return (
+                  <div className="mt-3 rounded-xl border border-warn/50 bg-warn/5 p-3 text-sm">
+                    <p className="font-medium text-ink">Is this the same account your bank now keeps up to date?</p>
+                    <p className="mt-0.5 text-xs text-muted">If so, replace it: your paydays, bills, card payments, goals and plans move to the bank account and this one is archived, so your money isn't counted twice.</p>
+                    <div className="mt-2"><ReplaceWithBankForm from={a.id} options={options.map((b) => ({ id: b.id, name: b.name }))} /></div>
+                  </div>
+                );
+              })()}
               <div className="mt-3"><BalanceForm account={a} today={today} /></div>
               {a.kind === "credit_card" && (
                 <div className="mt-3">

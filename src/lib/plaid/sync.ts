@@ -5,7 +5,7 @@ import type { AppSupabaseClient } from "../supabase/server";
 import { bankApi } from "./client";
 import { plaidEnv, plaidMode } from "./config";
 import { decryptToken, encryptToken, tokenKey } from "./crypto";
-import { accountBalanceCents, accountKind, accountName, cardFields, statementRow, transactionRow } from "./map";
+import { accountBalanceCents, accountKind, accountName, cardFields, pendingOwedCents, settleStatement, statementRow, transactionRow } from "./map";
 import { PlaidError, type BankApi, type PlaidTransaction } from "./types";
 
 /**
@@ -92,10 +92,13 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
     const { data: known } = await supabase.from("accounts").select("id, external_id, kind, payment_account_id").not("external_id", "is", null);
     const byExternal = new Map((known ?? []).map((a) => [String(a.external_id), a]));
     const idFor = new Map<string, { id: string; kind: ReturnType<typeof accountKind> }>();
+    /** Each card's owed balance as the bank reports it, before pending purchases are added. */
+    const cardBase = new Map<string, number>();
     for (const a of bankAccounts) {
       const kind = accountKind(a);
       if (!kind) continue;
       const liability = liabilities.find((l) => l.account_id === a.account_id);
+      if (kind === "credit_card") cardBase.set(a.account_id, accountBalanceCents(a) ?? 0);
       const common = {
         balance_cents: accountBalanceCents(a),
         balance_as_of: today,
@@ -130,13 +133,6 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       }
     }
 
-    // Card statements.
-    for (const l of liabilities) {
-      const target = l.account_id ? idFor.get(l.account_id) : undefined;
-      const row = target ? statementRow(l, target.id) : null;
-      if (row) await supabase.from("card_statements").upsert({ ...row, user_id: userId }, { onConflict: "account_id,closing_date" });
-    }
-
     // Transactions, page by page from the last cursor.
     let cursor = (secret.sync_cursor as string | null) ?? null;
     let added = 0;
@@ -158,6 +154,39 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       added += r.added.length;
       cursor = r.next_cursor;
       if (!r.has_more) break;
+    }
+
+    // Cards: what you owe includes pending purchases (the bank's "current" balance doesn't).
+    for (const [ext, v] of idFor) {
+      if (v.kind !== "credit_card") continue;
+      const base = cardBase.get(ext);
+      if (base == null) continue;
+      const { data: pending } = await supabase.from("transactions").select("amount_cents, direction").eq("account_id", v.id).eq("pending", true);
+      const owed = base + pendingOwedCents((pending ?? []).map((r) => ({ amount_cents: Number(r.amount_cents), direction: r.direction as "in" | "out" })));
+      if (owed !== base) await supabase.from("accounts").update({ balance_cents: Math.max(0, owed) }).eq("id", v.id);
+    }
+
+    // Card statements: the latest from the bank, counting every payment made since it closed.
+    // Earlier statements are settled: anything unpaid on them rolled into the latest one's balance.
+    for (const l of liabilities) {
+      const target = l.account_id ? idFor.get(l.account_id) : undefined;
+      const row = target ? statementRow(l, target.id) : null;
+      if (!target || !row) continue;
+      const { data: pays } = await supabase
+        .from("transactions")
+        .select("date, amount_cents")
+        .eq("account_id", target.id)
+        .eq("direction", "in")
+        .eq("category", "Card payment")
+        .gt("date", row.closing_date);
+      const settled = settleStatement(row, (pays ?? []).map((r) => ({ date: String(r.date), cents: Number(r.amount_cents) })));
+      await supabase.from("card_statements").upsert({ ...settled, user_id: userId }, { onConflict: "account_id,closing_date" });
+      await supabase
+        .from("card_statements")
+        .update({ status: "paid" })
+        .eq("account_id", target.id)
+        .lt("closing_date", row.closing_date)
+        .neq("status", "paid");
     }
 
     await db.from("bank_secrets").update({ sync_cursor: cursor }).eq("connection_id", connectionId).eq("user_id", userId);

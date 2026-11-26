@@ -53,6 +53,8 @@ export function mockTransactions(today: ISODate): PlaidTransaction[] {
       tx(`spend-${d}-${k}`, rand() < 0.6 ? "mock-card" : "mock-checking", d, amount, name, primary, detailed, i === 0);
     }
   }
+  // A purchase still pending on the card today: not in the bank's "current" balance yet.
+  tx(`pending-card-${today}`, "mock-card", today, 23.45, "Noodle House", "FOOD_AND_DRINK", "FOOD_AND_DRINK_RESTAURANT", true);
   return out;
 }
 

@@ -120,6 +120,45 @@ export async function archiveAccount(form: FormData) {
   revalidatePath("/app", "layout");
 }
 
+/**
+ * Replace a hand-entered account with one your bank keeps up to date: everything that points at the
+ * old account (paydays, bills, card payments, goals, planned items, plans) moves to the bank account,
+ * then the old one is archived so it no longer counts. Its past history stays with it.
+ */
+export async function replaceWithBankAccount(_: ActionState, form: FormData): Promise<ActionState> {
+  const { supabase } = await session();
+  const from = String(form.get("from") ?? "");
+  const to = String(form.get("to") ?? "");
+  const uuidRe = /^[0-9a-f-]{36}$/i;
+  if (!uuidRe.test(from) || !uuidRe.test(to) || from === to) return invalid({ to: "Choose the bank account to use instead." });
+  const { data: pair } = await supabase.from("accounts").select("id, kind, bank_connection_id").in("id", [from, to]);
+  const a = pair?.find((x) => x.id === from);
+  const b = pair?.find((x) => x.id === to);
+  if (!a || !b) return fail("Couldn't find those accounts.");
+  if (!b.bank_connection_id) return invalid({ to: "Choose an account from a connected bank." });
+  const family = (k: string) => (k === "credit_card" ? "card" : k === "loan" ? "loan" : "cash");
+  if (family(String(a.kind)) !== family(String(b.kind))) return invalid({ to: "Choose an account of the same type (cash for cash, card for card)." });
+
+  const steps = [
+    supabase.from("recurring_rules").update({ account_id: to }).eq("account_id", from),
+    supabase.from("recurring_rules").update({ to_account_id: to }).eq("to_account_id", from),
+    supabase.from("accounts").update({ payment_account_id: to }).eq("payment_account_id", from),
+    supabase.from("savings_goals").update({ account_id: to }).eq("account_id", from),
+    supabase.from("calendar_events").update({ payment_account_id: to }).eq("payment_account_id", from),
+    supabase.from("transactions").update({ account_id: to }).eq("account_id", from).eq("status", "planned"),
+    supabase.from("transfers").update({ from_account_id: to }).eq("from_account_id", from).eq("status", "planned"),
+    supabase.from("transfers").update({ to_account_id: to }).eq("to_account_id", from).eq("status", "planned"),
+  ];
+  for (const step of steps) {
+    const { error } = await step;
+    if (error) return dbError(error, "Couldn't move everything over, so nothing was archived. Try again, or move items by hand.");
+  }
+  const { error } = await supabase.from("accounts").update({ archived: true }).eq("id", from);
+  if (error) return dbError(error);
+  revalidatePath("/app", "layout");
+  return ok("Done. Everything now uses the bank account, and the old one is archived (you can unarchive it any time).");
+}
+
 export async function deleteAccount(form: FormData) {
   const { supabase } = await session();
   const id = idFrom(form);
