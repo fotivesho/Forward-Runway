@@ -19,8 +19,13 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
   // Paydays and bills, so the calendar gives a sense of the whole month.
   const marks: DayMark[] = m.forecast90.days.flatMap((d) =>
     d.items
-      .filter((i) => i.kind === "income" || i.kind === "bill" || i.kind === "subscription" || i.kind === "loan_payment" || i.kind === "card_payment")
-      .map((i) => ({ date: d.date, kind: i.kind === "income" ? ("income" as const) : ("bill" as const), label: i.label, cents: i.cashEffectCents })),
+      .filter((i) => i.kind === "income" || i.kind === "bill" || i.kind === "subscription" || i.kind === "loan_payment" || i.kind === "card_payment" || (i.kind === "transfer" && i.cashEffectCents > 0))
+      .map((i) => ({
+        date: d.date,
+        kind: i.kind === "income" ? ("income" as const) : i.kind === "transfer" ? ("move" as const) : ("bill" as const),
+        label: i.kind === "transfer" ? `From savings${i.label ? ` · ${i.label}` : ""}` : i.label,
+        cents: i.cashEffectCents,
+      })),
   );
   const ics = snapshot.calendarSources.some((s) => s.kind === "ics_url" && s.enabled);
   return (

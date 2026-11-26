@@ -561,6 +561,15 @@ export async function applyPlanOption(form: FormData) {
   if (!ev) return;
   const kind = String(form.get("kind") ?? "");
 
+  if (kind === "undo") {
+    // Back to the app's suggestion: forget your call and remove savings moves planned for it.
+    await supabase.from("transfers").delete().eq("status", "planned").eq("note", `For ${String(ev.title).slice(0, 100)}`);
+    await supabase.from("calendar_events").update({ decision: null }).eq("id", eventId);
+    await logDecision(supabase, "event", eventId, "undo", { title: ev.title, via: "plan card" });
+    revalidatePath("/app", "layout");
+    return;
+  }
+
   if (kind === "decline") {
     await supabase.from("calendar_events").update({ decision: "skip", user_corrected: true }).eq("id", eventId);
     await logDecision(supabase, "event", eventId, "skip", { title: ev.title, via: "plan card" });

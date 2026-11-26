@@ -10,7 +10,7 @@ import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submi
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
-import { EditPlanButton } from "./calendar-forms";
+import { EditPlanButton, PlanCtx } from "./calendar-forms";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
 
@@ -178,7 +178,10 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                 )}
                 {!check && advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
               </p>
-              {check && view.checkCredit && (
+              {advice?.userDecided && (event.decision === "proceed" || event.decision === "cheaper" || event.decision === "skip") && (
+                <PlanSetSummary view={view} />
+              )}
+              {check && view.checkCredit && !advice?.userDecided && (
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="text-xs font-medium text-muted">Pay with</span>
                   <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Pay with">
@@ -196,10 +199,10 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                   )}
                 </div>
               )}
-              {check ? (
+              {check && !advice?.userDecided ? (
                 <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} eventId={event.id} payWith={view.checkCredit ? (credit ? view.creditCardId : null) : undefined} />
               ) : (
-                advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
+                !advice?.userDecided && advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
               )}
               {check && check.verdict === "yes" && view.checkCredit && credit !== savedCredit && (
                 <div className="mt-2 flex justify-end">
@@ -216,5 +219,31 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
         </div>
       </details>
     </li>
+  );
+}
+
+/** A plan you've decided on: what was set up for it, and Undo. */
+function PlanSetSummary({ view }: { view: EventView }) {
+  const ctx = useContext(PlanCtx);
+  const { event, advice } = view;
+  const moves = (ctx?.snapshot.transfers ?? []).filter((t) => t.status === "planned" && t.note === `For ${event.title.slice(0, 100)}`);
+  const card = ctx?.snapshot.accounts.find((a) => a.id === event.paymentAccountId && a.kind === "credit_card");
+  const skipped = event.decision === "skip";
+  return (
+    <div className={`mt-2 rounded-xl border p-3 ${skipped ? "border-line bg-surface-2" : "border-brand/50 bg-brand/[0.08]"}`}>
+      <p className={`text-base font-bold ${skipped ? "text-ink" : "text-brand"}`}>{skipped ? "Plan skipped" : "✓ Plan set"}</p>
+      <ul className="mt-1 space-y-0.5 text-sm text-ink">
+        {skipped && <li>• Its money is back in everyday spending</li>}
+        {!skipped && <li>• Paying with {card ? card.name : "debit"}</li>}
+        {moves.map((t) => (
+          <li key={t.id}>• <Money cents={t.amountCents} whole /> from savings on {formatShort(t.date)}</li>
+        ))}
+        {event.decision === "cheaper" && advice && <li>• Capped at <Money cents={advice.capCents} whole /></li>}
+        {view.check && !skipped && <li className="text-xs text-muted">Now: {view.check.verdict === "yes" ? "you're good" : view.check.verdict === "yes_with_plan" ? "still tight" : "still short"}</li>}
+      </ul>
+      <div className="mt-2 flex justify-end">
+        <QuickAction action={applyPlanOption} fields={{ eventId: event.id, kind: "undo" }} variant="ghost" confirm="Undo? This removes the savings moves planned for it and goes back to the suggestion.">Undo</QuickAction>
+      </div>
+    </div>
   );
 }

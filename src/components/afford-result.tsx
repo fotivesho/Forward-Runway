@@ -2,7 +2,8 @@
 
 import { formatShort, type ISODate } from "@/lib/dates";
 import { applyPlanOption } from "@/app/app/actions";
-import { QuickAction } from "./form";
+import { useContext, useState, useTransition } from "react";
+import { DemoCtx } from "./form";
 import { formatCents } from "@/lib/money";
 import type { AffordCheck } from "@/lib/engine";
 
@@ -297,6 +298,9 @@ export function PlanImpact({
   const after = check.lowest.after.cents;
   const cushionBefore = check.lowest.before.cents - floor;
   const { title, why } = explain(check, reservedCents);
+  const [chosen, setChosen] = useState<{ option: AffordCheck["action"]; payWith?: string | null; decline?: boolean } | null>(null);
+  const demo = useContext(DemoCtx);
+  if (chosen) return <ChosenBanner chosen={chosen} demo={demo} card={check.cash.viaCard ?? null} />;
   const days = Math.max(1, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 86_400_000) + 1);
   return (
     <div className={`mt-2 rounded-xl border p-3 ${look.panel}`}>
@@ -363,7 +367,7 @@ export function PlanImpact({
                 <li key={x.title} className={`min-w-0 overflow-hidden rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
                   <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
                     <span aria-hidden className="text-[13px]">{icon[x.kind] ?? "•"}</span>
-                    <span className="min-w-0 flex-1 truncate" title={x.title}>
+                    <span className="min-w-0 flex-1" title={x.title}>
                       {i === 0 && <span className="mr-1 text-warn" title="Best option">★</span>}
                       {shortTitle(x.title)}
                     </span>
@@ -371,14 +375,13 @@ export function PlanImpact({
                   <div className="flex items-end gap-2 pl-6">
                     <p className="min-w-0 flex-1 text-[10px] leading-snug text-faint">{x.detail}</p>
                     {eventId && (x.apply || x.kind === "lean") && (
-                      <QuickAction
-                        action={applyPlanOption}
-                        fields={{ eventId, kind: x.kind, apply: JSON.stringify({ ...(x.apply ?? {}), ...(payWith !== undefined ? { paymentAccountId: payWith } : {}) }) }}
-                        variant={i === 0 ? "primary" : "secondary"}
-                        confirm={confirmText(x)}
-                      >
-                        Do this
-                      </QuickAction>
+                      <DoThis
+                        eventId={eventId}
+                        option={x}
+                        payWith={payWith}
+                        primary={i === 0}
+                        onDone={() => setChosen({ option: x, payWith })}
+                      />
                     )}
                   </div>
                 </li>
@@ -386,14 +389,73 @@ export function PlanImpact({
             </ul>
             {eventId && (
               <div className="mt-2 flex justify-end">
-                <QuickAction action={applyPlanOption} fields={{ eventId, kind: "decline" }} variant="ghost" confirm="Skip this plan? Its money goes back to everyday spending.">
-                  Skip this plan
-                </QuickAction>
+                <DoThis eventId={eventId} option={{ kind: "none", title: "Skip this plan", detail: "" }} decline onDone={() => setChosen({ option: { kind: "none", title: "Skip this plan", detail: "" }, decline: true })} />
               </div>
             )}
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+/** "Do this" / "Skip this plan": asks once, does it (or, in the demo, shows what it would do). */
+function DoThis({
+  eventId,
+  option,
+  payWith,
+  primary = false,
+  decline = false,
+  onDone,
+}: {
+  eventId: string;
+  option: AffordCheck["action"];
+  payWith?: string | null;
+  primary?: boolean;
+  decline?: boolean;
+  onDone: () => void;
+}) {
+  const demo = useContext(DemoCtx);
+  const [pending, start] = useTransition();
+  const run = () => {
+    const msg = decline ? "Skip this plan? Its money goes back to everyday spending." : confirmText(option);
+    if (!window.confirm(demo ? `${msg}\n\n(Demo: nothing is saved.)` : msg)) return;
+    if (demo) return onDone();
+    start(async () => {
+      const f = new FormData();
+      f.set("eventId", eventId);
+      f.set("kind", decline ? "decline" : option.kind);
+      f.set("apply", JSON.stringify({ ...(option.apply ?? {}), ...(payWith !== undefined ? { paymentAccountId: payWith } : {}) }));
+      await applyPlanOption(f);
+      onDone();
+    });
+  };
+  return (
+    <button type="button" onClick={run} disabled={pending} className={`btn btn-sm shrink-0 ${decline ? "btn-ghost" : primary ? "btn-primary" : "btn-secondary"}`}>
+      {pending ? "…" : decline ? "Skip this plan" : "Do this"}
+    </button>
+  );
+}
+
+/** What was just set up, in plain words. */
+function ChosenBanner({ chosen, demo, card }: { chosen: { option: AffordCheck["action"]; payWith?: string | null; decline?: boolean }; demo: boolean; card: string | null }) {
+  const a = chosen.option.apply ?? {};
+  const moved = (a.moves ?? []).reduce((t, m) => t + m.cents, 0);
+  const lines: string[] = [];
+  if (chosen.decline) lines.push("Skipped. Its money is back in everyday spending.");
+  else {
+    if (chosen.payWith !== undefined) lines.push(chosen.payWith ? `Paying with ${card?.split(" ")[0] ?? "credit"}` : "Paying with debit");
+    if (moved) lines.push(`${dollars(moved)} from savings scheduled${a.date ? ` for ${formatShort(a.date)}` : ""}`);
+    if (a.skipEventIds?.length) lines.push(`${a.skipEventIds.length === 1 ? "Other plan" : "Other plans"} skipped`);
+    if (a.capCents) lines.push(`Capped at ${dollars(a.capCents)}`);
+    if (a.newDate) lines.push(`Moved to ${formatShort(a.newDate)}`);
+    if (chosen.option.kind === "lean") lines.push("Daily caps tighten until then");
+  }
+  return (
+    <div className={`mt-2 rounded-xl border p-3 ${chosen.decline ? "border-line bg-surface-2" : "border-brand/50 bg-brand/[0.08]"}`} role="status">
+      <p className={`text-base font-bold ${chosen.decline ? "text-ink" : "text-brand"}`}>{chosen.decline ? "Plan skipped" : "✓ Plan set"}</p>
+      <ul className="mt-1 space-y-0.5 text-sm text-ink">{lines.map((l) => <li key={l}>• {l}</li>)}</ul>
+      <p className="mt-1.5 text-[11px] text-muted">{demo ? "Demo preview: in your account this updates your forecast, caps and calendar." : "Your forecast, caps and calendar are updated."}</p>
     </div>
   );
 }

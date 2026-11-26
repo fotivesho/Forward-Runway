@@ -12,7 +12,7 @@ import { EmptyState } from "./ui";
 
 export interface DayMark {
   date: ISODate;
-  kind: "income" | "bill";
+  kind: "income" | "bill" | "move";
   label: string;
   cents: number;
 }
@@ -93,6 +93,7 @@ export function PlanCalendar({
             const dayMarks = marksOn(d);
             const payday = dayMarks.some((k) => k.kind === "income");
             const bills = dayMarks.filter((k) => k.kind === "bill").length;
+            const moves = dayMarks.some((k) => k.kind === "move");
             const past = d < today;
             const outside = d > end;
             const isSel = selected === d;
@@ -123,6 +124,7 @@ export function PlanCalendar({
                   <span className="flex items-center gap-0.5 text-[9px] leading-none sm:text-[10px]">
                     {payday && <span className="rounded bg-brand px-1 text-[8px] font-bold uppercase leading-[1.4] text-brand-ink sm:text-[9px]">Pay</span>}
                     {bills > 0 && <span className="rounded bg-out px-1 text-[8px] font-bold uppercase leading-[1.4] text-surface sm:text-[9px]">Bill</span>}
+                    {moves && <span className="rounded bg-warn px-1 text-[8px] font-bold uppercase leading-[1.4] text-surface sm:text-[9px]">Save</span>}
                   </span>
                 </button>
               </li>
@@ -136,6 +138,7 @@ export function PlanCalendar({
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info align-middle" />Needs a cost</span>
           <span><span className="mr-1 rounded bg-brand px-1 text-[9px] font-bold uppercase text-brand-ink">Pay</span>Payday</span>
           <span><span className="mr-1 rounded bg-out px-1 text-[9px] font-bold uppercase text-surface">Bill</span>Bill due</span>
+          <span><span className="mr-1 rounded bg-warn px-1 text-[9px] font-bold uppercase text-surface">Save</span>From savings</span>
           <span>Amount under a date = safe to spend that day</span>
         </p>
       </div>
@@ -184,7 +187,7 @@ export function PlanCalendar({
           <ul className="mb-3 space-y-1 rounded-xl border border-line p-2.5 text-sm">
             {marksOn(selected).map((k) => (
               <li key={k.label + k.cents} className="flex justify-between gap-2">
-                <span className="text-ink">{k.kind === "income" ? "💰" : "🧾"} {k.label}</span>
+                <span className="text-ink">{k.kind === "income" ? "💰" : k.kind === "move" ? "🛟" : "🧾"} {k.label}</span>
                 <Money cents={k.cents} sign tone="auto" />
               </li>
             ))}
