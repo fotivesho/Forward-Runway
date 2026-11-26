@@ -10,6 +10,7 @@ import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
 import { buildBudget, type BudgetPlan } from "./budget";
 import { everydayHabits, insights, type Habit, type Insight } from "./patterns";
+import { accuracy, biasByCategory, planResults, type Accuracy, type PlanResult } from "./actuals";
 import { exploreData, profileCategory, suggestAmounts, type ExploreData } from "./explore";
 
 export interface LandingStep {
@@ -51,6 +52,10 @@ export interface LandingData {
   habits: Habit[];
   /** The sample person's spending, for the explorer and the estimates on the landing page. */
   explore: ExploreData;
+  /** Finished sample plans matched to their real charges, and how close the estimates run. */
+  results: PlanResult[];
+  accuracy: Accuracy[];
+  bias: Record<string, number>;
   /** The next few pay periods and what's free in each. */
   planPeriods: Array<{ start: ISODate; end: ISODate; freeCents: Cents }>;
   /** The guided planner, filled in for one sample dinner. */
@@ -90,6 +95,9 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     insights: insights(snapshot, today).slice(0, 4),
     habits: everydayHabits(snapshot, today, 7).slice(0, 4),
     explore: exploreData(snapshot, today),
+    results: planResults(snapshot, today),
+    accuracy: accuracy(planResults(snapshot, today)),
+    bias: biasByCategory(snapshot, today),
     planPeriods: m.payPeriods.slice(0, 3).map((p) => ({ start: p.start, end: p.end, freeCents: p.freeCents })),
     planner: (() => {
       const period = m.payPeriods[1] ?? m.payPeriods[0];

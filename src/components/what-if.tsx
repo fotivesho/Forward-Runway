@@ -14,6 +14,7 @@ import { ChevronDown, Plus } from "lucide-react";
 import { Modal } from "./modal";
 import { exploreData } from "@/lib/view/explore";
 import { estimatePlan } from "@/lib/view/estimate";
+import { biasByCategory } from "@/lib/view/actuals";
 import { EstimateLine, PeopleStepper } from "./estimate-ui";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { buildDashboard } from "@/lib/view/dashboard";
@@ -56,10 +57,11 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   const [added, setAdded] = useState<string | null>(null);
   // "+ Your own": pick what it is, and the amount starts from what it usually costs you.
   const history = useMemo(() => exploreData(snapshot, today), [snapshot, today]);
+  const bias = useMemo(() => biasByCategory(snapshot, today), [snapshot, today]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [ownCat, setOwnCat] = useState<string | null>(null);
   const [ownPeople, setOwnPeople] = useState(1);
-  const ownEst = useMemo(() => (ownCat ? estimatePlan({ category: ownCat, people: ownPeople }, history) : null), [ownCat, ownPeople, history]);
+  const ownEst = useMemo(() => (ownCat ? estimatePlan({ category: ownCat, people: ownPeople }, history, bias[ownCat] ?? 1) : null), [ownCat, ownPeople, history]);
   const chooseOwn = (cat: string | null, label: string) => {
     setPickerOpen(false);
     setReserved(0);
@@ -74,7 +76,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
     }
     setOwnCat(cat);
     setWhat(label);
-    setAmount(String(estimatePlan({ category: cat, people: 1 }, history).cents / 100));
+    setAmount(String(estimatePlan({ category: cat, people: 1 }, history, bias[cat] ?? 1).cents / 100));
   };
   const cents = parseDollars(useDeferredValue(amount));
   const valid = !!cents && cents > 0 && cents <= 5_000_000 && isISODate(date) && date >= today;
@@ -186,7 +188,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
                 <button type="button" onClick={() => setPickerOpen(true)} className="flex min-h-9 items-center gap-1.5 rounded-full bg-ink px-3 text-[13px] font-bold text-bg">
                   <Glyph name={ownCat} size="xs" bare /> {OWN_KINDS.find((k) => k[0] === ownCat)?.[1] ?? ownCat} <ChevronDown size={14} aria-hidden />
                 </button>
-                <PeopleStepper value={ownPeople} onChange={(n) => { setOwnPeople(n); setAmount(String(estimatePlan({ category: ownCat, people: n }, history).cents / 100)); }} />
+                <PeopleStepper value={ownPeople} onChange={(n) => { setOwnPeople(n); setAmount(String(estimatePlan({ category: ownCat, people: n }, history, bias[ownCat] ?? 1).cents / 100)); }} />
               </div>
               <EstimateLine e={ownEst} selected={parseDollars(amount)} onPick={(c) => setAmount(String(c / 100))} />
             </div>
@@ -340,7 +342,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
       <Modal open={pickerOpen} onClose={() => setPickerOpen(false)} icon="plan" title="What is it?" subtitle="Amounts start from what you usually spend.">
         <ul className="divide-y divide-line">
           {OWN_KINDS.map(([cat, label]) => {
-            const e = cat ? estimatePlan({ category: cat, people: 1 }, history) : null;
+            const e = cat ? estimatePlan({ category: cat, people: 1 }, history, bias[cat] ?? 1) : null;
             return (
               <li key={label}>
                 <button type="button" onClick={() => chooseOwn(cat, label)} className="flex w-full items-center gap-3 py-2.5 text-left">

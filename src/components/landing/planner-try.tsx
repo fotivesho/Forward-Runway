@@ -22,13 +22,13 @@ const usd = (c: number) => `$${Math.round(Math.abs(c) / 100).toLocaleString("en-
  * pick a paycheck, a plan and how many people, and see what it will likely cost you, why, and what
  * it leaves of that paycheck.
  */
-export function PlannerTry({ periods, history }: { periods: Array<{ start: ISODate; end: ISODate; freeCents: number }>; history: ExploreData }) {
+export function PlannerTry({ periods, history, bias = {} }: { periods: Array<{ start: ISODate; end: ISODate; freeCents: number }>; history: ExploreData; bias?: Record<string, number> }) {
   const [pi, setPi] = useState(Math.min(1, periods.length - 1));
   const [kind, setKind] = useState(KINDS[0]!);
   const [people, setPeople] = useState(KINDS[0]!.people);
   const [opt, setOpt] = useState(0);
   const period = periods[pi]!;
-  const est = useMemo(() => estimatePlan({ category: kind.cat, people, nights: kind.nights ?? null }, history), [kind, people, history]);
+  const est = useMemo(() => estimatePlan({ category: kind.cat, people, nights: kind.nights ?? null }, history, bias[kind.cat] ?? 1), [kind, people, history, bias]);
   const amount = est.options[Math.min(opt, est.options.length - 1)]!.cents;
   const left = period.freeCents - amount;
   const days = Math.max(1, diffDays(period.start, period.end) + 1);

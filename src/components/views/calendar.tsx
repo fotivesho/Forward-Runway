@@ -1,3 +1,5 @@
+import { PlanResults } from "@/components/plan-results";
+import { accuracy, planResults } from "@/lib/view/actuals";
 import { typicalDays } from "@/lib/view/patterns";
 import { EventCard } from "@/components/advisor";
 import { AddCalendarForm, AddPlanButton, PlanProvider, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
@@ -58,6 +60,10 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
           </Card>
         </div>
         <div className="flex flex-col gap-4">
+          {(() => {
+            const r = planResults(snapshot, today);
+            return <PlanResults results={r} acc={accuracy(r)} />;
+          })()}
           <Card title="Connected calendars">
             {snapshot.calendarSources.length === 0 ? (
               <p className="text-sm text-muted">None yet.</p>

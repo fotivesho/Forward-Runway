@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useContext, useState } from "react";
+import { useContext, useMemo, useState } from "react";
 import { applyPlanOption, correctEvent, saveRule, saveTransaction, setEventDuplicate, updateBalance } from "@/app/app/actions";
 import { formatShort, type ISODate } from "@/lib/dates";
 import { previewOption, type Account } from "@/lib/engine";
@@ -13,6 +13,10 @@ import { Badge, StatusPill, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
 import { Modal } from "./modal";
+import { EstimateLine } from "./estimate-ui";
+import { estimatePlan, readTitle } from "@/lib/view/estimate";
+import { exploreData } from "@/lib/view/explore";
+import { biasByCategory } from "@/lib/view/actuals";
 import { EditPlanButton, PlanCtx } from "./calendar-forms";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
@@ -128,6 +132,13 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const [credit, setCredit] = useState(savedCredit);
   const [open, setOpen] = useState(false);
   const planCtx = useContext(PlanCtx);
+  // Smart estimate for this plan: kind and people from its title, your history, and how your past plans went.
+  const smart = useMemo(() => {
+    if (!planCtx || duplicate || estimate.source === "not_spending") return null;
+    const f = readTitle(event.title, event.category);
+    const x = exploreData(planCtx.snapshot, planCtx.today);
+    return estimatePlan(f, x, biasByCategory(planCtx.snapshot, planCtx.today)[f.category] ?? 1);
+  }, [planCtx, event.title, event.category, duplicate, estimate.source]);
   const check = view.checkCredit && credit ? view.checkCredit : (view.checkDebit ?? view.check);
   const saved = view.check;
   const other = credit ? view.checkDebit : view.checkCredit;
@@ -157,9 +168,11 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             <span className="block text-sm font-semibold leading-snug text-ink/85 [overflow-wrap:anywhere]">{event.title}</span>
             <span className="block text-base font-bold tabular text-ink">
               {!needs && cents > 0 && <><Money cents={cents} whole /> · </>}
+
               {formatShort(event.date)}
               {event.missingFromFeed && <span className="text-xs font-normal text-faint"> · removed from calendar</span>}
             </span>
+            {smart && <span className="block text-[11px] text-faint">likely <Money cents={smart.low} whole />–<Money cents={smart.high} whole /></span>}
           </span>
           {badge}
           <span aria-hidden className="text-faint">›</span>
@@ -182,6 +195,21 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             </>
           ) : (
             <>
+              {smart && (
+                <div className="mb-3">
+                  <EstimateLine e={smart} />
+                  {Math.abs(smart.cents - view.plannedCents) >= Math.max(500, view.plannedCents * 0.1) && (
+                    <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
+                      <span>Planned at <Money cents={view.plannedCents} whole className="font-semibold text-ink" /></span>
+                      <ActionForm action={correctEvent} demoPreview demoNote={false} aria-label="Use the estimate">
+                        <input type="hidden" name="eventId" value={event.id} />
+                        <input type="hidden" name="estimate" value={String(smart.cents / 100)} />
+                        <Submit variant="secondary" className="btn-sm">Use ~${Math.round(smart.cents / 100)}</Submit>
+                      </ActionForm>
+                    </div>
+                  )}
+                </div>
+              )}
               <p className="flex flex-wrap gap-1.5 text-[11px]">
                 {needs ? (
                   <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">No cost yet</span>

@@ -3,6 +3,8 @@ import { ThemeToggle } from "@/components/theme";
 import { Logo } from "@/components/logo";
 import { HeroAfford } from "@/components/landing/hero-afford";
 import { PlannerTry } from "@/components/landing/planner-try";
+import { Showcase, StickyDemo } from "@/components/landing/showcase";
+import { PlanResults } from "@/components/plan-results";
 import { PatternExplorer } from "@/components/pattern-explorer";
 import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
@@ -37,6 +39,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
   return (
     <>
       <RevealRoot />
+      <StickyDemo />
       {/* ------------------------------------------------------------ hero */}
       <div className="brand-band">
         <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
@@ -79,43 +82,31 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       </div>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* ---------------------------------------------- plan it */}
-        {d.planner && (
-          <section className="reveal py-14 sm:py-20" aria-labelledby="plan-title">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Something coming up?</p>
-            <h2 id="plan-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Plan it before you live it.</h2>
-            <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">&ldquo;Can I afford it?&rdquo; is for a maybe. This is for the things you&apos;re doing anyway: dinners, trips, birthdays. It knows what they usually cost <em>you</em>, even at a specific place, and shows what&apos;s left of that paycheck. Try it.</p>
-            <div className="mt-8"><PlannerTry periods={d.planPeriods} history={d.explore} /></div>
-          </section>
-        )}
-
-        {/* ---------------------------------------------- connect once */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="once-title">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
-          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Connect once. That's it.</h2>
-          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
-          <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
-            {[
-              { g: "bank", t: "Your bank and cards", b: "Balances, purchases and statements flow in. Read-only, through Plaid: your login never reaches us and nothing can move your money." },
-              { g: "plan", t: "Your calendars", b: "Google, iCloud or Outlook, shared ones too. Every plan gets a price and a verdict." },
-              { g: "💸", t: "Then it just runs", b: "Every morning: what's safe today, what's coming, and what your habits say you'll spend. Ask “can I afford it?” anytime." },
-            ].map((x, i) => (
-              <li key={x.t} className="relative rounded-2xl border border-line bg-surface p-5">
-                <span className="absolute right-4 top-4 font-display text-3xl leading-none text-brand/30">{i + 1}</span>
-                <Glyph name={x.g} size="lg" />
-                <span className="mt-3 block text-lg font-bold text-ink">{x.t}</span>
-                <span className="mt-1 block text-sm text-muted">{x.b}</span>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* ---------------------------------------------- it learns your life */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="learns-title">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">It learns you</p>
-          <h2 id="learns-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-display sm:text-5xl">Plans you made. Habits you didn't notice.</h2>
-          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your calendar covers the planned life. Your history covers the rest: lunch, rides, the payday splurge. It finds the patterns, explains them in plain words, and turns them into a budget that fits the month ahead.</p>
-          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
+        {/* ---------------------------------------------- what it does: one tabbed showcase */}
+        <section className="py-14 sm:py-20" aria-label="What it does">
+          <Showcase
+            tabs={[
+              {
+                id: "plan",
+                label: "Plan it",
+                kicker: "Something coming up?",
+                title: "Plan it before you live it.",
+                blurb: <>&ldquo;Can I afford it?&rdquo; is for a maybe. This is for things you&apos;re doing anyway: dinners, trips, birthdays. It knows what they usually cost <em>you</em>, and every plan you finish makes the next estimate sharper.</>,
+                content: (
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+                    <PlannerTry periods={d.planPeriods} history={d.explore} bias={d.bias} />
+                    <PlanResults results={d.results} acc={d.accuracy} />
+                  </div>
+                ),
+              },
+              {
+                id: "patterns",
+                label: "Patterns",
+                kicker: "It learns you",
+                title: "Habits you didn't notice.",
+                blurb: "Lunch, rides, the payday splurge, the subscription that crept up. It finds the patterns, explains them in plain words, and lets you dig into any of them.",
+                content: (
+<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <article className="card p-4 sm:p-5 lg:col-span-2">
               <h3 className="font-bold text-ink">What it noticed</h3>
               <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -147,6 +138,17 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <p className="mb-2 text-sm font-semibold text-muted">Go deeper. Tap anything: what you buy, which day, which month, the days after payday.</p>
               <PatternExplorer data={d.explore} />
             </div>
+          </div>
+                ),
+              },
+              {
+                id: "budget",
+                label: "Budget",
+                kicker: "Forward, not backward",
+                title: "A budget that knows your life.",
+                blurb: "Not a copy of last month. Bills and plans as they're scheduled, plus everyday life predicted from your patterns.",
+                content: (
+<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:max-w-2xl">
             <article className="card p-4 sm:p-5">
               <h3 className="font-bold text-ink">A budget that knows your life</h3>
               <p className="mt-1 text-sm text-muted">Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your patterns.</p>
@@ -181,12 +183,17 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               })()}
             </article>
           </div>
-        </section>
-
-        {/* ---------------------------------------------- supporting proof, compact */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
-          <h2 id="also-title" className="font-display text-3xl leading-tight text-display sm:text-4xl">Everything it watches for you.</h2>
-          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 ">
+                        ),
+              },
+              {
+                id: "daily",
+                label: "Every day",
+                kicker: "Every morning",
+                title: "Everything it watches for you.",
+                blurb: "Your accounts, your calendar priced, daily limits that know your week, and cards counted once.",
+                content: (
+                  <div>
+<div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 ">
             <article className="card p-4 sm:p-5">
               <h3 className="font-semibold text-ink">Everything, in one look</h3>
               <p className="mt-1 text-sm text-muted">Balances and card statements straight from your bank, or typed in. Always with when each was last updated.</p>
@@ -253,11 +260,40 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <li key={t} className="rounded-full border border-line px-3 py-1">{t}</li>
             ))}
           </ul>
+                          </div>
+                ),
+              },
+              {
+                id: "balance",
+                label: "Balance",
+                kicker: "Why not just check the bank?",
+                title: "Your balance isn't the full story.",
+                blurb: "Most of what's in your account already has a job. Here's how the sample balance gets spoken for.",
+                content: <SpokenFor data={d.spokenFor} />,
+              },
+            ]}
+          />
         </section>
 
-        {/* ---------------------------------------------- the short why */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-label="What your balance doesn't show">
-          <SpokenFor data={d.spokenFor} />
+        {/* ---------------------------------------------- connect once */}
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="once-title">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
+          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Connect once. That's it.</h2>
+          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
+          <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
+            {[
+              { g: "bank", t: "Your bank and cards", b: "Balances, purchases and statements flow in. Read-only, through Plaid: your login never reaches us and nothing can move your money." },
+              { g: "plan", t: "Your calendars", b: "Google, iCloud or Outlook, shared ones too. Every plan gets a price and a verdict." },
+              { g: "💸", t: "Then it just runs", b: "Every morning: what's safe today, what's coming, and what your habits say you'll spend. Ask “can I afford it?” anytime." },
+            ].map((x, i) => (
+              <li key={x.t} className="relative rounded-2xl border border-line bg-surface p-5">
+                <span className="absolute right-4 top-4 font-display text-3xl leading-none text-brand/30">{i + 1}</span>
+                <Glyph name={x.g} size="lg" />
+                <span className="mt-3 block text-lg font-bold text-ink">{x.t}</span>
+                <span className="mt-1 block text-sm text-muted">{x.b}</span>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* ---------------------------------------------- privacy, slim */}

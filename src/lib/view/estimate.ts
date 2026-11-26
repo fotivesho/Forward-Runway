@@ -102,7 +102,11 @@ function history(x: ExploreData | null, f: PlanFacts): { cat: Txn[]; place: Txn[
   return { cat, place };
 }
 
-export function estimatePlan(f: PlanFacts, x: ExploreData | null): Estimate {
+/**
+ * `bias`: how your finished plans of this kind compared with their estimates (1.06 = they usually
+ * ran 6% over). New estimates are adjusted by it.
+ */
+export function estimatePlan(f: PlanFacts, x: ExploreData | null, bias = 1): Estimate {
   const people = Math.max(1, Math.round(f.people || 1));
   const scales = !SHARED.has(f.category);
   const { cat, place } = history(x, f);
@@ -146,6 +150,12 @@ export function estimatePlan(f: PlanFacts, x: ExploreData | null): Estimate {
   }
   if (basedOn && TAX_TIP[f.category]) reasons.push("Tax and tip are already in your past totals");
 
+  if (bias !== 1) {
+    per = Math.round(per * bias);
+    low = Math.round(low * bias);
+    high = Math.round(high * bias);
+    reasons.push(`Your ${f.category.toLowerCase()} plans usually end up ${Math.abs(Math.round((bias - 1) * 100))}% ${bias > 1 ? "over" : "under"} the estimate, so this is adjusted ${bias > 1 ? "up" : "down"}`);
+  }
   const n = scales ? people : 1;
   if (scales && people > 1) reasons.push(`${people} people, so about $${Math.round(per / 100)} a person × ${people}`);
   if (f.category === "Travel" && f.nights) reasons.push(`${f.nights} night${f.nights === 1 ? "" : "s"} away`);

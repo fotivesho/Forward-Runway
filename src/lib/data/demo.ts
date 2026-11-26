@@ -108,6 +108,16 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
   add(152, 26_000, "Car", "Tire shop");
   add(63, 31_000, "Car", "Auto service");
   for (let k = 0; k < 6; k++) add(9 + 30 * k, k < 2 ? 1_199 : 1_099, "Subscriptions", "Music app");
+  // What those finished plans really cost.
+  for (const [n, ago, cents, description, category] of [
+    [1, 4, 9_120, "Osteria Nove", "Dining"],
+    [2, 11, 3_850, "Cineplex", "Entertainment"],
+    [3, 18, 5_640, "Brunch Club", "Dining"],
+    [4, 25, 4_500, "Salon Verde", "Personal care"],
+    [5, 33, 7_480, "The Tap Room", "Dining"],
+  ] as const) {
+    transactions.push({ id: `00000000-0000-4000-9300-${String(n).padStart(12, "0")}`, date: daysAgo(ago), amountCents: cents, direction: "out", accountId: ID.visa, description, category, status: "posted", cleared: true, flexible: true });
+  }
   transactions.push({
     id: "00000000-0000-4000-9000-999999999999",
     date: today,
@@ -172,6 +182,16 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       demoEvent("e10", ID.calPersonal, inDays(51), "Weekend getaway to the coast"),
       // A bigger plan that doesn't simply fit, so the demo shows what "with a plan" looks like.
       { ...demoEvent("e11", ID.calShared, inDays(10), "Flights to Mia's wedding"), estimateCents: 64_000, estimateConfirmed: true, estimateSource: "user" as const },
+      // Finished plans, so "How your plans went" can match them to real charges.
+      ...([
+        ["e20", 4, "Dinner with Jordan at Osteria Nove", 8_500, "Dining"],
+        ["e21", 11, "Movie night", 4_000, "Entertainment"],
+        ["e22", 18, "Brunch with Sam", 6_000, "Dining"],
+        ["e23", 25, "Haircut", 4_500, "Personal care"],
+        ["e24", 33, "Birthday drinks for Lee", 7_000, "Dining"],
+      ] as const).map(([k, ago, title, cents, category]) => ({
+        ...demoEvent(k, ID.calPersonal, daysAgo(ago), title), estimateCents: cents, estimateConfirmed: true, estimateSource: "user" as const, category,
+      })),
     ],
     corrections: [
       { id: "00000000-0000-4000-d000-000000000001", kind: "event_estimate", matchKey: "dinner sam", value: { estimateCents: 7_000 }, updatedAt: hoursAgo(240) },

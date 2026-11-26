@@ -10,6 +10,7 @@ import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { DOW_SHORT, exploreData, profileCategory } from "@/lib/view/explore";
 import { estimatePlan, readTitle } from "@/lib/view/estimate";
+import { biasByCategory } from "@/lib/view/actuals";
 import { EstimateLine, PeopleStepper } from "./estimate-ui";
 import { PlanImpact } from "./afford-result";
 import { ActionForm, DemoCtx, Submit } from "./form";
@@ -59,7 +60,8 @@ export function PlanBuilder({ snapshot, today, nextPayday, events, calendarIncom
   useEffect(() => {
     if (!peopleTouched) setPeople(facts.people);
   }, [facts.people, peopleTouched]);
-  const estimate = useMemo(() => (cat ? estimatePlan({ ...facts, category: cat, people }, x) : null), [facts, cat, people, x]);
+  const bias = useMemo(() => biasByCategory(snapshot, today), [snapshot, today]);
+  const estimate = useMemo(() => (cat ? estimatePlan({ ...facts, category: cat, people }, x, bias[cat] ?? 1) : null), [facts, cat, people, x, bias]);
   // Until you type your own, the amount follows the estimate.
   useEffect(() => {
     if (estimate && !amountTouched) setAmount(String(estimate.cents / 100));
