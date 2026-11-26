@@ -3,7 +3,7 @@ import { ThemeToggle } from "@/components/theme";
 import { Logo } from "@/components/logo";
 import { HeroAfford } from "@/components/landing/hero-afford";
 import { StickyDemo } from "@/components/landing/showcase";
-import { ForWho, Story } from "@/components/landing/story";
+import { Story } from "@/components/landing/story";
 import { RevealRoot } from "@/components/landing/motion";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { todayInZone } from "@/lib/dates";
@@ -74,12 +74,6 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <h2 id="how-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-5xl">Your calendar is your budget.</h2>
           <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Traditional budgets copy last month and hope. Runway starts from what&apos;s actually coming.</p>
           <Story d={d} />
-        </section>
-
-        {/* ---------------------------------------------- who it's for */}
-        <section className="reveal border-t border-line py-12 sm:py-16" aria-labelledby="who-title">
-          <h2 id="who-title" className="font-display text-3xl leading-tight text-display sm:text-4xl">Made for both kinds of people.</h2>
-          <div className="mt-6"><ForWho /></div>
         </section>
 
         {/* ---------------------------------------------- connect once */}

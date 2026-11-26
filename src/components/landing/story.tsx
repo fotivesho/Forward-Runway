@@ -178,30 +178,3 @@ export function Story({ d }: { d: LandingData }) {
     </ol>
   );
 }
-
-/** Two kinds of people, one product. */
-export function ForWho() {
-  const cards = [
-    {
-      icon: "📈",
-      title: "You've tried budgeting, and quit.",
-      body: "Spreadsheets and apps that only look backward, then scold you. This one looks at what's coming, so the budget fits your real month and you never re-enter a thing.",
-    },
-    {
-      icon: "lock",
-      title: "You've never budgeted. It feels scary.",
-      body: "No categories to set up, no rules, no guilt. Connect once and get one calm number each morning, plus a heads-up before something won't fit.",
-    },
-  ];
-  return (
-    <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 md:grid-cols-2">
-      {cards.map((c) => (
-        <li key={c.title} className="card p-5">
-          <Glyph name={c.icon} size="md" />
-          <p className="mt-3 text-lg font-bold text-ink">{c.title}</p>
-          <p className="mt-1 text-sm text-muted">{c.body}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
