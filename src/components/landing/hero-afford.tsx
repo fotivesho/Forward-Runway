@@ -34,11 +34,11 @@ const H = 80;
 function Meter({ label, when, before, after, limit, sub, tone }: { label: string; when: string; before: number; after: number; limit?: number; sub: string; tone: string }) {
   const scale = Math.max(1, before, after, limit ?? 0);
   return (
-    <div className="min-w-0 rounded-2xl bg-white p-3 shadow-[0_1px_2px_rgba(31,69,49,0.06),0_8px_20px_-12px_rgba(31,69,49,0.25)]">
+    <div className="min-w-0 rounded-2xl bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(31,69,49,0.06),0_8px_20px_-12px_rgba(31,69,49,0.25)]">
       <p className="text-[11px] font-bold" style={{ color: C.body }}>{label}</p>
       <p className="text-[10px]" style={{ color: C.muted }}>{when}</p>
       <p className="mt-1 flex items-baseline gap-1.5">
-        <span className="font-num text-2xl" style={{ color: C.ink }}>{usd(after)}</span>
+        <span className="font-num text-xl" style={{ color: C.ink }}>{usd(after)}</span>
         {after !== before && <span className="text-xs line-through" style={{ color: C.muted }}>{usd(before)}</span>}
       </p>
       <div className="relative mt-1.5 h-1.5 rounded-full" style={{ background: "#ebe4d2" }}>
@@ -155,10 +155,10 @@ export function HeroAfford({
             {after && shown && <path d={line(after)} fill="none" stroke={dot(shown.verdict)} strokeWidth="2.25" vectorEffect="non-scaling-stroke" />}
           </svg>
         </div>
-        <p className="mt-1.5 text-[11px] opacity-75">After every bill, card payment and plan until payday{hero.daysToPayday != null ? ` in ${hero.daysToPayday} days` : ""}.</p>
+        {pick == null && <p className="mt-1.5 text-[11px] opacity-75">After every bill, card payment and plan until payday{hero.daysToPayday != null ? ` in ${hero.daysToPayday} days` : ""}.</p>}
       </div>
 
-      <div className="space-y-3 p-4">
+      <div className="space-y-2.5 p-4">
         <div className="grid grid-cols-3 gap-2">
           {OPTIONS.map((o, i) => (
             <button key={o.label} type="button" onClick={() => reset(() => setPick(i))} aria-pressed={pick === i} className={`flex items-center justify-center gap-1.5 rounded-xl px-1 py-2 transition ${chip(pick === i)}`}>
@@ -174,7 +174,7 @@ export function HeroAfford({
 
         <div aria-live="polite">
           {shown && r && (
-            <div className="fade-up space-y-3">
+            <div className="fade-up space-y-2.5">
               {/* Debit or credit, first: see the difference */}
               {payChecks.length === 2 && (
                 <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/70 p-1 shadow-[inset_0_0_0_1px_rgba(31,69,49,0.08)]" role="group" aria-label="Pay with">

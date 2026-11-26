@@ -1,6 +1,6 @@
 import { QuickAction } from "@/components/form";
 import { DeleteAccountForm, DeleteDataForm, ImportForm, PasswordForm, ProfileForm, SettingsForm } from "@/components/settings-forms";
-import { Card, EmptyState, PageHeader } from "@/components/ui";
+import { Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
@@ -77,12 +77,14 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
               {demo ? <button className="btn btn-secondary" disabled>Download JSON</button> : <a href="/app/export" className="btn btn-secondary" download>Download JSON</a>}
             </div>
             <div>
-              <h3 className="mb-2 text-sm font-bold text-ink">Import <Info label="Import">Brings back data from a file you exported earlier. The file is checked first; if anything is wrong with it, nothing changes.</Info></h3>
-              <ImportForm />
+              <Disclosure summary={<span className="text-sm font-bold text-ink">Import a backup <Info label="Import">Brings back data from a file you exported earlier. The file is checked first; if anything is wrong with it, nothing changes.</Info></span>}>
+                <ImportForm />
+              </Disclosure>
             </div>
             <div>
-              <h3 className="text-sm font-bold text-ink">Change password</h3>
-              <PasswordForm />
+              <Disclosure summary={<span className="text-sm font-bold text-ink">Change password</span>}>
+                <PasswordForm />
+              </Disclosure>
             </div>
             <div className="rounded-xl border border-danger/40 p-3">
               <h3 className="mb-2 text-sm font-bold text-danger">Delete all data <Info label="Delete all data">Erases your accounts, bills, plans and everything the app remembers, but keeps your login so you can start fresh.</Info></h3>

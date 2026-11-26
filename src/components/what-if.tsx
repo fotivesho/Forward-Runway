@@ -108,7 +108,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   const payChecks = useMemo(
     () =>
       valid && cards.length
-        ? [{ id: null as string | null, name: "Debit" }, ...cards.map((c) => ({ id: c.id as string | null, name: c.name.split(" ")[0]! }))].map((o) => ({
+        ? [{ id: null as string | null, name: "Debit" }, ...cards.map((c) => ({ id: c.id as string | null, name: cards.length === 1 ? "Credit" : c.name.split(" ")[0]! }))].map((o) => ({
             ...o,
             c: checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: o.id, reservedCents: reserved }),
           }))

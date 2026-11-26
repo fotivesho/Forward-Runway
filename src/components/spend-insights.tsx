@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { CategoryBucket, FlowBucket } from "@/lib/view/spend";
 import { Money, useHideAmounts } from "./privacy";
 import { Glyph } from "@/components/icon";
+import { Info } from "./info";
 import { formatCents } from "@/lib/money";
 
 const toggle = (active: boolean) =>
@@ -59,12 +60,12 @@ export function CashFlowCard({ months, periods }: { months: FlowBucket[]; period
       </ol>
       <div className="mt-3 rounded-xl border border-line bg-surface-2/50 p-3 text-sm">
         <p className="flex flex-wrap items-baseline justify-between gap-2">
-          <span className="font-semibold text-ink">{b.label}{b.current ? " · so far + scheduled" : ""}</span>
-          <span className={`text-lg font-bold ${net >= 0 ? "text-in" : "text-out"}`}><Money cents={net} sign /></span>
+          <span className="font-semibold text-ink">{b.label}{b.current && <Info label="This period">So far, plus what&apos;s still scheduled before it ends.</Info>}</span>
+          <span className={`text-lg font-bold ${net >= 0 ? "text-in" : "text-out"}`}><Money cents={net} whole sign /></span>
         </p>
         <p className="mt-0.5 text-muted">
-          <Money cents={b.inCents} tone="in" /> in · <Money cents={-b.outCents} tone="out" /> out
-          {b.savingsCents > 0 && <> (incl. <Money cents={b.savingsCents} /> to savings)</>}
+          <Money cents={b.inCents} whole tone="in" /> in · <Money cents={-b.outCents} whole tone="out" /> out
+          {b.savingsCents > 0 && <Info label="Money out">Includes <Money cents={b.savingsCents} whole /> moved to savings. That money is still yours, just set aside.</Info>}
         </p>
       </div>
     </section>

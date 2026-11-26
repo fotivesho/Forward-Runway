@@ -10,6 +10,7 @@ import { RuleForm } from "./entity-forms";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Modal } from "./modal";
 import { Glyph } from "@/components/icon";
+import { Info } from "./info";
 import { Money } from "./privacy";
 
 const FREQ: Record<string, string> = { weekly: "every week", biweekly: "every 2 weeks", semimonthly: "twice a month", monthly: "every month" };
@@ -34,35 +35,37 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
   if (suggestions.length === 0) return null;
   return (
     <section className="mb-4 rounded-xl border border-info/40 bg-info/5 p-3" aria-labelledby="found-title">
-      <h3 id="found-title" className="text-sm font-bold text-ink">Found in your history</h3>
+      <h3 id="found-title" className="text-sm font-bold text-ink">Found in your history<Info label="Found in your history">These look like they repeat, based on your past purchases and deposits. Add one and it&apos;s counted ahead of time in your forecast and daily limits.</Info></h3>
       <ul className="mt-2 space-y-2">
         {suggestions.slice(0, 8).map((s) => (
-          <li key={s.key} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface px-3 py-2">
-            <Glyph name={s.kind === "income" ? "income" : s.category} size="md" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-medium text-ink">{s.name}</span>
-              <span className="block text-xs text-muted">
-                {s.varies ? "about " : ""}
-                <Money cents={s.kind === "income" ? s.amountCents : -s.amountCents} sign tone="auto" /> {FREQ[s.frequency]}
-                {s.frequency === "semimonthly" && s.dayOfMonth ? ` (${ordinal(s.dayOfMonth)} & ${ordinal(s.secondDayOfMonth ?? 15)})` : ""} · next {formatShort(s.nextDate)} · seen {s.seen}×
+          <li key={s.key} className="rounded-xl bg-surface p-3">
+            <div className="flex items-center gap-3">
+              <Glyph name={s.kind === "income" ? "income" : s.category} size="md" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-ink">{s.name}</span>
+                <span className="block text-xs text-muted">
+                  <span className={s.kind === "income" ? "text-in" : "text-out"}>{s.kind === "income" ? "+" : ""}{s.varies ? "~" : ""}<Money cents={s.amountCents} whole /></span> {FREQ[s.frequency]} · next {formatShort(s.nextDate)}
+                </span>
               </span>
-            </span>
-            <ActionForm action={saveRule} aria-label={`Add ${s.name}`}>
-              <input type="hidden" name="kind" value={s.kind} />
-              <input type="hidden" name="name" value={s.name} />
-              <input type="hidden" name="amount" value={centsToInput(s.amountCents)} />
-              <input type="hidden" name="accountId" value={s.accountId} />
-              <input type="hidden" name="category" value={s.category ?? ""} />
-              <input type="hidden" name="frequency" value={s.frequency} />
-              <input type="hidden" name="startDate" value={s.nextDate} />
-              {s.dayOfMonth != null && <input type="hidden" name="dayOfMonth" value={String(s.dayOfMonth)} />}
-              {s.secondDayOfMonth != null && <input type="hidden" name="secondDayOfMonth" value={String(s.secondDayOfMonth)} />}
-              <input type="hidden" name="weekendAdjust" value={s.kind === "income" ? "before" : "none"} />
-              {s.varies && <input type="hidden" name="isEstimate" value="on" />}
-              <Submit variant="primary" className="btn-sm" pendingLabel="Adding…">Add</Submit>
-            </ActionForm>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReview(s)}>Edit first</button>
-            <QuickAction action={dismissRecurring} fields={{ key: s.key }} label={`Not repeating: ${s.name}`}>✕</QuickAction>
+              <QuickAction action={dismissRecurring} fields={{ key: s.key }} label={`Not repeating: ${s.name}`}>✕</QuickAction>
+            </div>
+            <div className="mt-2 flex items-center gap-2 pl-12">
+              <ActionForm action={saveRule} aria-label={`Add ${s.name}`}>
+                <input type="hidden" name="kind" value={s.kind} />
+                <input type="hidden" name="name" value={s.name} />
+                <input type="hidden" name="amount" value={centsToInput(s.amountCents)} />
+                <input type="hidden" name="accountId" value={s.accountId} />
+                <input type="hidden" name="category" value={s.category ?? ""} />
+                <input type="hidden" name="frequency" value={s.frequency} />
+                <input type="hidden" name="startDate" value={s.nextDate} />
+                {s.dayOfMonth != null && <input type="hidden" name="dayOfMonth" value={String(s.dayOfMonth)} />}
+                {s.secondDayOfMonth != null && <input type="hidden" name="secondDayOfMonth" value={String(s.secondDayOfMonth)} />}
+                <input type="hidden" name="weekendAdjust" value={s.kind === "income" ? "before" : "none"} />
+                {s.varies && <input type="hidden" name="isEstimate" value="on" />}
+                <Submit variant="primary" className="btn-sm" pendingLabel="Adding…">Add as repeating</Submit>
+              </ActionForm>
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setReview(s)}>Edit first</button>
+            </div>
           </li>
         ))}
       </ul>

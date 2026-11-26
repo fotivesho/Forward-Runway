@@ -5,6 +5,7 @@ import { formatLong } from "@/lib/dates";
 import { GROUPS, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { Glyph } from "@/components/icon";
+import { Info } from "./info";
 import { Money, useHideAmounts } from "./privacy";
 
 const COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
@@ -136,7 +137,7 @@ export function ReportsView({
         </div>
         <p className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
           {!cat && focus === "all" && GROUPS.map((g) => <span key={g.id}><span className={`mr-1 inline-block h-2 w-2 rounded-full ${COLOR[g.id]}`} />{g.label}</span>)}
-          <span>Tap a bar to see that {by === "month" ? "month" : "pay period"}{data.length > 8 ? " and its total" : ""}.</span>
+          <Info label="Reading the chart">Each bar is one {by === "month" ? "month" : "pay period"}, split into needs, wants and savings. Tap a bar to see that {by === "month" ? "month" : "pay period"}'s categories below. The dashed line is your average.</Info>
         </p>
       </section>
 

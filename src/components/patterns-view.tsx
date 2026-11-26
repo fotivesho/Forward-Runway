@@ -13,15 +13,14 @@ const STAT = { good: "text-brand", warn: "text-warn", info: "text-ink" } as cons
 /** Insight tiles: icon, a big number, one line; the rest behind ⓘ. */
 export function InsightTiles({ items }: { items: Insight[] }) {
   return (
-    <ul className="grid grid-cols-2 gap-2">
+    <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
       {items.map((i) => (
-        <li key={i.id} className={`rounded-2xl border bg-surface p-3 shadow-sm ${TONE[i.tone]}`}>
-          <p className="flex items-center justify-between">
-            <Glyph name={i.icon} size="md" />
-            <Info label={i.title}>{i.detail}</Info>
-          </p>
-          <p className={`mt-1 text-xl font-extrabold tabular ${STAT[i.tone]}`}>{i.stat}</p>
-          <p className="text-xs font-bold leading-snug text-ink">{i.title}</p>
+        <li key={i.id} className={`flex w-48 shrink-0 snap-start items-start gap-2.5 rounded-2xl border bg-surface p-3 shadow-sm ${TONE[i.tone]}`}>
+          <Glyph name={i.icon} size="sm" />
+          <span className="min-w-0 flex-1">
+            <span className={`block text-lg font-extrabold leading-tight tabular ${STAT[i.tone]}`}>{i.stat}</span>
+            <span className="block text-xs font-bold leading-snug text-ink">{i.title}<Info label={i.title}>{i.detail}</Info></span>
+          </span>
         </li>
       ))}
     </ul>

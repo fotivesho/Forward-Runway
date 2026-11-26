@@ -59,12 +59,9 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <Link href="/demo/calendar?add=1" className={`${PRIMARY} justify-center px-3 sm:px-6`}>Try the demo →</Link>
               <Link href="/login?mode=signup" className={`${SECONDARY} justify-center px-3 sm:px-6`}>Sign up free</Link>
             </div>
-            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#b9cbb4] sm:text-sm">
+            <p className="mt-3 flex items-center gap-2 whitespace-nowrap text-xs text-[#b9cbb4] sm:text-sm">
               <span className="rounded-full bg-[#ddefbf]/15 px-2 py-0.5 font-semibold text-[#ddefbf]">Free beta</span>
-              <span className="font-semibold text-[#ddefbf]">Connect once. That&apos;s it.</span>
-              <span className="flex items-center gap-1"><Glyph name="bank" size="xs" bare /> Bank</span>
-              <span className="flex items-center gap-1"><Glyph name="card" size="xs" bare /> Cards</span>
-              <span className="flex items-center gap-1"><Glyph name="plan" size="xs" bare /> Calendars</span>
+              <span>Connect your bank, cards and calendar once.</span>
             </p>
           </div>
         </main>

@@ -19,7 +19,7 @@ export default function Terms() {
   return (
     <main id="main" className="mx-auto max-w-2xl px-4 py-10 text-sm leading-relaxed">
       <Link href="/" className="text-brand underline">← {APP_NAME}</Link>
-      <h1 className="mt-4 text-2xl font-bold">Terms of Service</h1>
+      <h1 className="font-display mt-4 text-4xl leading-tight text-display">Terms of Service</h1>
       <p className="mt-1 text-xs text-faint">Effective {EFFECTIVE}</p>
       <p className="mt-4 text-muted">
         These terms cover your use of {APP_NAME} at runwaytomorrow.com (the “service”). By creating an account or using the service, you agree to them.

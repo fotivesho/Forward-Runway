@@ -8,7 +8,7 @@ export default function Privacy() {
   return (
     <main id="main" className="mx-auto max-w-2xl px-4 py-10 text-sm leading-relaxed">
       <Link href="/" className="text-brand underline">← {APP_NAME}</Link>
-      <h1 className="mt-4 text-2xl font-bold">Privacy</h1>
+      <h1 className="font-display mt-4 text-4xl leading-tight text-display">Privacy</h1>
       <ul className="mt-4 list-disc space-y-2 pl-5 text-muted">
         <li>Your financial data is stored in a Postgres database with row-level security: every row belongs to your account, and the database itself refuses to show or change it for anyone else.</li>
         <li>Connecting a bank is optional. If you do, it goes through Plaid: you sign in to your bank in Plaid's window, and your bank login never reaches this app. The app receives your balances, card statement details and transactions (read-only; it can't move money). The bank access key is encrypted and kept in a part of the database only the server can read. Disconnecting, wiping your data or deleting your account also removes the connection at Plaid. Plaid's own privacy policy is at <a className="text-brand underline" href="https://plaid.com/legal/#end-user-privacy-policy" rel="noopener noreferrer" target="_blank">plaid.com/legal</a>.</li>

@@ -76,7 +76,8 @@ export function LoginForm({ initialMode, next, callbackError }: { initialMode: M
   const titles: Record<Mode, string> = { signin: "Sign in", signup: "Create your account", magic: "Email me a sign-in link", reset: "Reset your password" };
   return (
     <div className="card p-5">
-      <h1 className="text-xl font-bold">{titles[mode]}</h1>
+      <h1 className="font-display text-3xl leading-tight text-display">{titles[mode]}</h1>
+      {mode === "signup" && <p className="mt-1 text-sm text-muted">Free while in beta.</p>}
       <form onSubmit={submit} noValidate className="mt-4 flex flex-col gap-3">
         <div className="flex flex-col gap-1">
           <label htmlFor="email" className="text-sm font-medium">Email</label>
@@ -105,11 +106,17 @@ export function LoginForm({ initialMode, next, callbackError }: { initialMode: M
           </p>
         )}
       </form>
-      <div className="mt-4 flex flex-col gap-1 text-sm">
-        {mode !== "signin" && <button className="btn btn-ghost btn-sm justify-start" onClick={() => setMode("signin")}>Have an account? Sign in</button>}
-        {mode !== "signup" && <button className="btn btn-ghost btn-sm justify-start" onClick={() => setMode("signup")}>New here? Create an account</button>}
-        {mode !== "magic" && <button className="btn btn-ghost btn-sm justify-start" onClick={() => setMode("magic")}>Email me a sign-in link instead</button>}
-        {mode !== "reset" && <button className="btn btn-ghost btn-sm justify-start" onClick={() => setMode("reset")}>Forgot password?</button>}
+      <div className="mt-4 border-t border-line pt-4 text-center text-sm">
+        {mode === "signup" ? (
+          <button type="button" className="font-semibold text-brand" onClick={() => setMode("signin")}>Have an account? Sign in</button>
+        ) : (
+          <button type="button" className="font-semibold text-brand" onClick={() => setMode("signup")}>New here? Create an account</button>
+        )}
+        <p className="mt-2 flex justify-center gap-3 text-xs text-faint">
+          {mode !== "magic" && <button type="button" className="underline hover:text-ink" onClick={() => setMode("magic")}>Email me a link</button>}
+          {mode !== "reset" && <button type="button" className="underline hover:text-ink" onClick={() => setMode("reset")}>Forgot password?</button>}
+          {(mode === "magic" || mode === "reset") && <button type="button" className="underline hover:text-ink" onClick={() => setMode("signin")}>Back to sign in</button>}
+        </p>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { ProfileForm, SettingsForm } from "@/components/settings-forms";
 import { Badge } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { completeOnboarding } from "@/app/app/actions";
+import { Info } from "@/components/info";
 import { APP_NAME } from "@/lib/brand";
 
 function Step({ n, title, done, optional, children, why }: { n: number; title: string; done: boolean; optional?: boolean; children: React.ReactNode; why: string }) {
@@ -12,10 +13,11 @@ function Step({ n, title, done, optional, children, why }: { n: number; title: s
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 id={`step-${n}`} className="text-lg font-bold text-ink">
           <span className="mr-2 text-faint">{n}.</span>{title}
+          <Info label={title}>{why}</Info>
         </h2>
         {done ? <Badge tone="good">Done</Badge> : optional ? <Badge>Optional</Badge> : <Badge tone="warn">To do</Badge>}
       </div>
-      <p className="mb-3 mt-1 text-sm text-muted">{why}</p>
+      <div className="mt-3" />
       {done ? <details><summary className="cursor-pointer text-sm text-brand">Add another</summary><div className="mt-3">{children}</div></details> : children}
     </section>
   );
@@ -31,8 +33,11 @@ export function OnboardingView({ snapshot, today, demo = false }: ViewProps) {
   const ready = required.every(Boolean);
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold tracking-tight text-ink">Set up your runway</h1>
-      <p className="mb-4 mt-1 text-muted">About five minutes. Use real numbers where you know them and tick “estimate” where you don't — {APP_NAME} keeps facts and estimates separate. Everything can be changed later.</p>
+      <h1 className="font-display mb-1 text-3xl leading-tight text-display">
+        Set up your runway
+        <Info label="Setting up">Use real numbers where you know them, and tick &ldquo;estimate&rdquo; where you don&apos;t. {APP_NAME} keeps facts and estimates separate, and everything can be changed later.</Info>
+      </h1>
+      <p className="mb-4 text-sm text-muted">About five minutes.</p>
       <div className="flex flex-col gap-4">
         <Step n={1} title="About you" done={!!snapshot.profile.onboardedAt || !!snapshot.profile.displayName} optional why="Your time zone decides what “today” is.">
           <ProfileForm snapshot={snapshot} detectTimezone />

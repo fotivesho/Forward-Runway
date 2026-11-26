@@ -38,6 +38,8 @@ export function TransactionList({
   const [repeat, setRepeat] = useState(false);
   const [cat, setCat] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
+  // Show the latest days first; older ones a tap away.
+  const [days, setDays] = useState(10);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
   const onCard = (id: string) => accounts.find((a) => a.id === id)?.kind === "credit_card";
 
@@ -71,7 +73,7 @@ export function TransactionList({
       )}
       {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} />}
       <div className="space-y-3">
-        {[...groups.entries()].map(([date, list]) => {
+        {[...groups.entries()].slice(0, days).map(([date, list]) => {
           const dayOut = list.filter((t) => t.direction === "out").reduce((s, t) => s + t.amountCents, 0);
           return (
             <section key={date} aria-label={formatLong(date)}>
@@ -101,6 +103,11 @@ export function TransactionList({
           );
         })}
       </div>
+      {groups.size > days && (
+        <button type="button" onClick={() => setDays((d) => d + 14)} className="btn btn-ghost mt-3 w-full">
+          Show older · {groups.size - days} more day{groups.size - days === 1 ? "" : "s"}
+        </button>
+      )}
       {current && (
         <Modal
           open
