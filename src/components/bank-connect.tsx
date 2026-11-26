@@ -22,7 +22,10 @@ declare global {
         /** Set when coming back from a bank's own sign-in page (OAuth banks like Chase). */
         receivedRedirectUri?: string;
         onSuccess: (publicToken: string, metadata: { institution?: { name?: string } | null }) => void;
-        onExit?: (err: unknown) => void;
+        onExit?: (
+          err: { error_code?: string; error_type?: string; display_message?: string | null; error_message?: string } | null,
+          metadata: { institution?: { name?: string } | null; link_session_id?: string; request_id?: string; status?: string },
+        ) => void;
       }) => PlaidHandler;
     };
   }
@@ -57,7 +60,16 @@ function ago(iso: string | null): string {
  * Connect a bank with Plaid. Your bank sign-in happens in Plaid's own window: it never touches
  * this app. With the fake test bank (PLAID_ENV=mock), the window is skipped.
  */
-export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox" | "production"; connections: BankConnectionView[] }) {
+export function BankConnections({
+  mode,
+  connections,
+  redirectReady = true,
+}: {
+  mode: "mock" | "sandbox" | "production";
+  connections: BankConnectionView[];
+  /** PLAID_REDIRECT_URI is set: banks that sign in on their own site (Chase, Amex…) can send you back. */
+  redirectReady?: boolean;
+}) {
   const [pending, start] = useTransition();
   const [note, setNote] = useState<BankResult | null>(null);
 
@@ -86,7 +98,16 @@ export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox
             handler.destroy();
             finish();
           },
-          onExit: () => {
+          onExit: (err, metadata) => {
+            // Leaving on purpose says nothing; a failure says what Plaid reported, so it can be fixed.
+            if (err) {
+              const bank = metadata.institution?.name ?? "The bank";
+              const why = err.display_message || err.error_message || "the connection didn't finish";
+              setNote({
+                ok: false,
+                message: `${bank}: ${why}${err.error_code ? ` (Plaid code ${err.error_code}${metadata.link_session_id ? `, session ${metadata.link_session_id.slice(0, 12)}` : ""})` : ""}`,
+              });
+            }
             handler.destroy();
             finish();
           },
@@ -141,6 +162,11 @@ export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox
         </button>
       </div>
 
+      {mode === "production" && !redirectReady && (
+        <p className="mt-3 rounded-lg border border-warn/50 bg-warn/5 px-3 py-2 text-sm text-warn">
+          Banks that sign you in on their own website (American Express, Chase, Capital One…) need the server setting PLAID_REDIRECT_URI = https://runwaytomorrow.com/app/accounts in Vercel, then a redeploy.
+        </p>
+      )}
       {note && (
         <p role="status" className={`mt-3 rounded-lg border px-3 py-2 text-sm ${note.ok ? "border-brand/40 bg-brand/5 text-brand" : "border-danger/50 bg-danger/5 text-danger"}`}>
           {note.message}

@@ -20,7 +20,7 @@ export function AccountsView({
   demo = false,
   bank,
   bankSetupMissing,
-}: ViewProps & { bank?: { mode: "mock" | "sandbox" | "production"; connections: BankConnectionView[] }; bankSetupMissing?: string[] }) {
+}: ViewProps & { bank?: { mode: "mock" | "sandbox" | "production"; connections: BankConnectionView[]; redirectReady?: boolean }; bankSetupMissing?: string[] }) {
   const accounts = snapshot.accounts;
   const active = accounts.filter((a) => !a.archived);
   const archived = accounts.filter((a) => a.archived);
@@ -32,7 +32,7 @@ export function AccountsView({
     <>
       <PageHeader title="Accounts & goals" subtitle="Balances are the opening balance on their “as of” date. Keep spendable balances fresh for an accurate forecast." />
       <div className="grid gap-4">
-        {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} />}
+        {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} redirectReady={bank.redirectReady} />}
         {!bank && !demo && bankSetupMissing && (
           <section className="card border-warn/50 p-4 text-sm sm:p-5">
             <h2 className="text-base font-semibold text-ink">Bank connections are almost set up</h2>
