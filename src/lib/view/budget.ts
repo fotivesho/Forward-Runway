@@ -5,7 +5,10 @@
  *  1. Income: your repeating income (or, without it, your average income over recent months).
  *  2. Savings: your repeating savings transfers and goal contributions come off the top.
  *  3. Calendar plans this month are set aside next, at their caps.
- *  4. Each category starts from your usual month (average of the last full months with spending).
+ *  4. Each category starts from what this month will likely cost: everyday categories from your
+ *     patterns (daily rate, which weekdays and paydays fall in this month), big rare costs as a
+ *     monthly set-aside, the rest from your usual month (average of the last full months).
+ *     A plan with a category goes into that category's budget.
  *  5. If that doesn't fit, needs keep their usual amount and wants shrink to fit (rounded to $5).
  *  6. With no history at all, it falls back to 50 / 30 / 20 (needs / wants / savings) at group level.
  *  7. Any budget you set yourself wins over the suggestion.
@@ -18,6 +21,7 @@ import { isNotSpending } from "../categories";
 import { toEngineInput, type CategoryGroup, type Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
 import { payPeriodBuckets } from "./spend";
+import { predict, spendModel } from "./patterns";
 
 export const GROUPS: Array<{ id: CategoryGroup; label: string; hint: string }> = [
   { id: "needs", label: "Needs", hint: "Rent, bills, groceries, getting around" },
@@ -27,7 +31,7 @@ export const GROUPS: Array<{ id: CategoryGroup; label: string; hint: string }> =
 
 const DEFAULT_GROUP: Record<string, CategoryGroup> = {
   Groceries: "needs", Housing: "needs", Utilities: "needs", Transport: "needs", Health: "needs", Insurance: "needs", Debt: "needs",
-  Fees: "needs", Services: "needs", Home: "needs",
+  Fees: "needs", Services: "needs", Home: "needs", Car: "needs",
   Savings: "savings",
 };
 
@@ -72,6 +76,10 @@ export interface CategoryBudget {
   /** You set this budget yourself. */
   yours: boolean;
   spentCents: Cents;
+  /** Where the number comes from. */
+  basis: "pattern" | "usual" | "set-aside" | "yours";
+  /** Calendar plans this month in this category (inside budgetCents). */
+  planCents: Cents;
 }
 
 export interface BudgetPlan {
@@ -91,9 +99,11 @@ export interface BudgetPlan {
   /** Full months of history the usual amounts are based on. */
   monthsOfHistory: number;
   notes: string[];
+  /** This month as organized life (bills, plans) and everyday life (predicted from your patterns). */
+  life: { billsCents: Cents; plansCents: Cents; everydayCents: Cents; setAsideCents: Cents };
 }
 
-export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: string; date: ISODate; cents: Cents }> = []): BudgetPlan {
+export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: string; date: ISODate; cents: Cents; category?: string | null }> = []): BudgetPlan {
   const month = startOfMonth(today);
   const { y, m, d } = parts(today);
   const progress = d / daysInMonth(y, m);
@@ -124,7 +134,10 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
 
   // 3. Calendar plans this month.
   const monthPlans = plans.filter((p) => p.date >= month && p.date <= endOfMonth(month) && p.cents > 0);
-  const plansCents = monthPlans.reduce((t, p) => t + p.cents, 0);
+  // Plans with a category live in that category; the rest are set aside as "plans".
+  const planBy = new Map<string, Cents>();
+  for (const p of monthPlans) if (p.category && !isNotSpending(p.category)) planBy.set(p.category, (planBy.get(p.category) ?? 0) + p.cents);
+  const plansCents = monthPlans.filter((p) => !p.category || isNotSpending(p.category)).reduce((t, p) => t + p.cents, 0);
 
   // 4. Usual month per category: average over the last full months that had any spending.
   const history = monthlyByCategory(s, today, past).filter((h) => h.byCategory.size > 0);
@@ -139,13 +152,32 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     if (!usual.has(cat)) usual.set(cat, monthlyEquivalent(r));
   }
 
-  const names = new Set<string>([...usual.keys(), ...current!.byCategory.keys(), ...(s.categorySettings ?? []).filter((c) => c.monthlyBudgetCents != null).map((c) => c.name)]);
+  // Everyday categories: what your patterns say this month costs. Rare big costs: a monthly set-aside.
+  const model = spendModel(s, today);
+  const basisOf = new Map<string, CategoryBudget["basis"]>();
+  if (model) {
+    const p = predict(model, month, endOfMonth(month));
+    for (const c of p.byCategory) {
+      usual.set(c.category, c.cents);
+      basisOf.set(c.category, "pattern");
+    }
+    for (const l of model.lumpy) {
+      usual.set(l.category, l.monthlyCents);
+      basisOf.set(l.category, "set-aside");
+    }
+  }
+
+  const names = new Set<string>([...usual.keys(), ...planBy.keys(), ...current!.byCategory.keys(), ...(s.categorySettings ?? []).filter((c) => c.monthlyBudgetCents != null).map((c) => c.name)]);
   const cats: CategoryBudget[] = [...names]
     .filter((c) => !isNotSpending(c))
     .map((c) => {
       const mine = s.categorySettings?.find((x) => x.name === c)?.monthlyBudgetCents ?? null;
       const u = usual.get(c) ?? 0;
-      return { category: c, group: groupOf(c, s), usualCents: u, budgetCents: mine ?? round5(u), yours: mine != null, spentCents: current!.byCategory.get(c) ?? 0 };
+      const planCents = planBy.get(c) ?? 0;
+      return {
+        category: c, group: groupOf(c, s), usualCents: u, budgetCents: mine ?? round5(u) + planCents, yours: mine != null, spentCents: current!.byCategory.get(c) ?? 0,
+        basis: mine != null ? "yours" : (basisOf.get(c) ?? "usual"), planCents: mine != null ? 0 : planCents,
+      };
     });
 
   const available = incomeCents - savingsCents - plansCents;
@@ -155,13 +187,14 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     notes.push("No full month of history yet, so this starts from 50/30/20: half for needs, 30% for wants, 20% for savings.");
   } else if (history.length > 0) {
     // 5. Fit it: needs stay, wants shrink.
-    const fixed = cats.filter((c) => c.yours || c.group !== "wants").reduce((t, c) => t + c.budgetCents, 0);
     const flexible = cats.filter((c) => !c.yours && c.group === "wants");
-    const wantsTotal = flexible.reduce((t, c) => t + c.budgetCents, 0);
+    // Plans inside a category don't shrink: they're already decided.
+    const fixed = cats.reduce((t, c) => t + (flexible.includes(c) ? c.planCents : c.budgetCents), 0);
+    const wantsTotal = flexible.reduce((t, c) => t + c.budgetCents - c.planCents, 0);
     if (incomeCents > 0 && fixed + wantsTotal > available && wantsTotal > 0) {
       const room = Math.max(0, available - fixed);
       const factor = room / wantsTotal;
-      for (const c of flexible) c.budgetCents = round5(c.budgetCents * factor);
+      for (const c of flexible) c.budgetCents = round5((c.budgetCents - c.planCents) * factor) + c.planCents;
       notes.push(
         room > 0
           ? `Your usual month is more than your income allows after savings and plans, so wants are trimmed to ${Math.round(factor * 100)}% of usual. Needs keep their usual amount.`
@@ -187,6 +220,16 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
   }
   groups.wants.budgetCents += plansCents;
 
+  const billKinds = new Set(["bill", "subscription", "expense", "loan_payment"]);
+  const billCats = new Set(s.rules.filter((r) => r.active !== false && billKinds.has(r.kind) && !r.toAccountId).map((r) => (r.kind === "loan_payment" ? "Debt" : (r.category ?? r.name))));
+  const life = { billsCents: 0, plansCents: plansCents, everydayCents: 0, setAsideCents: 0 };
+  for (const c of cats) {
+    life.plansCents += c.planCents;
+    const rest = c.budgetCents - c.planCents;
+    if (c.basis === "set-aside") life.setAsideCents += rest;
+    else if (billCats.has(c.category)) life.billsCents += rest;
+    else life.everydayCents += rest;
+  }
   const assigned = groups.needs.budgetCents + groups.wants.budgetCents + groups.savings.budgetCents;
   return {
     month,
@@ -202,6 +245,7 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     basis,
     monthsOfHistory: history.length,
     notes,
+    life,
   };
 }
 

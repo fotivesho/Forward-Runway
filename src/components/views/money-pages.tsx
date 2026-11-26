@@ -5,10 +5,24 @@ import { PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { buildBudget, categoryItems, groupOf, spendingReport } from "@/lib/view/budget";
+import { PatternsView } from "@/components/patterns-view";
+import { lifeSummary } from "@/lib/view/life";
+
+export function PatternsPage({ snapshot, today, nowIso, demo = false }: ViewProps) {
+  const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
+  const { model: _model, ...life } = lifeSummary(snapshot, today, m);
+  return (
+    <>
+      <PageHeader title="Money" subtitle="Your patterns, and what's likely ahead." />
+      <MoneyTabs base={demo ? "/demo" : "/app"} />
+      <PatternsView {...life} />
+    </>
+  );
+}
 
 export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps) {
   const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
-  const plans = m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }));
+  const plans = m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category }));
   return (
     <>
       <PageHeader title="Money" subtitle="This month's plan." />

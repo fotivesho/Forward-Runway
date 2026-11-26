@@ -14,6 +14,7 @@ import { ItemRow } from "./timeline";
 import { Badge, Card, Disclosure, EmptyState } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { Info } from "./info";
+import { lifeSummary } from "@/lib/view/life";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
@@ -156,6 +157,8 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
             )}
           </div>
         </section>
+
+        <PatternPulse m={m} snapshot={snapshot} today={today} base={base} />
 
         {/* Forecast */}
         <Card
@@ -366,7 +369,7 @@ function AcctRow({ name, cents, fresh, stale, sub }: { name: string; cents: numb
 function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof buildDashboard>; snapshot: Snapshot; today: ISODate; base: string }) {
   const [view, setView] = useState<"month" | "period">("month");
   const budget = useMemo(
-    () => buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }))),
+    () => buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category }))),
     [snapshot, today, m.allEvents],
   );
   const rows =
@@ -417,5 +420,36 @@ function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof b
       )}
       <Link href={base + "/spend/budget"} className="btn btn-ghost btn-sm mt-2">Budget →</Link>
     </Card>
+  );
+}
+
+/** Patterns in one glance: usual life until payday, and the two most useful things we noticed. */
+function PatternPulse({ m, snapshot, today, base }: { m: ReturnType<typeof buildDashboard>; snapshot: Snapshot; today: ISODate; base: string }) {
+  const life = useMemo(() => lifeSummary(snapshot, today, m), [snapshot, today, m]);
+  if (!life.pace && !life.insights.length) return null;
+  const short = life.pace && life.pace.gapCents < 0;
+  return (
+    <Link href={base + "/spend/patterns"} className="card block p-3 transition hover:border-brand/60">
+      {life.pace && (
+        <p className="flex items-center justify-between gap-2 text-sm">
+          <span className="text-muted">Usual life until {formatShort(life.periodEnd)}</span>
+          <span className="font-semibold tabular">
+            ~<Money cents={life.pace.usualCents} whole className="text-ink" />{" "}
+            <span className={short ? "text-warn" : "text-brand"}>
+              {short ? <>· <Money cents={-life.pace.gapCents} whole /> short</> : <>· <Money cents={life.pace.gapCents} whole /> spare</>}
+            </span>
+          </span>
+        </p>
+      )}
+      {life.insights.length > 0 && (
+        <ul className="mt-2 flex gap-1.5 overflow-hidden">
+          {life.insights.slice(0, 2).map((i) => (
+            <li key={i.id} className="min-w-0 flex-1 truncate rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
+              {i.icon} <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Link>
   );
 }

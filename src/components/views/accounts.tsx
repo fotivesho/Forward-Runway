@@ -12,6 +12,8 @@ import { ReplaceWithBankForm } from "@/components/replace-with-bank";
 import { BankAccountPanel } from "@/components/bank-account-panel";
 import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
 import { toEngineInput } from "@/lib/data/snapshot";
+import { CashPath } from "@/components/cash-path";
+import { predict, spendModel } from "@/lib/view/patterns";
 
 const SOURCE = { manual: "Entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "From your bank" } as const;
 
@@ -48,6 +50,20 @@ export function AccountsView({
   const assets = cash + saved;
   const owed = cardsOwed + loans;
   const scale = Math.max(1, assets, owed);
+
+  // Cash ahead: scheduled only, and with usual everyday life on top.
+  const path = (() => {
+    const days = forecast.days.slice(0, 61);
+    if (days.length < 2 || !active.some((a) => a.isSpendable)) return null;
+    const model = spendModel(snapshot, today);
+    const p = model ? predict(model, today, days[days.length - 1]!.date) : null;
+    let usual = 0;
+    return {
+      dates: days.map((d) => d.date),
+      scheduled: days.map((d) => d.closingCents),
+      real: p ? days.map((d) => d.closingCents - (usual += p.byDay[d.date] ?? 0)) : null,
+    };
+  })();
 
   const detailFor = (a: (typeof active)[number]) => {
     const statements = snapshot.statements.filter((st) => st.accountId === a.id).sort((x, y) => (x.closingDate < y.closingDate ? 1 : -1));
@@ -164,9 +180,13 @@ export function AccountsView({
         )}
 
         {/* The whole picture: what you have vs what you owe */}
-        <section className="card p-4 sm:p-5" aria-label="Net worth">
-          <p className="text-xs font-semibold text-muted">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></p>
-          <p className={`text-3xl font-extrabold tabular ${assets - owed < 0 ? "text-danger" : "text-ink"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
+        <section className="card overflow-hidden" aria-label="Net worth">
+          <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></h2>
+          <p className={`mt-1 text-5xl font-bold tracking-tight tabular ${assets - owed < 0 ? "text-danger" : "text-ink"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
+          <p className="mt-1 text-sm text-muted">
+            <Money cents={assets} whole className="font-semibold text-ink" /> you have · <Money cents={owed} whole className="font-semibold text-ink" /> you owe
+          </p>
           <div className="mt-3 space-y-1.5">
             <div className="flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
               <span className="bg-brand" style={{ width: `${(cash / scale) * 100}%` }} />
@@ -190,6 +210,25 @@ export function AccountsView({
               </li>
             ))}
           </ul>
+          </div>
+          {path && (
+            <div className="border-t border-line p-4 sm:p-5">
+              <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-faint">
+                <span>Where your cash is headed</span>
+                <Info label="Where your cash is headed">Scheduled: paychecks, bills and plans only. Real life: plus your usual everyday spending, learned from your patterns. Dashed: your cash floor.</Info>
+              </p>
+              <div className="mt-2">
+                <CashPath
+                  dates={path.dates}
+                  floorCents={snapshot.settings.cashFloorCents}
+                  lines={[
+                    { id: "sched", label: "Scheduled", cents: path.scheduled, color: "text-muted", faint: true },
+                    ...(path.real ? [{ id: "real", label: "Real life", cents: path.real, color: "text-brand" }] : []),
+                  ]}
+                />
+              </div>
+            </div>
+          )}
         </section>
 
         {active.length === 0 ? (

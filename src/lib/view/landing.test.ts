@@ -179,7 +179,7 @@ describe("plan options can be done in one tap", () => {
     expect(mia.check!.verdict).toBe("yes_with_plan");
     const opts = [mia.check!.action, ...mia.check!.alternatives];
     const move = opts.find((o) => o.kind === "move")!;
-    expect(move.apply!.moves!.reduce((a, x) => a + x.cents, 0)).toBeGreaterThanOrEqual(40_000);
+    expect(move.apply!.moves!.reduce((a, x) => a + x.cents, 0)).toBeGreaterThanOrEqual(mia.check!.room.shortfall);
     expect(move.apply!.date).toBe(mia.event.date);
     const skip = opts.find((o) => o.kind === "skip_plan");
     if (skip) expect(skip.apply!.skipEventIds!.length).toBeGreaterThan(0);

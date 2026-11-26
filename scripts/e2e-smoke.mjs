@@ -75,7 +75,7 @@ for (const width of [390, 1280]) {
 }
 
 // Every other demo page renders cleanly and stays read-only
-for (const path of ["/demo/forecast", "/demo/spend", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
+for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/patterns", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
   const { page, res, errors } = await visit(path);
   check(res.status() === 200 && errors.length === 0, `${path} loads without errors ${errors.join(" | ")}`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), `${path} has no horizontal scroll at 390px`);
@@ -118,6 +118,12 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/calendar", "/demo/wh
 
 // What if: one question, a plain answer, best time to buy, debit vs credit
 {
+  {
+    const { page, errors } = await visit("/demo/spend/patterns", 390);
+    const body = await page.locator("body").innerText();
+    check(errors.length === 0 && /What we noticed/.test(body) && /Usual life until/i.test(body) && /Next 30 days/.test(body), "patterns shows insights, pace and the next 30 days");
+    await page.close();
+  }
   const { page, errors } = await visit("/demo/what-if", 390);
   check(errors.length === 0, `what-if loads without errors ${errors.join(" | ")}`);
   const body = await page.locator("main").innerText();

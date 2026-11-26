@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** Money's sub-tabs: Overview · Budget · Reports. */
+/** Money's sub-tabs: Overview · Budget · Patterns · Reports. */
 export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
   const path = usePathname();
   const tabs = [
     { href: `${base}/spend`, label: "Overview" },
     { href: `${base}/spend/budget`, label: "Budget" },
+    { href: `${base}/spend/patterns`, label: "Patterns" },
     { href: `${base}/spend/reports`, label: "Reports" },
   ];
   return (

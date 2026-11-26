@@ -36,6 +36,40 @@ function status(c: { spentCents: number; budgetCents: number }, progress: number
   return <span className="text-brand"><Money cents={c.budgetCents - c.spentCents} whole /> left</span>;
 }
 
+const LIFE = [
+  { k: "billsCents", label: "Bills", color: "bg-out" },
+  { k: "plansCents", label: "Plans", color: "bg-info" },
+  { k: "everydayCents", label: "Everyday ~", color: "bg-brand" },
+  { k: "setAsideCents", label: "Set aside", color: "bg-warn" },
+] as const;
+
+/** The month as organized life (bills, plans) and predicted life (everyday, set-asides). */
+function LifeSplit({ life, plans }: { life: BudgetPlan["life"]; plans: string[] }) {
+  const total = life.billsCents + life.plansCents + life.everydayCents + life.setAsideCents;
+  if (!total) return null;
+  return (
+    <div className="mt-3 rounded-xl border border-line p-2.5">
+      <p className="flex items-center justify-between text-xs font-semibold text-muted">
+        <span>
+          Spending is built from{" "}
+          <Info label="Organized and predicted">
+            Organized: bills and calendar plans{plans.length ? ` (${plans.join(", ")})` : ""}. Predicted: everyday spending from your patterns, and set-asides for big costs that come every few months.
+          </Info>
+        </span>
+        <Money cents={total} whole className="text-ink" />
+      </p>
+      <div className="mt-1.5 flex h-2 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+        {LIFE.map((l) => <span key={l.k} className={l.color} style={{ width: `${(life[l.k] / total) * 100}%` }} />)}
+      </div>
+      <ul className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
+        {LIFE.filter((l) => life[l.k] > 0).map((l) => (
+          <li key={l.k} className="flex items-center gap-1"><span className={`h-1.5 w-1.5 rounded-full ${l.color}`} />{l.label}<Money cents={life[l.k]} whole className="font-semibold text-ink" /></li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function BudgetView({
   plan,
   demo,
@@ -59,7 +93,7 @@ export function BudgetView({
           <h2 id="split-title" className="text-base font-semibold text-ink">
             {monthName}'s plan
             <Info label="How smart budgets work">
-              Income first, then savings and calendar plans come off the top. Each category starts at your usual month (last {plan.monthsOfHistory || "few"} months). If it doesn't fit, needs stay and wants shrink. No history? 50/30/20. Budgets you set always win. The tick on a bar is an even pace.
+              Not a copy of last month. Bills and calendar plans (organized life) are counted as scheduled. Everyday categories are predicted from your patterns: this month's weekends and paydays included. Big rare costs get a monthly set-aside. If it doesn't fit, needs stay and wants shrink. Budgets you set always win. The tick on a bar is an even pace.
             </Info>
           </h2>
           <span className="text-xs text-muted">{Math.round(plan.progress * 100)}% through the month</span>
@@ -88,11 +122,7 @@ export function BudgetView({
                 <p className="text-[11px] text-muted">{plan.unassignedCents > 0 ? "buffer, or save more" : plan.unassignedCents < 0 ? "trim a want or a plan" : "every dollar has a job"}</p>
               </li>
             </ul>
-            {plan.plansCents > 0 && (
-              <p className="mt-2 text-xs text-muted">
-                Includes <Money cents={plan.plansCents} whole /> set aside for calendar plans: {plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`).join(", ")}.
-              </p>
-            )}
+            <LifeSplit life={plan.life} plans={plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`)} />
           </>
         ) : (
           <p className="mt-1 text-sm text-muted">Add your paycheck as repeating (Money → Overview) so budgets can start from your income.</p>
@@ -130,14 +160,15 @@ export function BudgetView({
                     <button type="button" onClick={() => setEdit(c)} className="w-full py-2.5 text-left" aria-haspopup="dialog">
                       <span className="flex items-baseline justify-between gap-2">
                         <span className="min-w-0 truncate text-sm font-medium text-ink">
-                          <span aria-hidden>{iconFor(c.category)}</span> {c.category} {c.yours ? <Badge>Yours</Badge> : <Badge tone="info">Smart</Badge>}
+                          <span aria-hidden>{iconFor(c.category)}</span> {c.category} {c.basis === "yours" ? <Badge>Yours</Badge> : c.basis === "pattern" ? <Badge tone="info">Predicted</Badge> : c.basis === "set-aside" ? <Badge tone="warn">Set aside</Badge> : <Badge>Usual</Badge>}
+                          {c.planCents > 0 && <span className="ml-1 rounded-full bg-info/15 px-1.5 py-0.5 text-[10px] font-semibold text-info">📅 +<Money cents={c.planCents} whole /></span>}
                         </span>
                         <span className="shrink-0 text-sm tabular"><Money cents={c.spentCents} whole /> <span className="text-muted">/ <Money cents={c.budgetCents} whole /></span></span>
                       </span>
                       <PaceBar spent={c.spentCents} budget={c.budgetCents} progress={plan.progress} />
                       <span className="mt-0.5 flex justify-between text-[11px] text-muted">
                         <span>{status(c, plan.progress)}</span>
-                        <span>usual <Money cents={c.usualCents} whole /> ›</span>
+                        <span>{c.basis === "pattern" ? "expected" : c.basis === "set-aside" ? "per month" : "usual"} <Money cents={c.usualCents} whole /> ›</span>
                       </span>
                     </button>
                   </li>

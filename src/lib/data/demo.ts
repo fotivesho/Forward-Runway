@@ -87,6 +87,27 @@ export function demoSnapshot(today: ISODate, nowIso: string): Snapshot {
       });
     }
   }
+  // Habits, so Patterns has something real to find: a payday splurge, Saturday dinners, dining
+  // creeping up, a car cost every few months and a music app that quietly went up.
+  const life = lcg(11);
+  const add = (n: number, cents: number, category: string, description = category, accountId: string = ID.visa) =>
+    transactions.push({
+      id: `00000000-0000-4000-9200-${String(transactions.length).padStart(12, "0")}`,
+      date: daysAgo(n), amountCents: Math.round(cents / 25) * 25, direction: "out", accountId, description, category, status: "posted", cleared: true, flexible: true,
+    });
+  for (let k = 0; k < 13; k++) {
+    const payday = 10 + 14 * k; // paydays were 10, 24, 38… days ago
+    add(payday, 6_000 + life() * 6_000, "Shopping");
+    if (payday - 1 >= 1) add(payday - 1, 3_500 + life() * 3_500, "Dining");
+  }
+  for (let i = 180; i >= 1; i--) {
+    const day = daysAgo(i);
+    if (new Date(`${day}T12:00:00Z`).getUTCDay() === 6) add(i, 3_000 + life() * 2_500, "Dining", "Dinner out");
+    if (i % 5 === 0) add(i, 1_500 + (180 - i) * 30, "Dining", "Takeout");
+  }
+  add(152, 26_000, "Car", "Tire shop");
+  add(63, 31_000, "Car", "Auto service");
+  for (let k = 0; k < 6; k++) add(9 + 30 * k, k < 2 ? 1_199 : 1_099, "Subscriptions", "Music app");
   transactions.push({
     id: "00000000-0000-4000-9000-999999999999",
     date: today,

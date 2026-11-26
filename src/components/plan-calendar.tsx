@@ -33,6 +33,7 @@ export function PlanCalendar({
   today,
   end,
   accounts,
+  typical = {},
 }: {
   views: EventView[];
   marks: DayMark[];
@@ -43,6 +44,8 @@ export function PlanCalendar({
   today: ISODate;
   end: ISODate;
   accounts: Account[];
+  /** Usual everyday spending per day, from your patterns. */
+  typical?: Record<ISODate, { cents: number; why: string | null }>;
 }) {
   const months = useMemo(() => {
     const out: ISODate[] = [];
@@ -168,6 +171,12 @@ export function PlanCalendar({
                     </span>
                   ))}
                 .
+              </p>
+            )}
+            {typical[selected] && typical[selected]!.cents > 0 && (
+              <p className="mt-0.5 text-xs text-muted">
+                Everyday spending usually ~<Money cents={typical[selected]!.cents} whole className="font-semibold text-ink" />
+                {typical[selected]!.why && <span className={/high|after|usually/.test(typical[selected]!.why!) ? "text-warn" : ""}> · {typical[selected]!.why}</span>}
               </p>
             )}
             {(() => {

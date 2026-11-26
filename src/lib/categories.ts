@@ -12,6 +12,7 @@ export const CATEGORY_ICON: Record<string, string> = {
   Travel: "✈️",
   Celebrations: "🎉",
   Home: "🏠",
+  Car: "🚗",
   Housing: "🏠",
   Utilities: "⚡",
   Subscriptions: "🔁",
@@ -36,7 +37,7 @@ export const iconFor = (category?: string | null) => (category && CATEGORY_ICON[
 
 /** Everyday spending first, then bills, then money that isn't spending. */
 export const CATEGORY_LIST = [
-  "Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Personal care", "Health", "Travel", "Gifts", "Celebrations", "Home",
+  "Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Personal care", "Health", "Travel", "Gifts", "Celebrations", "Home", "Car",
   "Housing", "Utilities", "Subscriptions", "Insurance", "Debt", "Fees", "Services", "Savings",
   "Income", "Card payment", "Transfer", "Other",
 ];

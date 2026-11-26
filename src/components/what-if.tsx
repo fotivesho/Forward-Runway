@@ -9,6 +9,8 @@ import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
+import { CashPath } from "./cash-path";
+import { predict, spendModel } from "@/lib/view/patterns";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Money } from "./privacy";
@@ -81,6 +83,22 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   );
   const firstGood = timeChecks.find((t) => t.c.verdict === "yes");
 
+  // The ripple: cash ahead with your usual everyday spending, with and without this purchase.
+  const model = useMemo(() => spendModel(snapshot, today), [snapshot, today]);
+  const ripple = useMemo(() => {
+    if (!check || !valid) return null;
+    const days = m.forecast90.days.slice(0, 61);
+    if (days.length < 2) return null;
+    const p = model ? predict(model, today, days[days.length - 1]!.date) : null;
+    let usual = 0;
+    const without = days.map((d) => d.closingCents - (usual += p?.byDay[d.date] ?? 0));
+    const extra = Math.max(0, cents! - reserved);
+    const withIt = days.map((d, i) => without[i]! - (d.date >= check.cash.date ? extra : 0));
+    const low = withIt.reduce((b, c, i) => (c < withIt[b]! ? i : b), 0);
+    const usualCents = p ? Object.entries(p.byDay).filter(([d]) => d <= m.plan.allowance.current.end).reduce((a, [, c]) => a + c, 0) : 0;
+    return { dates: days.map((d) => d.date), without, with: withIt, usualCents, lowWith: withIt[low]!, lowDate: days[low]!.date };
+  }, [check, valid, m, model, today, cents, reserved]);
+
   const plans = m.allEvents.filter((v) => v.plannedCents > 0 && v.event.decision !== "skip").slice(0, 4);
   const pick = (label: string, c: number, d?: ISODate, r = 0) => {
     setWhat(label);
@@ -91,71 +109,85 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
   };
   const free = m.plan.allowance.status === "shortfall" ? 0 : m.plan.poolCents;
   const savings = [...m.savings.map((v) => v.valueCents), ...m.goals.filter((g) => !g.goal.protected).map((g) => g.balanceCents)].reduce((a, b) => a + b, 0);
+  const seg = (on: boolean) => `min-h-8 rounded-full px-3 text-[13px] font-medium ${on ? "bg-brand text-brand-ink" : "text-muted"}`;
   const chip = (on: boolean) => `min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-[13px] font-medium transition ${on ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:border-brand/60"}`;
 
   if (!hasAccounts) return <EmptyState title="Add a cash account first">What if needs a checking balance to work from.</EmptyState>;
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
-      {/* Where you stand right now */}
-      <ul className="grid grid-cols-3 gap-2">
-        {[
-          { label: "Spending money", sub: `until ${formatShort(m.plan.allowance.current.end)}`, v: free },
-          { label: "Lowest ahead", sub: formatShort(m.forecast90.lowest.date), v: m.forecast90.lowest.cents },
-          { label: "Savings to tap", sub: "excl. protected", v: savings },
-        ].map((t) => (
-          <li key={t.label} className="card min-w-0 p-2.5">
-            <p className="truncate text-[11px] font-semibold text-muted">{t.label}</p>
-            <p className="truncate text-lg font-extrabold tabular text-ink"><Money cents={t.v} whole /></p>
-            <p className="truncate text-[10px] text-faint">{t.sub}</p>
-          </li>
-        ))}
-      </ul>
-
-      {/* The question */}
-      <section className="card p-4 sm:p-5" aria-labelledby="wi-q">
-        <h2 id="wi-q" className="text-base font-semibold text-ink">What do you want to do?</h2>
-        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
-          {plans.map((v) => (
-            <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
-              📅 {v.event.title} · <Money cents={v.plannedCents} whole />
-            </button>
-          ))}
-          {COMMON.map((c) => (
-            <button key={c.label} type="button" className={chip(what === c.label)} onClick={() => pick(c.label, c.cents)}>
-              {c.emoji} {c.label}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
-          <label className="text-xs font-medium text-muted">
-            What
-            <input className="input mt-1" value={what} onChange={(e) => { setWhat(e.target.value); setReserved(0); }} placeholder="Anything" maxLength={80} />
+      {/* The question, big: like Safe to spend on Today */}
+      <section className="card overflow-hidden" aria-labelledby="wi-q">
+        <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="wi-q" className="text-sm font-semibold uppercase tracking-wide text-muted">What if I spend</h2>
+            {check && (
+              <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${LOOK[check.verdict].badge}`} aria-live="polite">
+                {LOOK[check.verdict].icon} {VERDICT_SHORT[check.verdict]}
+              </span>
+            )}
+          </div>
+          <label className="mt-1 flex items-baseline gap-1">
+            <span className="text-4xl font-bold text-muted">$</span>
+            <input
+              id="wi-amount"
+              aria-label="How much"
+              className="w-full min-w-0 bg-transparent text-5xl font-bold tracking-tight text-ink tabular outline-none placeholder:text-faint"
+              inputMode="decimal"
+              value={amount}
+              placeholder="0"
+              onChange={(e) => { setAmount(e.target.value); setReserved(0); }}
+            />
           </label>
-          <label className="text-xs font-medium text-muted">
-            How much
-            <span className="relative mt-1 block">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
-              <input id="wi-amount" className="input pl-7 text-lg font-bold tabular" inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setReserved(0); }} />
-            </span>
-          </label>
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
-          <span className="w-12 text-xs font-medium text-muted">When</span>
-          {times.slice(0, 3).map((t) => (
-            <button key={t.date} type="button" className={chip(date === t.date)} onClick={() => setDate(t.date)}>{t.label}</button>
-          ))}
-          <input type="date" aria-label="Pick a date" className="input min-h-9 w-auto py-1 text-[13px]" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        {cards.length > 0 && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5">
-            <span className="w-12 text-xs font-medium text-muted">Pay</span>
-            <button type="button" className={chip(payWith === null)} onClick={() => setPayWith(null)}>Debit</button>
-            {cards.map((c) => (
-              <button key={c.id} type="button" className={chip(payWith === c.id)} onClick={() => setPayWith(c.id)}>{cards.length === 1 ? "Credit" : c.name}</button>
+          <input
+            aria-label="On what"
+            className="mt-1 w-full border-b border-line bg-transparent pb-1 text-base text-ink outline-none placeholder:text-faint focus:border-brand"
+            value={what}
+            onChange={(e) => { setWhat(e.target.value); setReserved(0); }}
+            placeholder="on… dinner, flights, a couch"
+            maxLength={80}
+          />
+          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+            {plans.map((v) => (
+              <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
+                📅 {v.event.title} · <Money cents={v.plannedCents} whole />
+              </button>
+            ))}
+            {COMMON.map((c) => (
+              <button key={c.label} type="button" className={chip(what === c.label)} onClick={() => pick(c.label, c.cents)}>
+                {c.emoji} {c.label}
+              </button>
             ))}
           </div>
-        )}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {times.slice(0, 3).map((t) => (
+              <button key={t.date} type="button" className={chip(date === t.date)} onClick={() => setDate(t.date)}>{t.label}</button>
+            ))}
+            <input type="date" aria-label="Pick a date" className="input min-h-9 w-auto py-1 text-[13px]" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+            {cards.length > 0 && (
+              <span className="ml-auto flex rounded-full border border-line p-0.5" role="group" aria-label="Pay with">
+                <button type="button" aria-pressed={payWith === null} className={seg(payWith === null)} onClick={() => setPayWith(null)}>Debit</button>
+                {cards.map((c) => (
+                  <button key={c.id} type="button" aria-pressed={payWith === c.id} className={seg(payWith === c.id)} onClick={() => setPayWith(c.id)}>{cards.length === 1 ? "Credit" : c.name.split(" ")[0]}</button>
+                ))}
+              </span>
+            )}
+          </div>
+        </div>
+        {/* Where you stand */}
+        <dl className="grid grid-cols-3 divide-x divide-line border-t border-line text-center">
+          {[
+            { label: "Spending money", v: free, sub: `to ${formatShort(m.plan.allowance.current.end)}` },
+            { label: "Lowest ahead", v: m.forecast90.lowest.cents, sub: formatShort(m.forecast90.lowest.date) },
+            { label: "Savings to tap", v: savings, sub: "not protected" },
+          ].map((t) => (
+            <div key={t.label} className="min-w-0 px-1 py-2">
+              <dt className="truncate text-[10px] font-semibold uppercase tracking-wide text-faint">{t.label}</dt>
+              <dd className="truncate text-base font-extrabold tabular text-ink"><Money cents={t.v} whole /></dd>
+              <dd className="truncate text-[10px] text-faint">{t.sub}</dd>
+            </div>
+          ))}
+        </dl>
       </section>
 
       {/* The answer */}
@@ -167,6 +199,32 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             {check.cash.viaCard && !check.cash.beyondHorizon && <> · cash leaves {formatShort(check.cash.date)}</>}
           </p>
           <PlanImpact check={check} reservedCents={reserved} />
+          {ripple && (
+            <div className="mt-4 rounded-xl border border-line p-3">
+              <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-faint">
+                <span>The ripple: your cash, next 60 days</span>
+                <Info label="The ripple">
+                  Cash after bills, paychecks and your usual everyday spending (learned from your patterns), with and without this. Dashed: your cash floor.
+                </Info>
+              </p>
+              <div className="mt-2">
+                <CashPath
+                  dates={ripple.dates}
+                  floorCents={snapshot.settings.cashFloorCents}
+                  lines={[
+                    { id: "without", label: "Without", cents: ripple.without, color: "text-muted", faint: true },
+                    { id: "with", label: "With this", cents: ripple.with, color: check.verdict === "not_yet" ? "text-danger" : check.verdict === "yes" ? "text-brand" : "text-warn" },
+                  ]}
+                />
+              </div>
+              {ripple.usualCents > 0 && (
+                <p className="mt-2 text-xs text-muted">
+                  Usual life to {formatShort(m.plan.allowance.current.end)}: ~<Money cents={ripple.usualCents} whole className="font-semibold text-ink" />
+                  {ripple.lowWith < snapshot.settings.cashFloorCents && Math.min(...ripple.without) >= snapshot.settings.cashFloorCents && <span className="font-semibold text-warn"> · dips under your floor {formatShort(ripple.lowDate)}</span>}
+                </p>
+              )}
+            </div>
+          )}
 
           {timeChecks.length > 1 && (
             <div className="mt-4">

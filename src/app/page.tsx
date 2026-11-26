@@ -101,8 +101,8 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               </div>
             </article>
             <article className="card p-4 sm:p-5">
-              <h3 className="font-semibold text-ink">A budget that fits your month</h3>
-              <p className="mt-1 text-sm text-muted">Built from your income and your usual month. Savings and plans first; wants flex to fit.</p>
+              <h3 className="font-semibold text-ink">A budget that knows your life</h3>
+              <p className="mt-1 text-sm text-muted">Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your patterns.</p>
               {(() => {
                 const b = d.budget;
                 const parts = [
@@ -129,6 +129,15 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                         );
                       })}
                     </ul>
+                    {d.insights.length > 0 && (
+                      <ul className="mt-4 flex flex-wrap gap-1.5">
+                        {d.insights.map((i) => (
+                          <li key={i.id} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
+                            {i.icon} <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </>
                 );
               })()}
@@ -216,7 +225,6 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Coming soon</h3>
               <ul className="mt-3 space-y-2 text-sm text-muted">
-                <li><span className="font-semibold text-ink">Spending patterns.</span> Payday splurges, creeping categories and forgotten subscriptions, with one nudge at a time.</li>
                 <li><span className="font-semibold text-ink">One-tap calendars.</span> Sign in with Google or Apple. No links to copy.</li>
               </ul>
             </div>

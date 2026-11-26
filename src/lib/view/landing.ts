@@ -9,6 +9,7 @@ import type { Snapshot } from "../data/snapshot";
 import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
 import { buildBudget, type BudgetPlan } from "./budget";
+import { insights, type Insight } from "./patterns";
 
 export interface LandingStep {
   date: ISODate;
@@ -43,6 +44,8 @@ export interface LandingData {
   overview: Pick<DashboardModel, "cash" | "savings" | "goals" | "cards" | "loans">;
   /** This month's smart budget for the sample person. */
   budget: BudgetPlan;
+  /** What the sample person's patterns show. */
+  insights: Insight[];
 }
 
 export function buildLanding(today: ISODate, nowIso: string): LandingData {
@@ -70,7 +73,8 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     snapshot,
     afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
-    budget: buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }))),
+    insights: insights(snapshot, today).slice(0, 3),
+    budget: buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category }))),
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,
       poolCents: m.plan.poolCents,

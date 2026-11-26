@@ -1,3 +1,4 @@
+import { typicalDays } from "@/lib/view/patterns";
 import { EventCard } from "@/components/advisor";
 import { AddCalendarForm, AddPlanButton, PlanProvider, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
 import { QuickAction } from "@/components/form";
@@ -43,7 +44,7 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
             action={<AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} />}
           >
             <PlanProvider value={{ snapshot, today, nextPayday: m.nextPayday, events: m.planned, calendarIncomplete: m.coverage.incomplete }}>
-              <PlanCalendar views={m.allEvents} marks={marks} baseline={m.baselineByDay} periods={m.payPeriods} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} />
+              <PlanCalendar views={m.allEvents} marks={marks} baseline={m.baselineByDay} periods={m.payPeriods} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} typical={typicalDays(snapshot, today, m.forecast90.endDate)} />
             </PlanProvider>
             {!demo && m.duplicates.length > 0 && (
               <div className="mt-4">
