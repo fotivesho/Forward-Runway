@@ -1,6 +1,6 @@
 /**
  * Bank access tokens are encrypted before they're stored (AES-256-GCM), on top of living in a
- * table only the server can read. The key (PLAID_TOKEN_KEY: any random password of 32+ characters,
+ * table only the server can read. The key (PLAID_TOKEN_KEY: a random password of 20+ characters,
  * or 32 bytes as hex/base64) is a server
  * environment variable, so a database leak alone doesn't expose a usable token.
  */
@@ -16,9 +16,10 @@ export function tokenKey(raw: string | undefined, mock = false): Buffer {
   if (/^[0-9a-f]{64}$/i.test(raw)) return Buffer.from(raw, "hex");
   const b64 = /^[A-Za-z0-9+/]{43}=$/.test(raw) ? Buffer.from(raw, "base64") : null;
   if (b64?.length === 32) return b64;
-  // Or any long random password (easy to make in a password manager): stretched to 32 bytes.
-  if (raw.length >= 32) return createHash("sha256").update(raw, "utf8").digest();
-  throw new Error("PLAID_TOKEN_KEY must be at least 32 characters");
+  // Or a random password from a password manager (e.g. Apple's 20-character strong password),
+  // stretched to 32 bytes. The token also sits in a table only the server can read.
+  if (raw.length >= 20) return createHash("sha256").update(raw, "utf8").digest();
+  throw new Error("PLAID_TOKEN_KEY must be at least 20 characters");
 }
 
 export function encryptToken(plain: string, key: Buffer): string {

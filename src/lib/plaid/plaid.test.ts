@@ -38,7 +38,7 @@ describe("token encryption", () => {
     parts[3] = Buffer.from("tampered").toString("base64");
     expect(() => decryptToken(parts.join(":"), key)).toThrow();
   });
-  it("requires a key of at least 32 characters, and accepts a long password", () => {
+  it("requires a key of at least 20 characters, and accepts a password-manager password", () => {
     expect(() => tokenKey(undefined)).toThrow();
     expect(() => tokenKey("short")).toThrow();
     const pw = tokenKey("correct horse battery staple, but much longer!");
