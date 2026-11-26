@@ -10,6 +10,8 @@ export interface ShowcaseTab {
   title: string;
   blurb: React.ReactNode;
   content: React.ReactNode;
+  /** The demo page that shows this feature for real. */
+  cta: { href: string; label: string };
 }
 
 /**
@@ -42,7 +44,7 @@ export function Showcase({ tabs }: { tabs: ShowcaseTab[] }) {
         id={`panel-${t.id}`}
         role="tabpanel"
         key={t.id}
-        className="fade-up pt-8"
+        className="fade-up pt-6"
         onTouchStart={(e) => (touch.current = e.touches[0]!.clientX)}
         onTouchEnd={(e) => {
           if (touch.current == null) return;
@@ -55,17 +57,23 @@ export function Showcase({ tabs }: { tabs: ShowcaseTab[] }) {
         }}
       >
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">{t.kicker}</p>
-        <h2 className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-5xl">{t.title}</h2>
-        <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">{t.blurb}</p>
-        <div className="mt-8">{t.content}</div>
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display mt-1 max-w-3xl text-3xl leading-tight text-display sm:text-5xl">{t.title}</h2>
+        <p className="mt-2 max-w-2xl text-sm text-muted sm:text-lg">{t.blurb}</p>
+        <div className="mt-4 sm:mt-8">{t.content}</div>
+        <Link
+          href={t.cta.href}
+          className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-[0_10px_24px_-10px_rgba(31,69,49,0.7)] ring-4 ring-brand/15 transition hover:bg-brand hover:text-white sm:max-w-sm"
+        >
+          {t.cta.label} →
+        </Link>
+        <div className="mt-3 flex items-center justify-between gap-3">
           <span className="flex gap-1.5" aria-hidden>
             {tabs.map((x, n) => <span key={x.id} className={`h-1.5 rounded-full transition-all ${n === i ? "w-6 bg-brand" : "w-1.5 bg-line"}`} />)}
           </span>
           {next ? (
-            <button type="button" onClick={() => go(i + 1)} className="btn btn-secondary">Next: {next.label} →</button>
+            <button type="button" onClick={() => go(i + 1)} className="text-sm font-semibold text-muted hover:text-ink">Next: {next.label} →</button>
           ) : (
-            <Link href="/demo/calendar?add=1" className="btn btn-primary">Try it all in the demo →</Link>
+            <button type="button" onClick={() => go(0)} className="text-sm font-semibold text-muted hover:text-ink">Back to start ↺</button>
           )}
         </div>
       </div>
@@ -79,15 +87,19 @@ export function StickyDemo() {
   useEffect(() => {
     const hero = document.getElementById("main");
     const end = document.getElementById("cta-title");
+    const show = document.getElementById("showcase");
     if (!hero) return;
     let heroGone = false;
     let atEnd = false;
-    const update = () => setShow(heroGone && !atEnd);
+    let inShowcase = false;
+    const update = () => setShow(heroGone && !atEnd && !inShowcase);
+    const c = new IntersectionObserver(([e]) => { inShowcase = e!.isIntersecting; update(); }, { threshold: 0.15 });
+    if (show) c.observe(show);
     const a = new IntersectionObserver(([e]) => { heroGone = !e!.isIntersecting; update(); });
     const b = new IntersectionObserver(([e]) => { atEnd = e!.isIntersecting; update(); });
     a.observe(hero);
     if (end) b.observe(end);
-    return () => { a.disconnect(); b.disconnect(); };
+    return () => { a.disconnect(); b.disconnect(); c.disconnect(); };
   }, []);
   return (
     <div className={`fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex justify-center transition-all duration-300 sm:hidden ${show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"}`}>

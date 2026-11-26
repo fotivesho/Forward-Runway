@@ -10,20 +10,13 @@ import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
 import { SnapshotTiles } from "@/components/snapshot";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
-import { formatShort, formatWeekday, todayInZone } from "@/lib/dates";
+import { formatWeekday, todayInZone } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { Glyph } from "@/components/icon";
 import { buildLanding } from "@/lib/view/landing";
 
 export const dynamic = "force-dynamic";
 
-const REC = {
-  proceed: { label: "Go ahead", cls: "border-brand/40 text-brand" },
-  cheaper: { label: "Go cheaper", cls: "border-warn/50 text-warn" },
-  postpone: { label: "Wait", cls: "border-info/50 text-info" },
-  skip: { label: "Skip", cls: "border-danger/50 text-danger" },
-  needs_estimate: { label: "Asks you", cls: "border-warn/50 text-warn" },
-} as const;
 
 const PRIMARY = "btn bg-[#ddefbf] px-6 text-base text-[#182d26] hover:bg-white";
 const SECONDARY = "btn border border-white/25 px-6 text-base text-[#f1f6ea] hover:bg-white/10";
@@ -34,7 +27,6 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
   // Fictional sample data only, computed by the real engine.
   const d = buildLanding(todayInZone("America/New_York", now), now.toISOString());
   const maxCap = Math.max(1, ...d.weekCaps.map((c) => c.capCents));
-  const events = d.events.filter((e) => e.estimateCents > 0).slice(0, 3);
 
   return (
     <>
@@ -53,7 +45,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <p role="status" className="mx-auto max-w-6xl px-4 text-sm text-[#ddefbf] sm:px-6">Your account and all of its data have been deleted.</p>
         )}
         {/* Mobile order: headline, live card, buttons. Desktop: text + buttons left, card right. */}
-        <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-8 px-4 pb-14 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:pb-24 lg:pt-12">
+        <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-x-12 gap-y-8 px-4 pb-10 pt-4 sm:px-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:pb-24 lg:pt-12">
           <div className="lg:col-start-1 lg:row-start-1 lg:self-end">
             <p className="fade-up text-xs font-semibold uppercase tracking-[0.2em] text-[#ddefbf] sm:text-sm">{APP_TAGLINE}</p>
             <h1 className="font-display fade-up mt-3 text-[2.6rem] leading-[1.04] sm:text-6xl lg:text-7xl" style={{ animationDelay: "120ms" }}>
@@ -67,15 +59,15 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <HeroAfford hero={d.hero} snapshot={d.snapshot} today={d.today} events={d.afford.events} calendarIncomplete={d.afford.calendarIncomplete} />
           </div>
           <div className="fade-up lg:col-start-1 lg:row-start-2 lg:self-start" style={{ animationDelay: "360ms" }}>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link href="/demo/calendar?add=1" className={PRIMARY}>See it with sample money →</Link>
-              <Link href="/login?mode=signup" className={SECONDARY}>Create your runway</Link>
+            <div className="grid grid-cols-[1.3fr_1fr] gap-2 sm:flex sm:gap-3">
+              <Link href="/demo/calendar?add=1" className={`${PRIMARY} justify-center px-3 sm:px-6`}>Try the demo →</Link>
+              <Link href="/login?mode=signup" className={`${SECONDARY} justify-center px-3 sm:px-6`}>Sign up free</Link>
             </div>
-            <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#b9cbb4]">
-              <span className="font-semibold text-[#ddefbf]">Connect once. That's it.</span>
-              <span className="flex items-center gap-1.5"><Glyph name="bank" size="xs" /> Bank</span>
-              <span className="flex items-center gap-1.5"><Glyph name="card" size="xs" /> Cards</span>
-              <span className="flex items-center gap-1.5"><Glyph name="plan" size="xs" /> Calendars</span>
+            <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#b9cbb4] sm:text-sm">
+              <span className="font-semibold text-[#ddefbf]">Connect once. That&apos;s it.</span>
+              <span className="flex items-center gap-1"><Glyph name="bank" size="xs" bare /> Bank</span>
+              <span className="flex items-center gap-1"><Glyph name="card" size="xs" bare /> Cards</span>
+              <span className="flex items-center gap-1"><Glyph name="plan" size="xs" bare /> Calendars</span>
             </p>
           </div>
         </main>
@@ -83,7 +75,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         {/* ---------------------------------------------- what it does: one tabbed showcase */}
-        <section className="py-14 sm:py-20" aria-label="What it does">
+        <section id="showcase" className="py-12 sm:py-20" aria-label="What it does">
           <Showcase
             tabs={[
               {
@@ -91,185 +83,146 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                 label: "Plan it",
                 kicker: "Something coming up?",
                 title: "Plan it before you live it.",
-                blurb: <>&ldquo;Can I afford it?&rdquo; is for a maybe. This is for things you&apos;re doing anyway: dinners, trips, birthdays. It knows what they usually cost <em>you</em>, and every plan you finish makes the next estimate sharper.</>,
+                blurb: <>For things you&apos;re doing anyway. Tap a plan: it knows what it usually costs <em>you</em>, and what it leaves.</>,
+                content: <PlannerTry periods={d.planPeriods} history={d.explore} bias={d.bias} />,
+                cta: { href: "/demo/calendar?add=1", label: "Plan yours in the demo" },
+              },
+              {
+                id: "smarter",
+                label: "Gets smarter",
+                kicker: "Smart estimates",
+                title: "Every plan makes the next one sharper.",
+                blurb: "After each plan it finds the real charge, compares, and adjusts the next estimate.",
                 content: (
-                  <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
-                    <PlannerTry periods={d.planPeriods} history={d.explore} bias={d.bias} />
-                    <PlanResults results={d.results} acc={d.accuracy} />
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
+                    <PlanResults results={d.results} acc={d.accuracy} limit={3} accLimit={1} />
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-faint">Coming next</p>
+                      <ul className="mt-2 flex flex-wrap gap-1.5">
+                        {["Knows the place's price level", "Splits group plans per person", "✦ Describe it in a sentence (AI)"].map((t) => (
+                          <li key={t} className="flex items-center gap-1.5 rounded-full border border-dashed border-info/40 px-2.5 py-1 text-xs text-ink">
+                            {t}<span className="rounded-full bg-info/12 px-1.5 text-[10px] font-bold text-info">Soon</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
                 ),
+                cta: { href: "/demo/calendar", label: "See plans in the demo" },
               },
               {
                 id: "patterns",
                 label: "Patterns",
                 kicker: "It learns you",
                 title: "Habits you didn't notice.",
-                blurb: "Lunch, rides, the payday splurge, the subscription that crept up. It finds the patterns, explains them in plain words, and lets you dig into any of them.",
+                blurb: "Swipe what it noticed, then tap in to explore.",
                 content: (
-<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
-            <article className="card p-4 sm:p-5 lg:col-span-2">
-              <h3 className="font-bold text-ink">What it noticed</h3>
-              <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {d.insights.map((i) => (
-                  <li key={i.id} className={`rounded-2xl border bg-surface p-3 ${i.tone === "warn" ? "border-warn/50" : "border-line"}`}>
-                    <Glyph name={i.icon} size="md" />
-                    <p className={`mt-2 text-xl font-extrabold tabular ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</p>
-                    <p className="text-xs font-bold leading-snug text-ink">{i.title}</p>
-                    <p className="mt-1 text-[11px] leading-snug text-muted">{i.detail.split(". ")[0]}.</p>
-                  </li>
-                ))}
-              </ul>
-              {d.habits.length > 0 && (
-                <>
-                  <h3 className="mt-5 font-bold text-ink">Next 7 days, everyday</h3>
-                  <ul className="mt-2 grid grid-cols-2 gap-1.5">
-                    {d.habits.map((h) => (
-                      <li key={h.category} className="flex items-center gap-2 rounded-xl border border-dashed border-line px-2 py-1.5">
-                        <Glyph name={h.category} size="sm" />
-                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink">{h.category}</span>
-                        <span className="text-xs font-bold tabular text-ink">~${Math.round(h.expectedCents / 100)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-            </article>
-            <div>
-              <p className="mb-2 text-sm font-semibold text-muted">Go deeper. Tap anything: what you buy, which day, which month, the days after payday.</p>
-              <PatternExplorer data={d.explore} />
-            </div>
-          </div>
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-3">
+                    <ul className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+                      {d.insights.map((i) => (
+                        <li key={i.id} className={`flex w-44 shrink-0 snap-start items-center gap-2 rounded-2xl border bg-surface p-2.5 ${i.tone === "warn" ? "border-warn/50" : "border-line"}`}>
+                          <Glyph name={i.icon} size="sm" />
+                          <span className="min-w-0">
+                          <p className={`text-base font-extrabold leading-tight tabular ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</p>
+                          <p className="text-[11px] font-bold leading-snug text-ink">{i.title}</p>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                    <PatternExplorer data={d.explore} compact />
+                  </div>
                 ),
+                cta: { href: "/demo/spend/patterns", label: "Explore patterns in the demo" },
               },
               {
                 id: "budget",
                 label: "Budget",
                 kicker: "Forward, not backward",
                 title: "A budget that knows your life.",
-                blurb: "Not a copy of last month. Bills and plans as they're scheduled, plus everyday life predicted from your patterns.",
-                content: (
-<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:max-w-2xl">
-            <article className="card p-4 sm:p-5">
-              <h3 className="font-bold text-ink">A budget that knows your life</h3>
-              <p className="mt-1 text-sm text-muted">Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your patterns.</p>
-              {(() => {
-                const b = d.budget;
-                const parts = [
-                  { k: "Needs", c: b.groups.needs, cls: "bg-info" },
-                  { k: "Wants", c: b.groups.wants, cls: "bg-brand" },
-                  { k: "Savings", c: b.groups.savings, cls: "bg-warn" },
-                ];
-                return (
-                  <>
-                    <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
-                      {parts.map((p) => <span key={p.k} className={p.cls} style={{ width: `${(p.c.budgetCents / Math.max(1, b.incomeCents)) * 100}%` }} />)}
-                    </div>
-                    <ul className="mt-3 space-y-2.5 text-sm">
-                      {parts.map((p) => {
-                        const pct = p.c.budgetCents ? Math.min(100, (p.c.spentCents / p.c.budgetCents) * 100) : 0;
-                        return (
-                          <li key={p.k}>
-                            <span className="flex justify-between">
-                              <span className="text-ink"><span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${p.cls}`} />{p.k}</span>
-                              <span className="tabular text-muted">${Math.round(p.c.spentCents / 100).toLocaleString("en-US")} of ${Math.round(p.c.budgetCents / 100).toLocaleString("en-US")}</span>
-                            </span>
-                            <span className="mt-1 block h-1.5 rounded-full bg-surface-3"><span className={`block h-1.5 rounded-full ${p.cls}`} style={{ width: `${pct}%` }} /></span>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </>
-                );
-              })()}
-            </article>
-          </div>
-                        ),
+                blurb: "Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your habits.",
+                content: (() => {
+                  const b = d.budget;
+                  const parts = [
+                    { k: "Needs", c: b.groups.needs, cls: "bg-info" },
+                    { k: "Wants", c: b.groups.wants, cls: "bg-brand" },
+                    { k: "Savings", c: b.groups.savings, cls: "bg-warn" },
+                  ];
+                  return (
+                    <article className="card p-4 lg:max-w-2xl">
+                      <p className="flex items-baseline justify-between text-sm text-muted">
+                        <span>This month&apos;s income</span>
+                        <span className="font-num text-2xl text-display">${Math.round(b.incomeCents / 100).toLocaleString("en-US")}</span>
+                      </p>
+                      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                        {parts.map((p) => <span key={p.k} className={p.cls} style={{ width: `${(p.c.budgetCents / Math.max(1, b.incomeCents)) * 100}%` }} />)}
+                      </div>
+                      <ul className="mt-3 space-y-2.5 text-sm">
+                        {parts.map((p) => {
+                          const pct = p.c.budgetCents ? Math.min(100, (p.c.spentCents / p.c.budgetCents) * 100) : 0;
+                          return (
+                            <li key={p.k}>
+                              <span className="flex justify-between">
+                                <span className="text-ink"><span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${p.cls}`} />{p.k}</span>
+                                <span className="tabular text-muted">${Math.round(p.c.spentCents / 100).toLocaleString("en-US")} of ${Math.round(p.c.budgetCents / 100).toLocaleString("en-US")}</span>
+                              </span>
+                              <span className="mt-1 block h-1.5 rounded-full bg-surface-3"><span className={`block h-1.5 rounded-full ${p.cls}`} style={{ width: `${pct}%` }} /></span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {d.habits.length > 0 && (
+                        <>
+                          <p className="mt-4 text-xs font-bold text-ink">Predicted this week, everyday</p>
+                          <ul className="mt-2 flex flex-wrap gap-1.5">
+                            {d.habits.map((h) => (
+                              <li key={h.category} className="flex items-center gap-1.5 rounded-full border border-dashed border-line px-2.5 py-1 text-xs text-muted">
+                                <Glyph name={h.category} size="xs" bare /> {h.category} <b className="text-ink">~${Math.round(h.expectedCents / 100)}</b>
+                              </li>
+                            ))}
+                          </ul>
+                        </>
+                      )}
+                    </article>
+                  );
+                })(),
+                cta: { href: "/demo/spend/budget", label: "Open the budget in the demo" },
               },
               {
                 id: "daily",
                 label: "Every day",
                 kicker: "Every morning",
-                title: "Everything it watches for you.",
-                blurb: "Your accounts, your calendar priced, daily limits that know your week, and cards counted once.",
+                title: "One look, every morning.",
+                blurb: "Your accounts, and daily limits that know your week: more room on plan days.",
                 content: (
-                  <div>
-<div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 ">
-            <article className="card p-4 sm:p-5">
-              <h3 className="font-semibold text-ink">Everything, in one look</h3>
-              <p className="mt-1 text-sm text-muted">Balances and card statements straight from your bank, or typed in. Always with when each was last updated.</p>
-              <div className="mt-3">
-                <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
-              </div>
-            </article>
-          </div>
-          <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
-            <article className="card p-5">
-              <h3 className="font-semibold text-ink">Your calendar, priced</h3>
-              <p className="mt-1 text-sm text-muted">Every plan gets a cost, a cap and a clear answer: fits, fits with a plan, or not yet.</p>
-              <ul className="mt-4 space-y-2">
-                {events.map((e) => (
-                  <li key={e.title + e.date} className="flex items-center justify-between gap-2 text-sm">
-                    <span className="min-w-0 truncate text-ink">
-                      {e.title}
-                      <span className="ml-1 text-xs text-muted">{formatShort(e.date)}</span>
-                    </span>
-                    <span className={`whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold ${REC[e.recommendation as keyof typeof REC]?.cls ?? REC.proceed.cls}`}>
-                      {e.recommendation === "proceed" ? `Cap ${formatCents(e.capCents, { compact: true })}` : (REC[e.recommendation as keyof typeof REC]?.label ?? "Go ahead")}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-            <article className="card p-5">
-              <h3 className="font-semibold text-ink">Daily caps that know your week</h3>
-              <p className="mt-1 text-sm text-muted">More room on plan days, recalculated the moment you log a purchase.</p>
-              <div className="mt-4 flex h-20 items-end gap-1.5" role="img" aria-label="Example daily spending caps">
-                {d.weekCaps.map((c) => (
-                  <div key={c.date} className="flex flex-1 flex-col items-center gap-1">
-                    <span className={`w-full rounded-t ${c.hasPlan ? "bg-info/70" : "bg-brand"}`} style={{ height: `${Math.max(5, (c.capCents / maxCap) * 56)}px` }} />
-                    <span className="text-[10px] text-faint">{formatWeekday(c.date)}</span>
-                  </div>
-                ))}
-              </div>
-            </article>
-            <article className="card p-5">
-              <h3 className="font-semibold text-ink">Cards counted once</h3>
-              <p className="mt-1 text-sm text-muted">Swipe today and cash doesn't move. It moves once, when the statement is paid in full.</p>
-              {d.card && (
-                <p className="mt-4 flex items-center justify-between gap-1 text-center text-xs">
-                  {[["Buy", d.card.purchaseDate], ["Statement", d.card.closingDate], ["Paid", d.card.dueDate]].map(([t, date], i) => (
-                    <span key={t} className="flex flex-1 items-center gap-1">
-                      <span className="flex-1 rounded-lg bg-surface-2/70 px-1 py-2">
-                        <span className="block text-faint">{t}</span>
-                        <span className="font-semibold text-ink">{formatShort(date!)}</span>
-                      </span>
-                      {i < 2 && <span aria-hidden className="text-faint">›</span>}
-                    </span>
-                  ))}
-                </p>
-              )}
-            </article>
-          </div>
-          <ul className="mt-4 flex flex-wrap gap-2 text-sm text-muted">
-            {[
-              d.wedding ? `Wedding fund ${d.wedding.pct}% there, and protected` : "Savings goals protected",
-              "Empty calendars never read as “no plans”",
-              "Facts and estimates labelled",
-              "One question, not twenty",
-            ].map((t) => (
-              <li key={t} className="rounded-full border border-line px-3 py-1">{t}</li>
-            ))}
-          </ul>
+                  <div className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-2">
+                    <article className="card p-4">
+                      <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
+                    </article>
+                    <article className="card p-4">
+                      <h3 className="text-sm font-bold text-ink">Daily caps this week</h3>
+                      <div className="mt-3 flex h-20 items-end gap-1.5" role="img" aria-label="Example daily spending caps">
+                        {d.weekCaps.map((c) => (
+                          <div key={c.date} className="flex flex-1 flex-col items-center gap-1">
+                            <span className="text-[10px] tabular text-faint">${Math.round(c.capCents / 100)}</span>
+                            <span className={`w-full rounded-md ${c.hasPlan ? "bg-info/70" : "bg-brand"}`} style={{ height: `${Math.max(5, (c.capCents / maxCap) * 48)}px` }} />
+                            <span className="text-[10px] text-faint">{formatWeekday(c.date)}</span>
                           </div>
+                        ))}
+                      </div>
+                      <p className="mt-2 text-[11px] text-faint"><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info/70" />plan days get extra room</p>
+                    </article>
+                  </div>
                 ),
+                cta: { href: "/demo", label: "See today in the demo" },
               },
               {
                 id: "balance",
                 label: "Balance",
                 kicker: "Why not just check the bank?",
-                title: "Your balance isn't the full story.",
-                blurb: "Most of what's in your account already has a job. Here's how the sample balance gets spoken for.",
-                content: <SpokenFor data={d.spokenFor} />,
+                title: `Your bank says ${formatCents(d.spokenFor.startCents)}. It's not the full story.`,
+                blurb: <>Rent, the card bill and savings already have jobs. Walk it forward and what&apos;s truly yours today is <b className="text-ink">{formatCents(d.spokenFor.safeTodayCents)}</b>.</>,
+                content: <SpokenFor data={d.spokenFor} listOnly />,
+                cta: { href: "/demo/forecast", label: "See the forecast in the demo" },
               },
             ]}
           />

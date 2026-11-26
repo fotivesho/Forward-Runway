@@ -65,7 +65,7 @@ function Ahead({ children }: { children: React.ReactNode }) {
  * Explore your spending from four angles (what, which day, which month, when after payday). Each
  * starts wide, lets you tap into one thing, and always ends on what it means for the weeks ahead.
  */
-export function PatternExplorer({ data }: { data: ExploreData }) {
+export function PatternExplorer({ data, compact = false }: { data: ExploreData; compact?: boolean }) {
   const [lens, setLens] = useState<Lens>("category");
   const cats = useMemo(() => categoryList(data), [data]);
   const [cat, setCat] = useState<string | null>(cats[0]?.cat ?? null);
@@ -125,10 +125,13 @@ export function PatternExplorer({ data }: { data: ExploreData }) {
                   {cp.trendPct == null ? "—" : <span className={cp.trendPct > 0.1 ? "text-warn" : cp.trendPct < -0.1 ? "text-brand" : ""}>{cp.trendPct > 0 ? "↑" : cp.trendPct < 0 ? "↓" : ""}{Math.abs(Math.round(cp.trendPct * 100))}%</span>}
                 </Stat>
               </div>
+              {!compact && (<>
               <p className="mt-4 text-xs font-bold text-ink">Month by month</p>
               <div className="mt-1.5">
                 <Bars items={cp.months.map((m) => ({ key: m.month, label: m.current ? `${mon(m.month)}*` : mon(m.month), cents: m.cents }))} selected={cp.months.at(-1)!.month} height={56} />
               </div>
+              </>)}
+              {!compact && (<>
               <p className="mt-4 text-xs font-bold text-ink">
                 By day of week{cp.busiestDow != null && <span className="font-normal text-muted"> · most on {DOW_SHORT[cp.busiestDow]}</span>}
               </p>
@@ -143,6 +146,7 @@ export function PatternExplorer({ data }: { data: ExploreData }) {
               {cp.top.length > 0 && (
                 <p className="mt-2 text-xs text-muted">Most often: {cp.top.map((t) => `${t.desc} (${t.n}×)`).join(" · ")}</p>
               )}
+              </>)}
               <Ahead>
                 At your usual pace, about <Money cents={cp.next30Cents} whole className="font-bold" /> on {cp.cat.toLowerCase()} in the next 30 days.
                 {cp.oneLessPerMonthCents > 0 && <> One fewer a week frees up about <Money cents={cp.oneLessPerMonthCents} whole className="font-bold text-brand" /> a month.</>}

@@ -6,13 +6,13 @@ import type { LandingData } from "@/lib/view/landing";
 import { useInView } from "./motion";
 
 /** "Your bank shows $X. Here's what it isn't telling you." — the balance walks down item by item. */
-export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
+export function SpokenFor({ data, listOnly = false }: { data: LandingData["spokenFor"]; listOnly?: boolean }) {
   const { ref, inView } = useInView<HTMLDivElement>(0.25);
   const max = Math.max(data.startCents, ...data.steps.map((s) => s.balanceAfterCents));
   const pct = (c: number) => `${Math.max(2, (c / max) * 100)}%`;
   return (
-    <div ref={ref} className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-center">
-      <div>
+    <div ref={ref} className={listOnly ? "" : "grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-center"}>
+      {!listOnly && <div>
         <h2 className="font-display text-3xl leading-tight text-display sm:text-4xl">
           Your bank says <span className="tabular text-brand">{formatCents(data.startCents)}</span>.
           <br />
@@ -22,7 +22,7 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
           Rent, the card statement and savings transfers are already spoken for. Walk the money forward and what's truly safe to spend today is{" "}
           <span className="font-semibold text-ink tabular">{formatCents(data.safeTodayCents)}</span>.
         </p>
-      </div>
+      </div>}
       <ol className="card space-y-1 p-4 sm:p-5" aria-label="How the balance changes over the next three weeks (example)">
         <li className="flex items-center justify-between gap-3 pb-2 text-sm">
           <span className="font-semibold text-ink">Balance today</span>
@@ -31,7 +31,7 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
         <li aria-hidden className="h-2.5 rounded-full bg-surface-3">
           <span className="block h-2.5 rounded-full bg-brand" style={{ width: pct(data.startCents) }} />
         </li>
-        {data.steps.slice(0, 6).map((s, i) => (
+        {data.steps.slice(0, listOnly ? 5 : 6).map((s, i) => (
           <li
             key={s.date + s.label + i}
             className="pt-2 transition-all duration-700"

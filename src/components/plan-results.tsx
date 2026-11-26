@@ -5,7 +5,7 @@ import { Info } from "./info";
 import { Money } from "./privacy";
 
 /** Finished plans: planned vs what they really cost, and how close the estimates get. */
-export function PlanResults({ results, acc }: { results: PlanResult[]; acc: Accuracy[] }) {
+export function PlanResults({ results, acc, limit = 5, accLimit = 3 }: { results: PlanResult[]; acc: Accuracy[]; limit?: number; accLimit?: number }) {
   const matched = results.filter((r) => r.actual);
   if (!matched.length) return null;
   const net = matched.reduce((a, r) => a + r.diffCents!, 0);
@@ -23,7 +23,7 @@ export function PlanResults({ results, acc }: { results: PlanResult[]; acc: Accu
         </span>
       </div>
       <ul className="mt-2 divide-y divide-line/60">
-        {matched.slice(0, 5).map((r) => {
+        {matched.slice(0, limit).map((r) => {
           const d = r.diffCents!;
           const close = Math.abs(d) < Math.max(200, r.plannedCents * 0.03);
           return (
@@ -47,7 +47,7 @@ export function PlanResults({ results, acc }: { results: PlanResult[]; acc: Accu
         <div className="mt-3 rounded-2xl bg-surface-2/60 p-3">
           <p className="text-xs font-bold text-ink">How close your estimates run</p>
           <ul className="mt-2 space-y-2">
-            {acc.slice(0, 3).map((a) => {
+            {acc.slice(0, accLimit).map((a) => {
               const within = Math.round(a.withinPct * 100);
               return (
                 <li key={a.category} className="text-xs">
