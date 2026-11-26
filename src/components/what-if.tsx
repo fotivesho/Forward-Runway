@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { addManualEvent, deleteScenario, saveScenario } from "@/app/app/actions";
 import { addDays, dayOfWeek, formatShort, isISODate, type ISODate } from "@/lib/dates";
 import { parseDollars } from "@/lib/money";
-import { checkAffordability, compareScenario, nextOccurrence, ruleOccurrences, type Adjustment } from "@/lib/engine";
+import { checkAffordability, compareScenario, previewOption, nextOccurrence, ruleOccurrences, type Adjustment } from "@/lib/engine";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
@@ -195,7 +195,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
       {check && (
         <section className="card p-4 sm:p-5" aria-live="polite" aria-labelledby="wi-a">
           <h2 id="wi-a" className="sr-only">Answer</h2>
-          <PlanImpact check={check} reservedCents={reserved} />
+          <PlanImpact check={check} reservedCents={reserved} preview={(o) => previewOption(ctx, { amountCents: cents!, date, paymentAccountId: payWith, reservedCents: reserved }, o)} />
           {ripple && (
             <div className="mt-4 rounded-xl border border-line p-3">
               <p className="flex items-center justify-between text-sm font-bold text-ink">

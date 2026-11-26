@@ -280,18 +280,25 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
  * and two numbers anyone can read: spending money left, and the lowest your balance gets.
  */
 export function PlanImpact({
-  check,
+  check: base,
   reservedCents = 0,
   eventId,
   payWith,
+  preview,
 }: {
   check: AffordCheck;
+  /** Tap an option to see its effect before doing it. */
+  preview?: (option: AffordCheck["action"]) => AffordCheck | null;
   reservedCents?: number;
   /** A saved plan: options get a "Do this" button. */
   eventId?: string;
   /** The payment method shown; doing an option also saves it. */
   payWith?: string | null;
 }) {
+  const [trying, setTrying] = useState<string | null>(null);
+  const tried = trying ? [base.action, ...base.alternatives].find((x) => x.title === trying) : undefined;
+  const previewed = tried && preview ? preview(tried) : null;
+  const check = previewed ?? base;
   const look = LOOK[check.verdict];
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
   const r = { ...check.room, before: check.room.before + reservedCents };
@@ -346,8 +353,8 @@ export function PlanImpact({
           status={after < floor ? `${dollars(floor - after)} below cushion` : `${dollars(after - floor)} above cushion`}
         />
       </div>
-      {check.verdict !== "yes" && (() => {
-        const opts = [check.action, ...check.alternatives].filter((x) => x.kind !== "none");
+      {base.verdict !== "yes" && (() => {
+        const opts = [base.action, ...base.alternatives].filter((x) => x.kind !== "none");
         if (!opts.length) return null;
         const tint: Record<string, string> = {
           move: "border-warn/50 bg-warn/10",
@@ -360,11 +367,21 @@ export function PlanImpact({
         const icon: Record<string, string> = { move: "🛟", skip_plan: "✂️", lean: "🥗", wait: "⏳", goal: "🎯", cheaper: "🏷️" };
         return (
           <div className="mt-3">
-            <p className="mb-1.5 text-sm font-bold text-ink">{check.verdict === "not_yet" ? "Options" : "Options"}</p>
+            <p className="mb-1.5 flex items-center justify-between text-sm font-bold text-ink">
+              Options
+              {preview && <span className="text-[11px] font-normal text-faint">{previewed ? <button type="button" className="underline" onClick={() => setTrying(null)}>Back to without</button> : "Tap one to see it"}</span>}
+            </p>
             <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
               {opts.map((x, i) => (
-                <li key={x.title} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
-                  <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-semibold leading-snug text-ink">
+                <li key={x.title} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 transition ${tint[x.kind] ?? "border-line bg-surface-2"} ${trying === x.title ? "ring-2 ring-ink/60" : ""}`}>
+                  <p
+                    className={`flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-semibold leading-snug text-ink ${preview && x.apply ? "cursor-pointer" : ""}`}
+                    role={preview && x.apply ? "button" : undefined}
+                    tabIndex={preview && x.apply ? 0 : undefined}
+                    aria-pressed={preview && x.apply ? trying === x.title : undefined}
+                    onClick={preview && x.apply ? () => setTrying((t) => (t === x.title ? null : x.title)) : undefined}
+                    onKeyDown={preview && x.apply ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTrying((t) => (t === x.title ? null : x.title)); } } : undefined}
+                  >
                     <Glyph name={icon[x.kind]} size="xs" />
                     <span className="min-w-0" title={x.title}>
                       {i === 0 && <span className="mr-1 text-warn" title="Best option">★</span>}

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useContext, useState } from "react";
 import { applyPlanOption, correctEvent, saveRule, saveTransaction, setEventDuplicate, updateBalance } from "@/app/app/actions";
 import { formatShort, type ISODate } from "@/lib/dates";
-import type { Account } from "@/lib/engine";
+import { previewOption, type Account } from "@/lib/engine";
+import { toEngineInput } from "@/lib/data/snapshot";
 import type { EventView, Question } from "@/lib/view/dashboard";
 import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
@@ -126,6 +127,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const savedCredit = !!view.creditCardId && event.paymentAccountId === view.creditCardId;
   const [credit, setCredit] = useState(savedCredit);
   const [open, setOpen] = useState(false);
+  const planCtx = useContext(PlanCtx);
   const check = view.checkCredit && credit ? view.checkCredit : (view.checkDebit ?? view.check);
   const saved = view.check;
   const other = credit ? view.checkDebit : view.checkCredit;
@@ -213,7 +215,17 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                 </div>
               )}
               {check && !advice?.userDecided ? (
-                <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} eventId={event.id} payWith={view.checkCredit ? (credit ? view.creditCardId : null) : undefined} />
+                <PlanImpact
+                  check={check}
+                  reservedCents={advice?.capCents ?? 0}
+                  eventId={event.id}
+                  payWith={view.checkCredit ? (credit ? view.creditCardId : null) : undefined}
+                  preview={planCtx ? (o) => previewOption(
+                    { input: toEngineInput(planCtx.snapshot, planCtx.today), events: planCtx.events, calendarIncomplete: planCtx.calendarIncomplete, nextPayday: planCtx.nextPayday },
+                    { amountCents: view.plannedCents, date: event.date, paymentAccountId: view.checkCredit && credit ? view.creditCardId : null, reservedCents: advice?.capCents ?? 0 },
+                    o,
+                  ) : undefined}
+                />
               ) : (
                 !advice?.userDecided && advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
               )}

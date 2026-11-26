@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { formatCents } from "@/lib/money";
 import { addDays, dayOfWeek, formatShort, type ISODate } from "@/lib/dates";
-import { checkAffordability, type AffordCheck, type PlannedEvent } from "@/lib/engine";
+import { checkAffordability, previewOption, type AffordAction, type AffordCheck, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import type { LandingData } from "@/lib/view/landing";
 import { Glyph } from "@/components/icon";
@@ -96,6 +96,7 @@ export function HeroAfford({
   const [pick, setPick] = useState<number | null>(null);
   const [date, setDate] = useState<ISODate>(today);
   const [credit, setCredit] = useState(false);
+  const [trying, setTrying] = useState<string | null>(null);
   const cents = pick == null ? 0 : OPTIONS[pick]!.cents;
   const run = (d: ISODate, cc: boolean) => checkAffordability(ctx, { amountCents: cents, date: d, paymentAccountId: cc && card ? card.id : null });
   const check: AffordCheck | null = useMemo(() => (pick == null ? null : run(date, credit)), [pick, date, credit, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -126,14 +127,21 @@ export function HeroAfford({
   const line = (cs: number[]) => cs.map((c, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(c).toFixed(1)}`).join("");
 
   // Say "credit card", not the card's name: this is about the idea, not one bank.
-  const why = check ? explain(check).why.replace(`${card?.name.split(" ")[0] ?? "Card"} bill`, "Credit card bill") : "";
-  const options = check && check.verdict !== "yes" ? [check.action, ...check.alternatives].filter((o) => o.kind !== "none").slice(0, 3) : [];
-  const r = check?.room;
-  const cushion = check ? check.lowest.after.cents - check.floorCents : 0;
-  // On credit, what matters is the card bill (like the app); on debit, this pay period's spending money.
-  const bill = check?.card && !check.cash.beyondHorizon ? check.card : null;
+  // Tap an option: the same answer, with that option done.
+  const base = check;
+  const opts: AffordAction[] = base && base.verdict !== "yes" ? [base.action, ...base.alternatives].filter((o) => o.kind !== "none" && o.apply).slice(0, 3) : [];
+  const tried = opts.find((o) => o.title === trying);
+  const shown = base && tried ? (previewOption(ctx, { amountCents: cents, date, paymentAccountId: credit && card ? card.id : null }, tried) ?? base) : base;
+  const why = shown ? explain(shown).why.replace(`${card?.name.split(" ")[0] ?? "Card"} bill`, "Credit card bill") : "";
+  const r = shown?.room;
+  const cushion = shown ? shown.lowest.after.cents - shown.floorCents : 0;
+  const bill = shown?.card && !shown.cash.beyondHorizon ? shown.card : null;
   const VERDICT_BG = { yes: "linear-gradient(135deg,#2e7346,#1f5a37)", yes_with_plan: "linear-gradient(135deg,#a87708,#865d00)", not_yet: "linear-gradient(135deg,#c0392b,#8f1f17)" } as const;
   const VERDICT_ICON = { yes: "✓", yes_with_plan: "↺", not_yet: "✕" } as const;
+  const dot = (v: AffordCheck["verdict"]) => (v === "yes" ? "#5fbf83" : v === "yes_with_plan" ? "#e0a92a" : "#e5584b");
+  const chip = (on: boolean) => (on ? "bg-[#1f4531] text-[#f1e9cf] shadow-md" : "bg-white shadow-[0_1px_2px_rgba(31,69,49,0.08)]");
+  const short = (t: string) => t.replace(/\.$/, "").replace(/ from ([A-Z][a-z]+ )?Savings/, " from savings").replace(/ by [A-Z][a-z]{2} \d+$/, "").replace(/ and move /, " + ");
+  const reset = (fn: () => void) => { fn(); setTrying(null); };
 
   return (
     <div
@@ -143,48 +151,60 @@ export function HeroAfford({
       aria-label="Try it: can I afford it? Sample data"
     >
       {/* The number, on deep green */}
-      <div className="relative px-5 pb-4 pt-5 sm:px-6" style={{ background: "radial-gradient(120% 140% at 100% 0%,#2f6b47 0%,#1f4531 55%,#183a29 100%)", color: "#f1e9cf" }}>
+      <div className="relative px-5 pb-3 pt-4" style={{ background: "radial-gradient(120% 140% at 100% 0%,#2f6b47 0%,#1f4531 55%,#183a29 100%)", color: "#f1e9cf" }}>
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold opacity-80">Safe to spend today</span>
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-[#ddefbf]">Sample</span>
         </div>
-        <p className="font-num mt-1 text-6xl leading-none sm:text-7xl">{formatCents(safe)}</p>
-        <p className="mt-1.5 text-xs opacity-75">After every bill, card payment and plan until payday{hero.daysToPayday != null ? ` in ${hero.daysToPayday} days` : ""}.</p>
-        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="mt-3 h-16 w-full overflow-visible" aria-hidden>
-          <line x1="0" x2={W} y1={y(hero.floorCents)} y2={y(hero.floorCents)} stroke="#e8c26a" strokeOpacity="0.45" strokeDasharray="2 5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-          <path d={`${line(after ?? vals)}L${W},${H}L0,${H}Z`} fill="#9be0b1" fillOpacity="0.12" />
-          <path d={line(vals)} fill="none" stroke="#9be0b1" strokeOpacity={after ? 0.35 : 1} strokeWidth="1.75" vectorEffect="non-scaling-stroke" />
-          {after && check && <path d={line(after)} fill="none" stroke={check.verdict === "yes" ? "#9be0b1" : check.verdict === "yes_with_plan" ? "#e8c26a" : "#ff9a90"} strokeWidth="2.25" vectorEffect="non-scaling-stroke" />}
-        </svg>
+        <div className="mt-1 flex items-end justify-between gap-3">
+          <p className="font-num text-5xl leading-none sm:text-6xl">{formatCents(safe)}</p>
+          <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="h-12 w-32 shrink-0 overflow-visible" aria-hidden>
+            <line x1="0" x2={W} y1={y(hero.floorCents)} y2={y(hero.floorCents)} stroke="#e8c26a" strokeOpacity="0.45" strokeDasharray="2 5" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+            <path d={`${line(after ?? vals)}L${W},${H}L0,${H}Z`} fill="#9be0b1" fillOpacity="0.12" />
+            <path d={line(vals)} fill="none" stroke="#9be0b1" strokeOpacity={after ? 0.35 : 1} strokeWidth="1.75" vectorEffect="non-scaling-stroke" />
+            {after && shown && <path d={line(after)} fill="none" stroke={dot(shown.verdict)} strokeWidth="2.25" vectorEffect="non-scaling-stroke" />}
+          </svg>
+        </div>
+        <p className="mt-1.5 text-[11px] opacity-75">After every bill, card payment and plan until payday{hero.daysToPayday != null ? ` in ${hero.daysToPayday} days` : ""}.</p>
       </div>
 
-      <div className="p-5 sm:p-6">
-        <p className="text-sm font-bold">Can I afford…</p>
-        <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="space-y-3 p-4">
+        <div className="grid grid-cols-3 gap-2">
           {OPTIONS.map((o, i) => (
-            <button
-              key={o.label}
-              type="button"
-              onClick={() => setPick(i)}
-              aria-pressed={pick === i}
-              className={`flex flex-col items-center gap-1 rounded-2xl px-1 py-2.5 transition ${pick === i ? "bg-[#1f4531] text-[#f1e9cf] shadow-lg" : "bg-white shadow-[0_1px_2px_rgba(31,69,49,0.08)] hover:shadow-md"}`}
-            >
-              <Glyph name={o.icon} size="sm" />
-              <span className="text-xs font-semibold">{o.label}</span>
-              <span className="text-sm font-bold tabular">{usd(o.cents)}</span>
+            <button key={o.label} type="button" onClick={() => reset(() => setPick(i))} aria-pressed={pick === i} className={`flex items-center justify-center gap-1.5 rounded-xl px-1 py-2 transition ${chip(pick === i)}`}>
+              <Glyph name={o.icon} size="xs" />
+              <span className="text-left leading-tight">
+                <span className="block text-[11px] font-semibold">{o.label}</span>
+                <span className="block text-sm font-bold tabular">{usd(o.cents)}</span>
+              </span>
             </button>
           ))}
         </div>
+        {pick == null && <p className="text-center text-sm font-bold">Can I afford it? Tap one.</p>}
 
         <div aria-live="polite">
-          {check && r && (
-            <div className="fade-up mt-5 space-y-4">
+          {shown && r && (
+            <div className="fade-up space-y-3">
+              {/* Debit or credit, first: see the difference */}
+              {payChecks.length === 2 && (
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-white/70 p-1 shadow-[inset_0_0_0_1px_rgba(31,69,49,0.08)]" role="group" aria-label="Pay with">
+                  {payChecks.map(({ cc, c }) => (
+                    <button key={String(cc)} type="button" onClick={() => reset(() => setCredit(cc))} aria-pressed={credit === cc}
+                      className={`flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition ${credit === cc ? "bg-[#1f4531] text-[#f1e9cf] shadow" : ""}`}>
+                      <span className="h-1.5 w-1.5 rounded-full" style={{ background: dot(c.verdict) }} />
+                      {cc ? "Credit" : "Debit"}
+                      <span className="font-normal opacity-70">· {cc ? `pays ${formatShort(c.cash.date)}` : "today"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* The answer, loud */}
-              <div className="flex items-center gap-3 rounded-2xl px-4 py-3.5 text-white shadow-lg" style={{ background: VERDICT_BG[check.verdict] }}>
-                <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/20 text-xl font-bold">{VERDICT_ICON[check.verdict]}</span>
+              <div className="flex items-center gap-3 rounded-2xl px-3.5 py-2.5 text-white shadow-lg transition-colors" style={{ background: VERDICT_BG[shown.verdict] }}>
+                <span aria-hidden className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 text-base font-bold">{VERDICT_ICON[shown.verdict]}</span>
                 <span className="min-w-0">
-                  <span className="font-display block text-[1.9rem] leading-none">{WORD[check.verdict]}</span>
-                  <span className="mt-1 block text-xs opacity-90">{why}</span>
+                  <span className="font-display block text-2xl leading-none">{tried ? (shown.verdict === "yes" ? "Then it fits." : "Closer.") : WORD[shown.verdict]}</span>
+                  <span className="mt-0.5 block text-[11px] leading-snug opacity-90">{tried ? `With: ${short(tried.title)}` : why}</span>
                 </span>
               </div>
 
@@ -197,8 +217,8 @@ export function HeroAfford({
                     before={bill.usualCents}
                     after={bill.withCents}
                     limit={bill.capCents}
-                    tone={check.verdict !== "yes" && bill.withCents > bill.capCents ? C.warn : C.good}
-                    sub={check.verdict !== "yes" && bill.withCents > bill.capCents ? `${usd(bill.withCents - bill.capCents)} over what you can pay` : "Paid in full on time"}
+                    tone={shown.verdict !== "yes" && bill.withCents > bill.capCents ? C.warn : C.good}
+                    sub={shown.verdict !== "yes" && bill.withCents > bill.capCents ? `${usd(bill.withCents - bill.capCents)} over what you can pay` : "Paid in full on time"}
                   />
                 ) : (
                   <Meter
@@ -212,27 +232,38 @@ export function HeroAfford({
                 )}
                 <Meter
                   label="Lowest balance"
-                  when={formatShort(check.lowest.after.date)}
-                  before={check.lowest.before.cents}
-                  after={check.lowest.after.cents}
+                  when={formatShort(shown.lowest.after.date)}
+                  before={shown.lowest.before.cents}
+                  after={shown.lowest.after.cents}
                   tone={cushion < 0 ? C.bad : C.good}
                   sub={cushion < 0 ? `${usd(-cushion)} under cushion` : `${usd(cushion)} above cushion`}
                 />
               </div>
 
-              {/* Ways to make it work: titles only, details behind ⓘ */}
-              {options.length > 0 && (
+              {/* Ways to make it work: tap to see it */}
+              {opts.length > 0 && (
                 <div>
-                  <p className="text-sm font-bold">Ways to make it work</p>
-                  <ul className="mt-2 space-y-1.5">
-                    {options.map((o, i) => (
-                      <li key={o.title} className="flex items-center gap-2.5 rounded-2xl bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(31,69,49,0.08)]" style={i === 0 ? { boxShadow: `inset 0 0 0 1.5px ${C.warn}` } : undefined}>
-                        <Glyph name={OPTION_ICON[o.kind] ?? "plan"} size="sm" />
-                        <span className="min-w-0 flex-1 text-sm font-bold leading-snug">
-                          {i === 0 && <span style={{ color: C.warn }}>★ </span>}
-                          {o.title.replace(/\.$/, "")}
+                  <p className="flex items-baseline justify-between text-xs font-bold">
+                    Ways to make it work <span className="font-normal" style={{ color: C.muted }}>tap to try</span>
+                  </p>
+                  <ul className="mt-1.5 space-y-1">
+                    {opts.map((o, i) => (
+                      <li key={o.title}>
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={trying === o.title}
+                          onClick={() => setTrying((t) => (t === o.title ? null : o.title))}
+                          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setTrying((t) => (t === o.title ? null : o.title)); } }}
+                          className={`flex cursor-pointer items-center gap-2 rounded-xl px-2.5 py-1.5 transition ${chip(trying === o.title)}`}
+                        >
+                          <Glyph name={OPTION_ICON[o.kind] ?? "plan"} size="xs" />
+                          <span className="min-w-0 flex-1 text-[13px] font-bold leading-snug">
+                            {i === 0 && <span style={{ color: trying === o.title ? "#e8c26a" : C.warn }}>★ </span>}
+                            {short(o.title)}
+                          </span>
                           <InfoDot label={`About: ${o.title}`}>{o.detail}</InfoDot>
-                        </span>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -242,64 +273,21 @@ export function HeroAfford({
               {/* Best day to buy */}
               {dayChecks.length > 1 && (
                 <div>
-                  <p className="text-sm font-bold">Best day to buy</p>
-                  <div className="mt-2 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${dayChecks.length}, minmax(0, 1fr))` }}>
+                  <p className="text-xs font-bold">Best day to buy{firstFit && firstFit.date !== date && base!.verdict !== "yes" && <span className="font-semibold" style={{ color: C.good }}> · fits on {formatShort(firstFit.date)}</span>}</p>
+                  <div className="mt-1.5 grid gap-1" style={{ gridTemplateColumns: `repeat(${dayChecks.length}, minmax(0, 1fr))` }}>
                     {dayChecks.map((d) => (
-                      <button
-                        key={d.date}
-                        type="button"
-                        onClick={() => setDate(d.date)}
-                        aria-pressed={date === d.date}
-                        className={`rounded-xl px-1 py-1.5 text-center transition ${date === d.date ? "bg-[#1f4531] text-[#f1e9cf] shadow-md" : "bg-white shadow-[0_1px_2px_rgba(31,69,49,0.08)]"}`}
-                      >
-                        <span className="block text-[10px] opacity-75">{d.label}</span>
-                        <span className="block text-xs font-bold">{formatShort(d.date)}</span>
-                        <span className="mt-0.5 flex items-center justify-center gap-1 text-[10px] font-bold">
-                          <span className="h-1.5 w-1.5 rounded-full" style={{ background: d.c.verdict === "yes" ? "#5fbf83" : d.c.verdict === "yes_with_plan" ? "#e0a92a" : "#e5584b" }} />
-                          {SHORT[d.c.verdict]}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  {firstFit && firstFit.date !== date && check.verdict !== "yes" && (
-                    <p className="mt-1.5 text-xs font-semibold" style={{ color: C.good }}>Wait until {formatShort(firstFit.date)} and it simply fits.</p>
-                  )}
-                </div>
-              )}
-
-              {/* Debit or credit */}
-              {payChecks.length === 2 && (
-                <div>
-                  <p className="text-sm font-bold">Debit or credit</p>
-                  <div className="mt-2 grid grid-cols-2 gap-1.5">
-                    {payChecks.map(({ cc, c }) => (
-                      <button
-                        key={String(cc)}
-                        type="button"
-                        onClick={() => setCredit(cc)}
-                        aria-pressed={credit === cc}
-                        className={`rounded-xl px-3 py-2 text-left transition ${credit === cc ? "bg-[#1f4531] text-[#f1e9cf] shadow-md" : "bg-white shadow-[0_1px_2px_rgba(31,69,49,0.08)]"}`}
-                      >
-                        <span className="flex items-center justify-between gap-1">
-                          <span className="text-xs font-bold">{cc ? "Credit" : "Debit"}</span>
-                          <span className="flex items-center gap-1 text-[10px] font-bold">
-                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: c.verdict === "yes" ? "#5fbf83" : c.verdict === "yes_with_plan" ? "#e0a92a" : "#e5584b" }} />
-                            {SHORT[c.verdict]}
-                          </span>
-                        </span>
-                        <span className="block text-[10px] opacity-75">cash leaves {formatShort(c.cash.date)}</span>
+                      <button key={d.date} type="button" onClick={() => reset(() => setDate(d.date))} aria-pressed={date === d.date} className={`flex items-center justify-center gap-1 rounded-lg px-1 py-1.5 text-[11px] font-bold transition ${chip(date === d.date)}`}>
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ background: dot(d.c.verdict) }} />
+                        {d.label === "Today" ? "Today" : formatShort(d.date)}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              <Link href="/demo" className="flex min-h-12 items-center justify-center rounded-full bg-[#1f4531] px-5 text-base font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
+              <Link href="/demo" className="flex min-h-11 items-center justify-center rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
                 Try it with your plans in the demo →
               </Link>
-              <button type="button" onClick={() => { setPick(null); setDate(today); setCredit(false); }} className="block w-full text-center text-xs font-semibold underline" style={{ color: C.muted }}>
-                Start over
-              </button>
             </div>
           )}
         </div>

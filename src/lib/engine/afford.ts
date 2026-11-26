@@ -350,3 +350,29 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     rest.map(strip),
   );
 }
+
+/**
+ * What the answer would look like after doing one option: the same check, re-run with that option
+ * applied (savings moved in, other plans skipped, a lower cap, a later date, another way to pay).
+ * Null when an option changes nothing the numbers can show (running lean is a daily habit).
+ */
+export function previewOption(ctx: AffordContext, req: AffordRequest, option: AffordAction): AffordCheck | null {
+  const a = option.apply;
+  if (!a) return null;
+  let events = ctx.events;
+  const r: AffordRequest = { ...req };
+  if (a.skipEventIds?.length) events = events.filter((e) => !a.skipEventIds!.includes(e.id));
+  if (a.capCents != null) r.amountCents = Math.min(r.amountCents, a.capCents);
+  if (a.newDate) r.date = a.newDate;
+  if (a.paymentAccountId !== undefined) r.paymentAccountId = a.paymentAccountId;
+  const c = checkAffordability({ ...ctx, events }, r);
+  const moved = (a.moves ?? []).reduce((t, m) => t + m.cents, 0);
+  if (!moved) return c;
+  // Savings moved in land exactly where they're needed: this pay period, or the card bill.
+  const shortfall = Math.max(0, c.room.shortfall - moved);
+  const room = { ...c.room, after: c.room.after + Math.max(0, moved - c.room.shortfall), shortfall };
+  const card = c.card ? { ...c.card, capCents: c.card.capCents + moved } : null;
+  const lowest = { ...c.lowest, after: { ...c.lowest.after, cents: c.lowest.after.cents + moved } };
+  const fits = shortfall === 0 && (!card || card.withCents <= card.capCents) && lowest.after.cents >= c.floorCents;
+  return { ...c, room, card, lowest, verdict: fits ? "yes" : c.verdict };
+}
