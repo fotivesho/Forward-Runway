@@ -9,7 +9,7 @@ export default async function WhatIfPage() {
   const { snapshot, today, nowIso } = await getAppSession();
   return (
     <>
-      <PageHeader title="What if…" subtitle="Try it before you buy. Nothing is saved." />
+      <PageHeader title="What if…" subtitle="Before you buy, see if it fits, when, and how." />
       <WhatIf snapshot={snapshot} today={today} nowIso={nowIso} />
     </>
   );

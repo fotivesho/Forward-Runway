@@ -1,171 +1,240 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { deleteScenario, recordDecision, saveScenario } from "@/app/app/actions";
-import { addDays, formatShort, isISODate, type ISODate } from "@/lib/dates";
+import { useDeferredValue, useMemo, useState } from "react";
+import { addManualEvent, deleteScenario, saveScenario } from "@/app/app/actions";
+import { addDays, dayOfWeek, formatShort, isISODate, type ISODate } from "@/lib/dates";
 import { parseDollars } from "@/lib/money";
-import { compareScenario, nextOccurrence, planPurchase, ruleOccurrences, type Adjustment } from "@/lib/engine";
+import { checkAffordability, compareScenario, nextOccurrence, ruleOccurrences, type Adjustment } from "@/lib/engine";
+import { LOOK, PlanImpact } from "./afford-result";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
-import { AFFORD_PRESETS, AffordIt, type AffordPreset } from "./landing/afford-it";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Money } from "./privacy";
-import { Badge, Card, EmptyState, Notice } from "./ui";
+import { Card, Disclosure, EmptyState, Notice } from "./ui";
 
-const VERDICT = {
-  fits: { tone: "good", label: "Fits your cash flow" },
-  fits_with_savings: { tone: "warn", label: "Needs a move from savings" },
-  needs_protected_savings: { tone: "warn", label: "Needs protected savings" },
-  not_covered: { tone: "bad", label: "Not covered" },
-} as const;
 
+const COMMON: Array<{ label: string; emoji: string; cents: number }> = [
+  { label: "Dinner out", emoji: "🍽️", cents: 8_000 },
+  { label: "Concert", emoji: "🎟️", cents: 18_000 },
+  { label: "Weekend away", emoji: "🏕️", cents: 65_000 },
+  { label: "New phone", emoji: "📱", cents: 110_000 },
+  { label: "Laptop", emoji: "💻", cents: 240_000 },
+];
+const VERDICT_SHORT = { yes: "Good", yes_with_plan: "Doable", not_yet: "Not yet" } as const;
+
+/**
+ * What if: the money question, answered in one place. Your numbers up top, one question box,
+ * the answer in plain words with things you can do, the best time to buy, debit vs credit,
+ * and "add to my plans". Bigger changes (income, bills, cushion) sit in a fold underneath.
+ */
 export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
   const input = useMemo(() => toEngineInput(snapshot, today), [snapshot, today]);
-  // The same advisor view the Today screen uses, so "safe to spend today" matches exactly.
-  const model = useMemo(() => buildDashboard(snapshot, today, 30, new Date(nowIso)), [snapshot, today, nowIso]);
-  const presets = useMemo<AffordPreset[]>(() => {
-    const plans: AffordPreset[] = model.events
-      .filter((v) => !v.duplicate && v.plannedCents > 0 && v.event.date >= today && v.event.decision !== "skip")
-      .slice(0, 4)
-      .map((v) => ({ label: v.event.title, short: v.event.title, cents: v.plannedCents, emoji: "📅", date: v.event.date, reservedCents: v.advice?.capCents ?? 0 }));
-    return [...plans, ...AFFORD_PRESETS].slice(0, 4);
-  }, [model, today]);
+  const m = useMemo(() => buildDashboard(snapshot, today, 30, new Date(nowIso)), [snapshot, today, nowIso]);
+  const ctx = useMemo(() => ({ input, events: m.planned, calendarIncomplete: m.coverage.incomplete, nextPayday: m.nextPayday }), [input, m]);
+  const cards = snapshot.accounts.filter((a) => a.kind === "credit_card" && !a.archived);
   const hasAccounts = snapshot.accounts.some((a) => !a.archived && a.isSpendable);
 
+  const [what, setWhat] = useState("");
+  const [amount, setAmount] = useState("650");
+  const [date, setDate] = useState(today);
+  const [payWith, setPayWith] = useState<string | null>(null);
+  const [reserved, setReserved] = useState(0);
+  const [added, setAdded] = useState<string | null>(null);
+  const cents = parseDollars(useDeferredValue(amount));
+  const valid = !!cents && cents > 0 && cents <= 5_000_000 && isISODate(date) && date >= today;
+
+  const check = useMemo(
+    () => (valid && hasAccounts ? checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: payWith, reservedCents: reserved }) : null),
+    [ctx, valid, cents, date, payWith, reserved, hasAccounts],
+  );
+
+  // Best time to buy: the same amount on a few dates that matter.
+  const saturday = addDays(today, (6 - dayOfWeek(today) + 7) % 7 || 7);
+  const paydays = m.plan.allowance.periods.filter((p) => p.startsWithIncome).map((p) => p.start);
+  const times = useMemo(() => {
+    const list: Array<{ label: string; date: ISODate }> = [
+      { label: "Today", date: today },
+      { label: "Sat", date: saturday },
+      ...(paydays[0] ? [{ label: "Payday", date: paydays[0] }] : []),
+      ...(paydays[1] ? [{ label: "Payday 2", date: paydays[1] }] : []),
+      { label: "In a month", date: addDays(today, 30) },
+    ];
+    const seen = new Set<string>();
+    return list.filter((t) => (seen.has(t.date) ? false : (seen.add(t.date), true)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [today, saturday, paydays.join()]);
+  const timeChecks = useMemo(
+    () => (valid ? times.map((t) => ({ ...t, c: checkAffordability(ctx, { amountCents: cents!, date: t.date, paymentAccountId: payWith }) })) : []),
+    [ctx, valid, cents, times, payWith],
+  );
+  const payChecks = useMemo(
+    () =>
+      valid && cards.length
+        ? [{ id: null as string | null, name: "Debit" }, ...cards.map((c) => ({ id: c.id as string | null, name: c.name.split(" ")[0]! }))].map((o) => ({
+            ...o,
+            c: checkAffordability(ctx, { amountCents: cents!, date, paymentAccountId: o.id, reservedCents: reserved }),
+          }))
+        : [],
+    [ctx, valid, cents, date, cards, reserved],
+  );
+  const firstGood = timeChecks.find((t) => t.c.verdict === "yes");
+
+  const plans = m.allEvents.filter((v) => v.plannedCents > 0 && v.event.decision !== "skip").slice(0, 4);
+  const pick = (label: string, c: number, d?: ISODate, r = 0) => {
+    setWhat(label);
+    setAmount(String(c / 100));
+    if (d) setDate(d);
+    setReserved(r);
+    setAdded(null);
+  };
+  const free = m.plan.allowance.status === "shortfall" ? 0 : m.plan.poolCents;
+  const savings = [...m.savings.map((v) => v.valueCents), ...m.goals.filter((g) => !g.goal.protected).map((g) => g.balanceCents)].reduce((a, b) => a + b, 0);
+  const chip = (on: boolean) => `min-h-9 shrink-0 whitespace-nowrap rounded-full border px-3 text-[13px] font-medium transition ${on ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:border-brand/60"}`;
+
+  if (!hasAccounts) return <EmptyState title="Add a cash account first">What if needs a checking balance to work from.</EmptyState>;
+
   return (
-    <div className="grid gap-4">
-      <section className="card p-4 sm:p-5" aria-labelledby="afford-card-title">
-        <h2 id="afford-card-title" className="text-base font-semibold text-ink">Can I afford it?</h2>
-        <p className="mb-4 mt-1 text-sm text-muted">Pick a plan or type an amount.</p>
-        {hasAccounts ? (
-          <AffordIt
-            snapshot={snapshot}
-            today={today}
-            nextPayday={model.nextPayday}
-            events={model.planned}
-            calendarIncomplete={model.coverage.incomplete}
-            presets={presets}
-            cta={demo ? { href: "/login?mode=signup", label: "Create your own →" } : null}
-            note={demo ? "Sample budget. Protected goals are never suggested." : "Uses your real balances, bills and calendar. Protected goals are never suggested."}
-          />
-        ) : (
-          <EmptyState title="Add a cash account first">The checker needs a checking balance to work from.</EmptyState>
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+      {/* Where you stand right now */}
+      <ul className="grid grid-cols-3 gap-2">
+        {[
+          { label: "Spending money", sub: `until ${formatShort(m.plan.allowance.current.end)}`, v: free },
+          { label: "Lowest ahead", sub: formatShort(m.forecast90.lowest.date), v: m.forecast90.lowest.cents },
+          { label: "Savings to tap", sub: "excl. protected", v: savings },
+        ].map((t) => (
+          <li key={t.label} className="card min-w-0 p-2.5">
+            <p className="truncate text-[11px] font-semibold text-muted">{t.label}</p>
+            <p className="truncate text-lg font-extrabold tabular text-ink"><Money cents={t.v} whole /></p>
+            <p className="truncate text-[10px] text-faint">{t.sub}</p>
+          </li>
+        ))}
+      </ul>
+
+      {/* The question */}
+      <section className="card p-4 sm:p-5" aria-labelledby="wi-q">
+        <h2 id="wi-q" className="text-base font-semibold text-ink">What do you want to do?</h2>
+        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+          {plans.map((v) => (
+            <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
+              📅 {v.event.title} · <Money cents={v.plannedCents} whole />
+            </button>
+          ))}
+          {COMMON.map((c) => (
+            <button key={c.label} type="button" className={chip(what === c.label)} onClick={() => pick(c.label, c.cents)}>
+              {c.emoji} {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 grid grid-cols-[minmax(0,1fr)_8rem] gap-2">
+          <label className="text-xs font-medium text-muted">
+            What
+            <input className="input mt-1" value={what} onChange={(e) => { setWhat(e.target.value); setReserved(0); }} placeholder="Anything" maxLength={80} />
+          </label>
+          <label className="text-xs font-medium text-muted">
+            How much
+            <span className="relative mt-1 block">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
+              <input id="wi-amount" className="input pl-7 text-lg font-bold tabular" inputMode="decimal" value={amount} onChange={(e) => { setAmount(e.target.value); setReserved(0); }} />
+            </span>
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <span className="w-12 text-xs font-medium text-muted">When</span>
+          {times.slice(0, 3).map((t) => (
+            <button key={t.date} type="button" className={chip(date === t.date)} onClick={() => setDate(t.date)}>{t.label}</button>
+          ))}
+          <input type="date" aria-label="Pick a date" className="input min-h-9 w-auto py-1 text-[13px]" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+        </div>
+        {cards.length > 0 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="w-12 text-xs font-medium text-muted">Pay</span>
+            <button type="button" className={chip(payWith === null)} onClick={() => setPayWith(null)}>Debit</button>
+            {cards.map((c) => (
+              <button key={c.id} type="button" className={chip(payWith === c.id)} onClick={() => setPayWith(c.id)}>{cards.length === 1 ? "Credit" : c.name}</button>
+            ))}
+          </div>
         )}
       </section>
-      <PurchasePlanner snapshot={snapshot} input={input} today={today} />
-      <ScenarioBuilder snapshot={snapshot} input={input} today={today} />
-    </div>
-  );
-}
 
-function PurchasePlanner({ snapshot, input, today }: { snapshot: Snapshot; input: ReturnType<typeof toEngineInput>; today: ISODate }) {
-  const [label, setLabel] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState(today);
-  const [payWith, setPayWith] = useState("");
-  const [allowProtected, setAllowProtected] = useState(false);
-  const cents = parseDollars(amount);
-  const amountError = amount && (cents == null || cents <= 0) ? "Enter a price like 899.99." : null;
-  const dateError = !isISODate(date) || date < today ? "Choose today or a future date." : null;
-  const plan = useMemo(() => {
-    if (!cents || cents <= 0 || dateError) return null;
-    return planPurchase(input, { label: label || "Big purchase", amountCents: cents, date, paymentAccountId: payWith || null, allowProtected });
-  }, [input, label, cents, date, payWith, allowProtected, dateError]);
-  const payOptions = snapshot.accounts.filter((a) => !a.archived && (a.isSpendable || a.kind === "credit_card"));
+      {/* The answer */}
+      {check && (
+        <section className="card p-4 sm:p-5" aria-live="polite" aria-labelledby="wi-a">
+          <h2 id="wi-a" className="sr-only">Answer</h2>
+          <p className="text-sm text-muted">
+            {what && <><span className="font-semibold text-ink">{what}</span> · </>}<Money cents={cents!} whole className="font-semibold text-ink" /> · {formatShort(date)}
+            {check.cash.viaCard && !check.cash.beyondHorizon && <> · cash leaves {formatShort(check.cash.date)}</>}
+          </p>
+          <PlanImpact check={check} reservedCents={reserved} />
 
-  return (
-    <Card title="Plan a big purchase in detail" id="purchase">
-      <p className="mb-3 text-sm text-muted">What it takes from savings, and how long to rebuild.</p>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="p-label" className="text-sm font-medium">What is it?</label>
-          <input id="p-label" className="input" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="New laptop" maxLength={80} />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="p-amount" className="text-sm font-medium">Price</label>
-          <input id="p-amount" className="input" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" aria-invalid={amountError ? true : undefined} aria-describedby={amountError ? "p-amount-err" : undefined} />
-          {amountError && <p id="p-amount-err" className="text-xs text-danger">{amountError}</p>}
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="p-date" className="text-sm font-medium">When</label>
-          <input id="p-date" type="date" className="input" value={date} min={today} onChange={(e) => setDate(e.target.value)} aria-invalid={dateError ? true : undefined} aria-describedby={dateError ? "p-date-err" : undefined} />
-          {dateError && <p id="p-date-err" className="text-xs text-danger">{dateError}</p>}
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="p-pay" className="text-sm font-medium">Pay with</label>
-          <select id="p-pay" className="input" value={payWith} onChange={(e) => setPayWith(e.target.value)}>
-            <option value="">Main checking</option>
-            {payOptions.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-        </div>
-        <label className="flex items-start gap-3 sm:col-span-2">
-          <input type="checkbox" className="mt-1 h-5 w-5 accent-[var(--color-brand)]" checked={allowProtected} onChange={(e) => setAllowProtected(e.target.checked)} />
-          <span className="text-sm">
-            Allow using protected savings (like the wedding fund)
-            <span className="block text-xs text-faint">Off by default. Protected goals are only ever suggested when you turn this on.</span>
-          </span>
-        </label>
-      </div>
+          {timeChecks.length > 1 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Best time to buy</p>
+              <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
+                {timeChecks.map((t) => (
+                  <button
+                    key={t.date}
+                    type="button"
+                    onClick={() => setDate(t.date)}
+                    aria-pressed={date === t.date}
+                    className={`rounded-lg border px-1 py-1.5 text-center transition ${LOOK[t.c.verdict].panel} ${date === t.date ? "ring-2 ring-ink/40" : ""}`}
+                  >
+                    <span className="block truncate text-[10px] text-muted">{t.label}</span>
+                    <span className="block text-[11px] font-semibold text-ink">{formatShort(t.date)}</span>
+                    <span className={`block text-[11px] font-bold ${LOOK[t.c.verdict].word}`}>{LOOK[t.c.verdict].icon} {VERDICT_SHORT[t.c.verdict]}</span>
+                  </button>
+                ))}
+              </div>
+              {firstGood && firstGood.date !== date && check.verdict !== "yes" && (
+                <p className="mt-1 text-xs text-brand">Wait until {formatShort(firstGood.date)} and it simply fits.</p>
+              )}
+            </div>
+          )}
 
-      {!plan ? (
-        <p className="mt-4 text-sm text-faint">Enter a price to see the plan.</p>
-      ) : (
-        <div className="mt-4 space-y-3" aria-live="polite">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge tone={VERDICT[plan.verdict].tone}>{VERDICT[plan.verdict].label}</Badge>
-            <p className="text-sm text-ink">{plan.summary}</p>
+          {payChecks.length > 1 && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Debit or credit</p>
+              <div className="mt-1.5 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${payChecks.length}, minmax(0, 1fr))` }}>
+                {payChecks.map((o) => (
+                  <button key={o.name} type="button" onClick={() => setPayWith(o.id)} aria-pressed={payWith === o.id}
+                    className={`rounded-lg border px-2 py-1.5 text-left transition ${LOOK[o.c.verdict].panel} ${payWith === o.id ? "ring-2 ring-ink/40" : ""}`}>
+                    <span className="block text-[12px] font-semibold text-ink">{o.name}</span>
+                    <span className={`block text-[11px] font-bold ${LOOK[o.c.verdict].word}`}>{LOOK[o.c.verdict].icon} {VERDICT_SHORT[o.c.verdict]}</span>
+                    <span className="block text-[10px] text-muted">cash leaves {formatShort(o.c.cash.date)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={!!added}
+              onClick={async () => {
+                const title = what.trim() || "Purchase";
+                if (demo) return setAdded(`Demo: "${title}" would be added to your plans on ${formatShort(date)}.`);
+                const f = new FormData();
+                f.set("title", title);
+                f.set("date", date);
+                f.set("estimate", String(cents! / 100));
+                if (payWith) f.set("paymentAccountId", payWith);
+                const r = await addManualEvent(null, f);
+                setAdded(r?.ok ? `Added "${title}" to your plans. Open it on Today to pick an option.` : (r && !r.ok ? r.error ?? "Couldn't add it." : "Couldn't add it."));
+              }}
+            >
+              {added ? "✓ Added" : "Add to my plans"}
+            </button>
+            <span className="text-xs text-muted">{added ?? "It joins your forecast and calendar, where you can do an option in one tap."}</span>
           </div>
-          <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-            <div className="rounded-xl bg-surface-2/60 p-2.5"><dt className="text-xs text-faint">Lowest cash now</dt><dd className="font-semibold"><Money cents={plan.baseline.lowestCents} /></dd><dd className="text-xs text-muted">{formatShort(plan.baseline.lowestDate)}</dd></div>
-            <div className="rounded-xl bg-surface-2/60 p-2.5"><dt className="text-xs text-faint">Lowest with purchase</dt><dd className="font-semibold"><Money cents={plan.withPurchase.lowestCents} /></dd><dd className="text-xs text-muted">{formatShort(plan.withPurchase.lowestDate)}</dd></div>
-            <div className="rounded-xl bg-surface-2/60 p-2.5"><dt className="text-xs text-faint">Daily allowance now</dt><dd className="font-semibold"><Money cents={plan.baseline.dailyAllowanceCents} /></dd></div>
-            <div className="rounded-xl bg-surface-2/60 p-2.5"><dt className="text-xs text-faint">With purchase</dt><dd className="font-semibold"><Money cents={plan.withPurchase.dailyAllowanceCents} /></dd></div>
-          </dl>
-          {plan.shortfallCents > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold">Savings ammo: <Money cents={plan.shortfallCents} /> needed</h3>
-              <ul className="mt-1 space-y-1 text-sm">
-                {plan.sources.map((s) => (
-                  <li key={s.accountId} className="flex flex-wrap justify-between gap-2">
-                    <span>{s.name} {s.protected && <Badge>Protected{s.goalName ? ` · ${s.goalName}` : ""}</Badge>} <span className="text-xs text-faint">(<Money cents={s.availableCents} /> available)</span></span>
-                    <span>{s.useCents > 0 ? <>use <Money cents={s.useCents} className="font-semibold" /></> : <span className="text-faint">not used</span>}</span>
-                  </li>
-                ))}
-                {plan.sources.length === 0 && <li className="text-muted">No savings accounts with money available.</li>}
-              </ul>
-            </div>
-          )}
-          {plan.rebuild.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold">Rebuilding savings afterwards</h3>
-              <ul className="mt-1 grid gap-2 sm:grid-cols-3">
-                {plan.rebuild.map((r) => (
-                  <li key={r.months} className={`rounded-xl border p-2.5 text-sm ${r.feasible ? "border-line" : "border-warn/50"}`}>
-                    <p className="font-medium">{r.months} months</p>
-                    <p><Money cents={r.monthlyCents} />/month</p>
-                    <p className="text-xs text-muted">≈ <Money cents={r.dailyImpactCents} /> less per day · done by {formatShort(r.doneBy)}</p>
-                    {!r.feasible && <p className="text-xs text-warn">More than your current daily allowance</p>}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">{plan.steps.map((s) => <li key={s}>{s}</li>)}</ol>
-          <ActionForm action={recordDecision} aria-label="Save this decision">
-            <input type="hidden" name="subjectType" value="purchase" />
-            <input type="hidden" name="subjectId" value={label || "Big purchase"} />
-            <input type="hidden" name="detail" value={JSON.stringify({ amountCents: cents, date, verdict: plan.verdict, shortfallCents: plan.shortfallCents, steps: plan.steps })} />
-            <div className="flex flex-wrap gap-2">
-              <Submit variant="secondary" name="decision" value="go_ahead_with_plan">I'll do this plan</Submit>
-              <Submit variant="secondary" name="decision" value="wait">I'll wait</Submit>
-              <Submit variant="secondary" name="decision" value="skip">I'll skip it</Submit>
-            </div>
-          </ActionForm>
-          <p className="text-xs text-faint">Moves between accounts aren't made for you. Add the transfer under Activity when you make it.</p>
-        </div>
+        </section>
       )}
-    </Card>
+
+      <Disclosure summary="Bigger what-ifs: a raise, a new bill, cancelling something">
+        <ScenarioBuilder snapshot={snapshot} input={input} today={today} />
+      </Disclosure>
+    </div>
   );
 }
 

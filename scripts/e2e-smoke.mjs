@@ -116,16 +116,18 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/calendar", "/demo/wh
   check(res.status >= 300 && res.status < 400 && /\/login\?mode=reset/.test(res.headers.get("location") ?? ""), "/auth/confirm handles a bad reset link");
 }
 
-// The checker is also in the app's What-if page, answering in Today's number, with calendar plans as presets
+// What if: one question, a plain answer, best time to buy, debit vs credit
 {
   const { page, errors } = await visit("/demo/what-if", 390);
-  check(errors.length === 0, `what-if checker loads without errors ${errors.join(" | ")}`);
-  const answer = await page.locator("#afford-result").innerText();
-  check(/Free to spend/i.test(answer) && /(Yes|Not yet)/.test(answer), "what-if checker answers in pay-period free money");
-  await page.getByRole("button", { name: "Credit", exact: true }).click();
+  check(errors.length === 0, `what-if loads without errors ${errors.join(" | ")}`);
+  const body = await page.locator("main").innerText();
+  check(/Spending money/.test(body) && /Lowest balance ahead/.test(body) && /(You're good|Doable|Not yet|Already covered)/.test(body), "what-if answers in plain words with both meters");
+  check(/Best time to buy/i.test(body), "what-if compares dates");
+  check(/Debit or credit/i.test(body), "what-if compares debit and credit");
+  await page.fill("#wi-amount", "2400");
   await page.waitForTimeout(300);
-  check(/statement ·/i.test(await page.locator("#afford-result").innerText()) && /max/.test(await page.locator("#afford-result").innerText()), "paying by card shows the statement against its cap");
-  check((await page.locator("#afford button[aria-pressed]").filter({ hasText: "·" }).count()) > 0, "calendar plans appear as presets with their dates");
+  check(/(Doable|Not yet)/.test(await page.locator("main").innerText()), "a big amount isn't a plain yes");
+  check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), "what-if has no horizontal scroll");
   await page.close();
 }
 

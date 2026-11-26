@@ -8,7 +8,7 @@ export default function Page() {
   const s = getDemoSession();
   return (
     <>
-      <PageHeader title="What if…" subtitle="Try it before you buy. Nothing is saved." />
+      <PageHeader title="What if…" subtitle="Before you buy, see if it fits, when, and how." />
       <WhatIf snapshot={s.snapshot} today={s.today} nowIso={s.nowIso} demo />
     </>
   );
