@@ -4,7 +4,8 @@ import { useState } from "react";
 import { deleteTransaction } from "@/app/app/actions";
 import { formatLong, formatShort, type ISODate } from "@/lib/dates";
 import type { Account, OneTimeTransaction } from "@/lib/engine";
-import { TransactionForm } from "./entity-forms";
+import { RuleForm, TransactionForm } from "./entity-forms";
+import { addMonths } from "@/lib/dates";
 import { QuickAction } from "./form";
 import { Modal } from "./modal";
 import { CategoryTrend } from "./spend-insights";
@@ -12,7 +13,7 @@ import type { CategoryBucket } from "@/lib/view/spend";
 import { Money } from "./privacy";
 import { Badge, EmptyState } from "./ui";
 import { APP_NAME } from "@/lib/brand";
-import { iconFor } from "@/lib/categories";
+import { iconFor, isNotSpending } from "@/lib/categories";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
@@ -22,6 +23,7 @@ export function TransactionList({
   today,
   monthStart,
   trends = {},
+  categories = [],
 }: {
   txns: OneTimeTransaction[];
   accounts: Account[];
@@ -29,7 +31,10 @@ export function TransactionList({
   monthStart: ISODate;
   /** Per category: spending by month and by week, shown when you tap the category. */
   trends?: Record<string, { month: CategoryBucket[]; week: CategoryBucket[] }>;
+  /** Your categories, most used first. */
+  categories?: string[];
 }) {
+  const [repeat, setRepeat] = useState(false);
   const [cat, setCat] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
@@ -38,7 +43,7 @@ export function TransactionList({
   // Chips: this month's spending per category, biggest first.
   const totals = new Map<string, number>();
   for (const t of txns) {
-    if (t.direction !== "out" || t.status !== "posted" || t.date < monthStart || t.date > today) continue;
+    if (t.direction !== "out" || t.status !== "posted" || t.date < monthStart || t.date > today || isNotSpending(t.category)) continue;
     const c = t.category ?? "Other";
     totals.set(c, (totals.get(c) ?? 0) + t.amountCents);
   }
@@ -98,7 +103,10 @@ export function TransactionList({
       {current && (
         <Modal
           open
-          onClose={() => setOpen(null)}
+          onClose={() => {
+            setOpen(null);
+            setRepeat(false);
+          }}
           icon={current.direction === "in" ? "💰" : iconFor(current.category)}
           tone={current.direction === "in" ? "in" : "out"}
           title={current.description}
@@ -115,7 +123,35 @@ export function TransactionList({
             </>
           }
         >
-          <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} onDone={() => setOpen(null)} />
+          {repeat ? (
+            <>
+              <p className="mb-2 text-sm text-muted">Add it as repeating, starting from its next date. Check how often it happens.</p>
+              <RuleForm
+                prefill={{
+                  id: "",
+                  name: current.description,
+                  kind: current.direction === "in" ? "income" : "bill",
+                  amountCents: current.amountCents,
+                  accountId: current.accountId,
+                  category: current.category ?? null,
+                  schedule: { frequency: "monthly", startDate: addMonths(current.date, 1), dayOfMonth: Number(current.date.slice(8)), weekendAdjust: current.direction === "in" ? "before" : "none" },
+                }}
+                accounts={accounts}
+                today={today}
+                onDone={() => {
+                  setOpen(null);
+                  setRepeat(false);
+                }}
+              />
+            </>
+          ) : (
+            <>
+              <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
+              {!isNotSpending(current.category) && (
+                <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => setRepeat(true)}>🔁 This repeats: add it as repeating</button>
+              )}
+            </>
+          )}
           <div className="mt-4 flex justify-end border-t border-line pt-4">
             <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
           </div>

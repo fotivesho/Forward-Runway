@@ -77,9 +77,19 @@ export function computeAllowance(forecast: Forecast): Allowance {
       dailyRateCents: 0,
       budgetCents: 0,
     }));
+    // Name the biggest payments that cause it, so the shortfall isn't a mystery.
+    const outs = days
+      .slice(0, minIdx + 1)
+      .flatMap((d) => d.items.filter((it) => it.cashEffectCents < 0))
+      .sort((x, y) => x.cashEffectCents - y.cashEffectCents)
+      .slice(0, 2);
+    const nextIncome = days.slice(minIdx + 1).find((d) => d.items.some((it) => it.kind === "income" && it.cashEffectCents > 0));
+    const cause = outs.length
+      ? ` Mainly ${outs.map((it) => `${it.label} (${formatCents(-it.cashEffectCents)} on ${formatShort(it.date)})`).join(" and ")}${nextIncome ? `, before your next income on ${formatShort(nextIncome.date)}` : ""}.`
+      : "";
     explanation.push(
-      `Before any flexible spending, cash is projected to fall ${formatCents(-minSlack)} below your ${formatCents(floor)} floor on ${formatShort(days[minIdx]!.date)}.`,
-      "Flexible spending is paused until that gap is closed: move money from savings, delay a bill, or add income.",
+      `Before any flexible spending, cash is projected to fall ${formatCents(-minSlack)} below your ${formatCents(floor)} floor on ${formatShort(days[minIdx]!.date)}.${cause}`,
+      "Flexible spending is paused until that gap is closed: move money from savings, pay less on a card this month, delay a bill, or add income.",
     );
     return {
       status: "shortfall",

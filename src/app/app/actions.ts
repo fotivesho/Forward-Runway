@@ -243,9 +243,33 @@ export async function saveTransaction(_: ActionState, form: FormData): Promise<A
   const parsed = parseForm(transactionSchema, form);
   if (!parsed.ok) return invalid(parsed.fieldErrors);
   const { id, row } = parsed.data;
-  const { error } = id ? await supabase.from("transactions").update(row).eq("id", id) : await supabase.from("transactions").insert(row);
+  if (id) {
+    const { data: existing } = await supabase.from("transactions").select("external_id").eq("id", id).maybeSingle();
+    if (existing?.external_id) {
+      // From the bank: its amount, date, account and status are facts; only your labels change.
+      const { error } = await supabase
+        .from("transactions")
+        .update({ description: row.description, category: row.category, flexible: form.get("flexible") === "on" })
+        .eq("id", id);
+      if (error) return dbError(error);
+      return ok("Saved.");
+    }
+  }
+  // Status follows the date: anything after today is planned, anything up to today happened.
+  const { today } = await userToday(supabase);
+  const finalRow = { ...row, status: row.date > today ? ("planned" as const) : ("posted" as const) };
+  const { error } = id ? await supabase.from("transactions").update(finalRow).eq("id", id) : await supabase.from("transactions").insert(finalRow);
   if (error) return dbError(error);
-  return ok(id ? "Transaction updated." : row.status === "posted" && row.direction === "out" ? "Spending logged. Caps recalculated." : "Transaction added.");
+  return ok(id ? "Transaction updated." : finalRow.status === "posted" && finalRow.direction === "out" ? "Spending logged. Caps recalculated." : "Planned. It's in your forecast.");
+}
+
+/** "Not repeating": stop suggesting this one (remembered, so it doesn't come back). */
+export async function dismissRecurring(form: FormData) {
+  const { supabase } = await session();
+  const key = String(form.get("key") ?? "").slice(0, 160);
+  if (!key) return;
+  await supabase.from("corrections").upsert({ kind: "preference", match_key: `recurring_dismissed:${key}`, value: { dismissed: true } }, { onConflict: "user_id,kind,match_key" });
+  revalidatePath("/app", "layout");
 }
 
 export async function deleteTransaction(form: FormData) {

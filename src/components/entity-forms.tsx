@@ -6,6 +6,7 @@ import type { Account, CardStatement, RecurringRule, SavingsGoal } from "@/lib/e
 import { centsToInput } from "@/lib/money";
 import type { ISODate } from "@/lib/dates";
 import { SPEND_CATEGORIES } from "./advisor";
+import { CATEGORY_LIST, iconFor } from "@/lib/categories";
 import { ActionForm, CheckboxField, Field, MoneyField, SelectField, Submit } from "./form";
 
 const dayOptions = (blank: string) => [
@@ -154,9 +155,25 @@ const RULE_KINDS: Array<{ value: RecurringRule["kind"]; label: string }> = [
   { value: "transfer", label: "Other transfer" },
 ];
 
-export function RuleForm({ rule, accounts, today, defaultKind, onDone }: { rule?: RecurringRule; accounts: Account[]; today: ISODate; defaultKind?: RecurringRule["kind"]; onDone?: () => void }) {
-  const [kind, setKind] = useState<RecurringRule["kind"]>(rule?.kind ?? defaultKind ?? "bill");
-  const [freq, setFreq] = useState(rule?.schedule.frequency ?? "monthly");
+export function RuleForm({
+  rule,
+  prefill,
+  accounts,
+  today,
+  defaultKind,
+  onDone,
+}: {
+  rule?: RecurringRule;
+  /** Starting values for a new item, e.g. from a transaction or a suggestion. */
+  prefill?: RecurringRule;
+  accounts: Account[];
+  today: ISODate;
+  defaultKind?: RecurringRule["kind"];
+  onDone?: () => void;
+}) {
+  const base = rule ?? prefill;
+  const [kind, setKind] = useState<RecurringRule["kind"]>(base?.kind ?? defaultKind ?? "bill");
+  const [freq, setFreq] = useState(base?.schedule.frequency ?? "monthly");
   const all = live(accounts);
   const cash = all.filter((a) => !isLiability(a) && a.isSpendable);
   const transferKind = ["loan_payment", "card_payment", "savings_transfer", "transfer"].includes(kind);
@@ -167,18 +184,18 @@ export function RuleForm({ rule, accounts, today, defaultKind, onDone }: { rule?
     <ActionForm action={saveRule} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!rule} aria-label={rule ? `Edit ${rule.name}` : "Add recurring item"}>
       {rule && <input type="hidden" name="id" value={rule.id} />}
       <SelectField name="kind" label="What is it?" value={kind} onChange={(e) => setKind(e.target.value as RecurringRule["kind"])} options={RULE_KINDS} />
-      <Field name="name" label="Name" defaultValue={rule?.name} placeholder={kind === "income" ? "Paycheck" : "Rent"} required maxLength={80} />
-      <MoneyField name="amount" label="Amount" defaultValue={centsToInput(rule?.amountCents)} required />
+      <Field name="name" label="Name" defaultValue={base?.name} placeholder={kind === "income" ? "Paycheck" : "Rent"} required maxLength={80} />
+      <MoneyField name="amount" label="Amount" defaultValue={centsToInput(base?.amountCents)} required />
       <SelectField
         name="accountId"
         label={kind === "income" ? "Paid into" : transferKind ? "From" : "Paid with"}
-        defaultValue={rule?.accountId ?? fromOptions[0]?.id}
+        defaultValue={base?.accountId ?? fromOptions[0]?.id}
         options={opt(fromOptions)}
         hint={!transferKind && kind !== "income" ? "Choose a card if it's charged to a card — it's then paid with the statement, not twice." : undefined}
         wrapperClassName="col-span-2"
       />
-      {transferKind && <SelectField name="toAccountId" label="To" defaultValue={rule?.toAccountId ?? toOptions[0]?.id ?? ""} options={[{ value: "", label: "Choose…" }, ...opt(toOptions)]} />}
-      <Field name="category" label="Category (optional)" defaultValue={rule?.category ?? ""} maxLength={40} list="rule-categories" />
+      {transferKind && <SelectField name="toAccountId" label="To" defaultValue={base?.toAccountId ?? toOptions[0]?.id ?? ""} options={[{ value: "", label: "Choose…" }, ...opt(toOptions)]} />}
+      <CategoryField label="Category (optional)" defaultValue={base?.category} />
       <datalist id="rule-categories">
         {["Housing", "Utilities", "Insurance", "Subscriptions", "Debt", "Savings", "Groceries", "Transport", "Salary", ...SPEND_CATEGORIES].map((c) => (
           <option key={c} value={c} />
@@ -197,25 +214,25 @@ export function RuleForm({ rule, accounts, today, defaultKind, onDone }: { rule?
           { value: "monthly", label: "Monthly" },
         ]}
       />
-      <Field name="startDate" type="date" label={freq === "once" ? "Date" : freq === "weekly" || freq === "biweekly" ? "Next (or a past) date it happens" : "Starts"} defaultValue={rule?.schedule.startDate ?? today} required />
+      <Field name="startDate" type="date" label={freq === "once" ? "Date" : freq === "weekly" || freq === "biweekly" ? "Next (or a past) date it happens" : "Starts"} defaultValue={base?.schedule.startDate ?? today} required />
       {(freq === "monthly" || freq === "semimonthly") && (
         <SelectField
           name="dayOfMonth"
           label={freq === "semimonthly" ? "First day" : "Day of month"}
-          defaultValue={rule?.schedule.dayOfMonth != null ? String(rule.schedule.dayOfMonth) : freq === "semimonthly" ? "1" : ""}
+          defaultValue={base?.schedule.dayOfMonth != null ? String(base.schedule.dayOfMonth) : freq === "semimonthly" ? "1" : ""}
           options={dayOptions(freq === "monthly" ? "Same day as start date" : "1")}
           hint="Days past the end of a short month land on its last day."
         />
       )}
       {freq === "semimonthly" && (
-        <SelectField name="secondDayOfMonth" label="Second day" defaultValue={rule?.schedule.secondDayOfMonth != null ? String(rule.schedule.secondDayOfMonth) : "15"} options={dayOptions("15")} />
+        <SelectField name="secondDayOfMonth" label="Second day" defaultValue={base?.schedule.secondDayOfMonth != null ? String(base.schedule.secondDayOfMonth) : "15"} options={dayOptions("15")} />
       )}
-      {freq !== "once" && <Field name="endDate" type="date" label="Ends (optional)" defaultValue={rule?.schedule.endDate ?? ""} />}
+      {freq !== "once" && <Field name="endDate" type="date" label="Ends (optional)" defaultValue={base?.schedule.endDate ?? ""} />}
       <SelectField
         name="weekendAdjust"
         label="If it falls on a weekend"
         wrapperClassName="col-span-2"
-        defaultValue={rule?.schedule.weekendAdjust ?? (kind === "income" ? "before" : "none")}
+        defaultValue={base?.schedule.weekendAdjust ?? (kind === "income" ? "before" : "none")}
         options={[
           { value: "none", label: "Keep the date" },
           { value: "before", label: "Move to the Friday before" },
@@ -223,7 +240,7 @@ export function RuleForm({ rule, accounts, today, defaultKind, onDone }: { rule?
         ]}
       />
       <div className="col-span-2">
-        <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={rule?.isEstimate} hint="Shown as an estimate so confirmed facts and guesses stay separate." />
+        <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={base?.isEstimate} hint="Shown as an estimate so confirmed facts and guesses stay separate." />
       </div>
       <div className="col-span-2">
         <Submit>{rule ? "Save changes" : "Add"}</Submit>
@@ -234,9 +251,69 @@ export function RuleForm({ rule, accounts, today, defaultKind, onDone }: { rule?
 
 /* -------------------------------------------------------------- transaction */
 
-export function TransactionForm({ accounts, today, txn, onDone }: { accounts: Account[]; today: ISODate; txn?: import("@/lib/engine").OneTimeTransaction; onDone?: () => void }) {
+/**
+ * Category picker: your categories first, then the usual ones, then "+ New category…" to type your own.
+ */
+export function CategoryField({ name = "category", label = "Category", defaultValue, yours = [], wrapperClassName = "" }: { name?: string; label?: string; defaultValue?: string | null; yours?: string[]; wrapperClassName?: string }) {
+  const rest = CATEGORY_LIST.filter((c) => !yours.includes(c));
+  const all = [...yours, ...rest];
+  const initial = defaultValue ?? "";
+  const known = initial === "" || all.includes(initial);
+  const [choice, setChoice] = useState(known ? initial : "__new");
+  const [custom, setCustom] = useState(known ? "" : initial);
+  return (
+    <div className={`flex flex-col gap-1 ${wrapperClassName}`}>
+      <label className="text-sm font-medium text-ink">
+        {label}
+        <select className="input mt-1 font-normal" value={choice} name={choice === "__new" ? undefined : name} onChange={(e) => setChoice(e.target.value)}>
+          <option value="">Choose…</option>
+          {yours.length > 0 && (
+            <optgroup label="Your categories">{yours.map((c) => <option key={c} value={c}>{iconFor(c)} {c}</option>)}</optgroup>
+          )}
+          <optgroup label={yours.length ? "More" : "Categories"}>{rest.map((c) => <option key={c} value={c}>{iconFor(c)} {c}</option>)}</optgroup>
+          <option value="__new">+ New category…</option>
+        </select>
+      </label>
+      {choice === "__new" && (
+        <input className="input" name={name} value={custom} onChange={(e) => setCustom(e.target.value)} placeholder="Name your category" maxLength={40} aria-label="New category name" autoFocus />
+      )}
+    </div>
+  );
+}
+
+export function TransactionForm({
+  accounts,
+  today,
+  txn,
+  onDone,
+  categories = [],
+}: {
+  accounts: Account[];
+  today: ISODate;
+  txn?: import("@/lib/engine").OneTimeTransaction;
+  onDone?: () => void;
+  /** Your own categories, most used first. */
+  categories?: string[];
+}) {
   const [direction, setDirection] = useState<"in" | "out">(txn?.direction ?? "out");
   const usable = live(accounts).filter((a) => a.kind !== "loan");
+  // From your bank: amount, date, account and status are the bank's facts. You can rename, recategorize, and say if it's day-to-day.
+  if (txn?.externalId) {
+    return (
+      <ActionForm action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" aria-label="Edit transaction">
+        <input type="hidden" name="id" value={txn.id} />
+        <Field name="description" label="Name" defaultValue={txn.description} required maxLength={120} wrapperClassName="col-span-2" />
+        <CategoryField defaultValue={txn.category} yours={categories} wrapperClassName="col-span-2" />
+        {txn.direction === "out" && (
+          <div className="col-span-2">
+            <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn.flexible !== false} hint="Counts toward your daily caps and spending patterns. Untick for one-offs like a deposit or a big annual bill." />
+          </div>
+        )}
+        <p className="col-span-2 text-xs text-faint">Amount, date, account and {txn.pending ? "pending" : "posted"} status come from your bank.</p>
+        <div className="col-span-2"><Submit>Save</Submit></div>
+      </ActionForm>
+    );
+  }
   return (
     <ActionForm action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!txn} aria-label={txn ? "Edit transaction" : "Add transaction"}>
       {txn && <input type="hidden" name="id" value={txn.id} />}
@@ -244,10 +321,8 @@ export function TransactionForm({ accounts, today, txn, onDone }: { accounts: Ac
       <MoneyField name="amount" label="Amount" defaultValue={centsToInput(txn?.amountCents)} required />
       <Field name="description" label="Description" defaultValue={txn?.description} required maxLength={120} wrapperClassName="col-span-2" />
       <SelectField name="accountId" label="Account" defaultValue={txn?.accountId ?? usable[0]?.id} options={opt(usable)} hint="A purchase on a credit card is paid later with the statement." wrapperClassName="col-span-2" />
-      <Field name="category" label="Category" defaultValue={txn?.category ?? ""} list="txn-categories" maxLength={40} />
-      <datalist id="txn-categories">{SPEND_CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
-      <Field name="date" type="date" label="Date" defaultValue={txn?.date ?? today} required />
-      <SelectField name="status" label="Status" defaultValue={txn?.status ?? "posted"} options={[{ value: "posted", label: "Happened" }, { value: "planned", label: "Planned / expected" }]} wrapperClassName="col-span-2" />
+      <CategoryField defaultValue={txn?.category} yours={categories} />
+      <Field name="date" type="date" label="Date" defaultValue={txn?.date ?? today} required hint="A future date makes it planned." />
       <div className="col-span-2 flex flex-col gap-2">
         {direction === "out" && <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn ? txn.flexible !== false : true} hint="Counts against your daily caps and teaches your spending pattern." />}
         <CheckboxField name="cleared" label="Already included in the balance I entered" defaultChecked={txn?.cleared} hint="Tick this if your account balance already reflects it, so it isn't subtracted twice." />

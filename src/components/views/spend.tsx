@@ -3,11 +3,13 @@ import { Money } from "@/components/privacy";
 import { AddButton, RecurringTiles, type RuleTile } from "@/components/spend-modals";
 import { CashFlowCard } from "@/components/spend-insights";
 import { TransactionList } from "@/components/transaction-list";
+import { isNotSpending } from "@/lib/categories";
+import { findRecurring } from "@/lib/view/recurring";
+import { RecurringSuggestions } from "@/components/recurring-suggestions";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { addDays, formatShort, startOfMonth } from "@/lib/dates";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
-import { monthlyEquivalent } from "@/lib/view/dashboard";
 import { cashFlow, categoryHistory, monthBuckets, payPeriodBuckets, weekBuckets } from "@/lib/view/spend";
 import { deleteTransfer } from "@/app/app/actions";
 
@@ -24,10 +26,9 @@ export function SpendView({ snapshot, today }: ViewProps) {
   const hasAccounts = accounts.some((a) => !a.archived);
   const monthStart = startOfMonth(today);
   const active = snapshot.rules.filter((r) => r.active !== false);
-  const monthlyIn = active.filter((r) => r.kind === "income").reduce((t, r) => t + monthlyEquivalent(r), 0);
-  const monthlyOut = active.filter((r) => r.kind !== "income").reduce((t, r) => t + monthlyEquivalent(r), 0);
   const spentThisMonth = snapshot.transactions
-    .filter((t) => t.direction === "out" && t.status === "posted" && t.date >= monthStart && t.date <= today)
+    // Card payments and transfers between your own accounts aren't spending: the purchases already counted.
+    .filter((t) => t.direction === "out" && t.status === "posted" && t.date >= monthStart && t.date <= today && !isNotSpending(t.category))
     .reduce((s, t) => s + t.amountCents, 0);
   const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 300);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
@@ -50,22 +51,35 @@ export function SpendView({ snapshot, today }: ViewProps) {
   const periods = payPeriodBuckets(snapshot, today);
   const weeks = weekBuckets(today);
   const categories = [...new Set(snapshot.transactions.filter((t) => t.direction === "out").map((t) => t.category ?? "Other"))];
+  // Your categories, most used first (for the category picker).
+  const useCount = new Map<string, number>();
+  for (const t of snapshot.transactions) if (t.category) useCount.set(t.category, (useCount.get(t.category) ?? 0) + 1);
+  for (const r of snapshot.rules) if (r.category) useCount.set(r.category, (useCount.get(r.category) ?? 0) + 1);
+  const yourCategories = [...useCount.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 12);
+  // This month so far plus what's scheduled, the same numbers as the cash-flow chart.
+  const flowMonths = cashFlow(snapshot, today, months);
+  const thisMonth = flowMonths[flowMonths.length - 1]!;
+  const dismissed = new Set(
+    snapshot.corrections.filter((c) => c.kind === "preference" && c.matchKey.startsWith("recurring_dismissed:")).map((c) => c.matchKey.slice("recurring_dismissed:".length)),
+  );
+  const suggestions = findRecurring(snapshot.transactions, snapshot.rules, today, dismissed);
   const trends = Object.fromEntries(
     categories.map((c) => [c, { month: categoryHistory(snapshot, c, months, today), week: categoryHistory(snapshot, c, weeks, today) }]),
   );
 
   return (
     <>
-      <PageHeader title="Spend" subtitle="What repeats, where your money goes, and everything you've spent. Tap anything to change it." />
+      <PageHeader title="Money" subtitle="Money in and out: what repeats, where it goes, and every transaction. Tap anything to change it." />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
           <Summary label="Spent this month" value={<Money cents={spentThisMonth} whole />} />
-          <Summary label="In / month" value={<Money cents={monthlyIn} whole tone="in" />} />
-          <Summary label="Out / month" value={<Money cents={-monthlyOut} whole tone="out" />} />
+          <Summary label="In this month" value={<Money cents={thisMonth.inCents} whole tone="in" />} />
+          <Summary label="Net this month" value={<Money cents={thisMonth.inCents - thisMonth.outCents} whole sign tone="auto" />} />
         </ul>
 
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
           {!hasAccounts && <EmptyState title="Add an account first">Repeating items need an account to come from or go to.</EmptyState>}
+          <RecurringSuggestions suggestions={suggestions} accounts={accounts} today={today} />
           <div className="space-y-4">
             {GROUPS.map((g) => {
               const rules = snapshot.rules.filter((r) => g.kinds.includes(r.kind));
@@ -80,10 +94,10 @@ export function SpendView({ snapshot, today }: ViewProps) {
           </div>
         </Card>
 
-        <CashFlowCard months={cashFlow(snapshot, today, months)} periods={periods ? cashFlow(snapshot, today, periods) : null} />
+        <CashFlowCard months={flowMonths} periods={periods ? cashFlow(snapshot, today, periods) : null} />
 
         <Card title="Transactions" action={hasAccounts ? <AddButton what="transaction" accounts={accounts} today={today} /> : undefined}>
-          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} />
+          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} categories={yourCategories} />
         </Card>
 
         <Card title="Transfers & card payments" action={hasAccounts ? <AddButton what="transfer" accounts={accounts} today={today} /> : undefined}>
