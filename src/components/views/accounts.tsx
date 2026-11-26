@@ -13,6 +13,7 @@ import { BankAccountPanel } from "@/components/bank-account-panel";
 import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
 import { toEngineInput } from "@/lib/data/snapshot";
 import { CashPath } from "@/components/cash-path";
+import { Glyph } from "@/components/icon";
 import { predict, spendModel } from "@/lib/view/patterns";
 
 const SOURCE = { manual: "Entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "From your bank" } as const;
@@ -139,7 +140,7 @@ export function AccountsView({
         a.kind === "credit_card" && latest && latest.status !== "paid"
           ? <>bill <Money cents={latest.statementBalanceCents - latest.paidCents} whole /> · {formatShort(latest.dueDate)}</>
           : stale && !a.bankConnectionId
-            ? "⚠ update balance"
+            ? "Update balance"
             : ago(a.balanceUpdatedAt),
       detail: detailFor(a),
     };
@@ -239,7 +240,7 @@ export function AccountsView({
 
         <section aria-labelledby="goals-h">
           <div className="mb-2 flex items-center justify-between">
-            <h2 id="goals-h" className="text-sm font-bold text-ink">Goals <Info>Money set aside for something. Protected goals (🔒) are never suggested to pay for anything else.</Info></h2>
+            <h2 id="goals-h" className="text-sm font-bold text-ink">Goals <Info>Money set aside for something. Protected goals (<Glyph name="🔒" size="xs" />) are never suggested to pay for anything else.</Info></h2>
             <AddInModal label="+ Goal" title="Add a goal" icon="🎯"><GoalForm accounts={accounts} /></AddInModal>
           </div>
           {goalTiles.length > 0 ? <AccountGrid tiles={goalTiles} /> : <p className="text-sm text-muted">No goals yet.</p>}

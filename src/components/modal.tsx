@@ -1,5 +1,7 @@
 "use client";
 
+import { X } from "lucide-react";
+import { Glyph } from "@/components/icon";
 import { useEffect, useId, useRef, useState } from "react";
 
 /**
@@ -52,13 +54,13 @@ export function Modal({
           <div className={`relative bg-gradient-to-b ${head} to-transparent px-5 pb-3 pt-3 sm:pt-5`}>
             <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line sm:hidden" />
             <div className="flex items-start gap-3">
-              {icon && <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-xl shadow-sm">{icon}</span>}
+              {icon && typeof icon === "string" ? <Glyph name={icon} size="lg" /> : icon && <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-xl shadow-sm">{icon}</span>}
               <div className="min-w-0 flex-1">
                 <h2 id={titleId} className="text-lg font-bold leading-tight text-ink">{title}</h2>
                 {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}
               </div>
-              <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-3 hover:text-ink">
-                ✕
+              <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-3/70 text-muted transition hover:bg-surface-3 hover:text-ink">
+                <X size={16} strokeWidth={2.4} aria-hidden />
               </button>
             </div>
           </div>

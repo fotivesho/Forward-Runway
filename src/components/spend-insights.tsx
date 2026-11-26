@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import type { CategoryBucket, FlowBucket } from "@/lib/view/spend";
-import { iconFor } from "@/lib/categories";
 import { Money, useHideAmounts } from "./privacy";
+import { Glyph } from "@/components/icon";
 import { formatCents } from "@/lib/money";
 
 const toggle = (active: boolean) =>
@@ -83,7 +83,7 @@ export function CategoryTrend({ category, month, week }: { category: string; mon
   return (
     <div className="mb-3 rounded-xl border border-line bg-surface-2/50 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-semibold text-ink"><span aria-hidden>{iconFor(category)}</span> {category} over time</p>
+        <p className="font-semibold text-ink"><Glyph name={category} size="xs" /> {category} over time</p>
         <div role="group" aria-label="Group by" className="flex rounded-lg border border-line bg-surface p-0.5">
           <button type="button" className={toggle(mode === "month")} aria-pressed={mode === "month"} onClick={() => setMode("month")}>Monthly</button>
           <button type="button" className={toggle(mode === "week")} aria-pressed={mode === "week"} onClick={() => setMode("week")}>Weekly</button>

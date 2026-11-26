@@ -6,7 +6,7 @@ import type { Account, CardStatement, RecurringRule, SavingsGoal } from "@/lib/e
 import { centsToInput } from "@/lib/money";
 import type { ISODate } from "@/lib/dates";
 import { SPEND_CATEGORIES } from "./advisor";
-import { CATEGORY_LIST, iconFor } from "@/lib/categories";
+import { CATEGORY_LIST } from "@/lib/categories";
 import { ActionForm, CheckboxField, Field, MoneyField, SelectField, Submit } from "./form";
 
 const dayOptions = (blank: string) => [
@@ -268,9 +268,9 @@ export function CategoryField({ name = "category", label = "Category", defaultVa
         <select className="input mt-1 font-normal" value={choice} name={choice === "__new" ? undefined : name} onChange={(e) => setChoice(e.target.value)}>
           <option value="">Choose…</option>
           {yours.length > 0 && (
-            <optgroup label="Your categories">{yours.map((c) => <option key={c} value={c}>{iconFor(c)} {c}</option>)}</optgroup>
+            <optgroup label="Your categories">{yours.map((c) => <option key={c} value={c}>{c}</option>)}</optgroup>
           )}
-          <optgroup label={yours.length ? "More" : "Categories"}>{rest.map((c) => <option key={c} value={c}>{iconFor(c)} {c}</option>)}</optgroup>
+          <optgroup label={yours.length ? "More" : "Categories"}>{rest.map((c) => <option key={c} value={c}>{c}</option>)}</optgroup>
           <option value="__new">+ New category…</option>
         </select>
       </label>

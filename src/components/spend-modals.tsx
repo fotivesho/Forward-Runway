@@ -4,16 +4,16 @@ import { useState } from "react";
 import { deleteRule, toggleRule } from "@/app/app/actions";
 import { formatShort, type ISODate } from "@/lib/dates";
 import { describeSchedule, type Account, type Occurrence, type RecurringRule } from "@/lib/engine";
-import { iconFor } from "@/lib/categories";
 import { RuleForm, TransactionForm, TransferForm } from "./entity-forms";
 import { QuickAction } from "./form";
 import { Modal } from "./modal";
 import { OccurrenceControls } from "./occurrence-controls";
 import { Money } from "./privacy";
+import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
 
 const KIND_ICON: Partial<Record<RecurringRule["kind"], string>> = { income: "💰", loan_payment: "🏦", card_payment: "💳", savings_transfer: "🐷", transfer: "↔️", subscription: "🔁" };
-export const ruleIcon = (r: RecurringRule) => KIND_ICON[r.kind] ?? iconFor(r.category);
+export const ruleIcon = (r: RecurringRule) => KIND_ICON[r.kind] ?? r.category ?? "bill";
 
 export interface RuleTile {
   rule: RecurringRule;
@@ -43,13 +43,13 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
                 className={`flex h-full w-full flex-col gap-0.5 rounded-xl border p-3 text-left transition hover:-translate-y-0.5 hover:shadow-md ${isIncome ? "border-brand/40 bg-brand/[0.06]" : "border-line bg-surface-2/50"} ${r.active === false ? "opacity-60" : ""}`}
               >
                 <span className="flex items-center justify-between gap-1">
-                  <span aria-hidden className="text-lg">{ruleIcon(r)}</span>
+                  <Glyph name={ruleIcon(r)} size="md" />
                   <span className="text-[11px] text-faint">{r.active === false ? "Paused" : next ? `Next ${formatShort(next)}` : ""}</span>
                 </span>
                 <span className="truncate text-sm font-medium text-ink">{r.name}</span>
                 <Money cents={isIncome ? r.amountCents : -r.amountCents} sign tone="auto" className="text-lg font-bold" />
                 <span className="truncate text-[11px] text-muted">{describeSchedule(r.schedule)}</span>
-                {orphaned && <span className="mt-0.5 text-[11px] font-semibold text-warn">⚠ Its account is archived, so it isn't counted. Tap to choose another.</span>}
+                {orphaned && <span className="mt-0.5 text-[11px] font-semibold text-warn"><Glyph name="⚠" size="xs" /> Its account is archived, so it isn't counted. Tap to choose another.</span>}
                 {(r.isEstimate || onCard) && (
                   <span className="mt-0.5 flex flex-wrap gap-1">
                     {r.isEstimate && <Badge tone="warn">Estimate</Badge>}

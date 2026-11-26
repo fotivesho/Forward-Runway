@@ -9,6 +9,7 @@ import { EventCard } from "./advisor";
 import { QuickAction } from "./form";
 import { Money } from "./privacy";
 import { Info } from "./info";
+import { Glyph } from "@/components/icon";
 import { EmptyState } from "./ui";
 
 export interface DayMark {
@@ -196,7 +197,7 @@ export function PlanCalendar({
           <ul className="mb-3 space-y-1 rounded-xl border border-line p-2.5 text-sm">
             {marksOn(selected).map((k) => (
               <li key={k.label + k.cents} className="flex justify-between gap-2">
-                <span className="text-ink">{k.kind === "income" ? "💰" : k.kind === "move" ? "🛟" : "🧾"} {k.label}</span>
+                <span className="text-ink"><Glyph name={k.kind === "income" ? "income" : k.kind === "move" ? "save" : "bill"} size="xs" /> {k.label}</span>
                 <Money cents={k.cents} sign tone="auto" />
               </li>
             ))}

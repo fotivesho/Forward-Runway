@@ -9,6 +9,7 @@ import { SnapshotTiles } from "@/components/snapshot";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { formatShort, formatWeekday, todayInZone } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
+import { Glyph } from "@/components/icon";
 import { buildLanding } from "@/lib/view/landing";
 
 export const dynamic = "force-dynamic";
@@ -133,7 +134,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                       <ul className="mt-4 flex flex-wrap gap-1.5">
                         {d.insights.map((i) => (
                           <li key={i.id} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
-                            {i.icon} <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
+                            <Glyph name={i.icon} size="xs" bare /> <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
                           </li>
                         ))}
                       </ul>

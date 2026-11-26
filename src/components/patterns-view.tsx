@@ -1,8 +1,8 @@
 import { formatShort, type ISODate } from "@/lib/dates";
-import { iconFor } from "@/lib/categories";
 import type { Insight, lifeAhead, rhythm } from "@/lib/view/patterns";
 import { Info } from "./info";
 import { Money } from "./privacy";
+import { Glyph } from "@/components/icon";
 import { Badge, EmptyState } from "./ui";
 
 const TONE = { good: "border-brand/40", warn: "border-warn/50", info: "border-line" } as const;
@@ -15,7 +15,7 @@ export function InsightTiles({ items }: { items: Insight[] }) {
       {items.map((i) => (
         <li key={i.id} className={`rounded-2xl border bg-surface p-3 shadow-sm ${TONE[i.tone]}`}>
           <p className="flex items-center justify-between">
-            <span aria-hidden className="text-lg">{i.icon}</span>
+            <Glyph name={i.icon} size="md" />
             <Info label={i.title}>{i.detail}</Info>
           </p>
           <p className={`mt-1 text-xl font-extrabold tabular ${STAT[i.tone]}`}>{i.stat}</p>
@@ -83,7 +83,7 @@ export function PatternsView({
               {short ? (
                 <span className="font-semibold text-warn"><Money cents={-pace.gapCents} whole /> short</span>
               ) : (
-                <span className="font-semibold text-brand"><Money cents={pace.gapCents} whole /> to spare</span>
+                <span className="font-semibold text-brand"><Money cents={pace.gapCents} whole /> left</span>
               )}
             </p>
             <div className="mt-3 h-2 rounded-full bg-surface-3" aria-hidden>
@@ -142,12 +142,12 @@ export function PatternsView({
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {ahead.categories.slice(0, 6).map((c) => (
                 <li key={c.category} className="rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-xs text-ink">
-                  {iconFor(c.category)} {c.category} <span className="font-semibold">~<Money cents={c.cents} whole /></span>
+                  <Glyph name={c.category} size="xs" bare /> {c.category} <span className="font-semibold">~<Money cents={c.cents} whole /></span>
                 </li>
               ))}
               {ahead.lumpy.map((l) => (
                 <li key={l.category} className="rounded-full border border-dashed border-warn/60 px-2.5 py-1 text-xs text-ink">
-                  {iconFor(l.category)} {l.category} <span className="font-semibold">~<Money cents={l.avgCents} whole /></span> · {formatShort(l.nextAround)}
+                  <Glyph name={l.category} size="xs" bare /> {l.category} <span className="font-semibold">~<Money cents={l.avgCents} whole /></span> · {formatShort(l.nextAround)}
                 </li>
               ))}
             </ul>

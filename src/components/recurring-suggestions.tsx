@@ -6,10 +6,10 @@ import { formatShort, type ISODate } from "@/lib/dates";
 import { centsToInput } from "@/lib/money";
 import type { Account, RecurringRule } from "@/lib/engine";
 import type { RecurringSuggestion } from "@/lib/view/recurring";
-import { iconFor } from "@/lib/categories";
 import { RuleForm } from "./entity-forms";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Modal } from "./modal";
+import { Glyph } from "@/components/icon";
 import { Money } from "./privacy";
 
 const FREQ: Record<string, string> = { weekly: "every week", biweekly: "every 2 weeks", semimonthly: "twice a month", monthly: "every month" };
@@ -38,7 +38,7 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
       <ul className="mt-2 space-y-2">
         {suggestions.slice(0, 8).map((s) => (
           <li key={s.key} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface px-3 py-2">
-            <span aria-hidden className="text-lg">{s.kind === "income" ? "💰" : iconFor(s.category)}</span>
+            <Glyph name={s.kind === "income" ? "income" : s.category} size="md" />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-ink">{s.name}</span>
               <span className="block text-xs text-muted">

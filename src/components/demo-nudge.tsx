@@ -44,7 +44,7 @@ export function DemoNudge() {
   return (
     <aside
       aria-label="Create your own runway"
-      className="fade-up fixed inset-x-3 bottom-[4.75rem] z-50 mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-white/10 bg-[#182d26] p-3 pl-4 text-[#f1f6ea] shadow-2xl lg:bottom-6"
+      className="fade-up fixed inset-x-3 bottom-[6.5rem] z-50 mx-auto flex max-w-xl items-center gap-3 rounded-2xl border border-white/10 bg-[#182d26] p-3 pl-4 text-[#f1f6ea] shadow-2xl lg:bottom-6"
     >
       <p className="min-w-0 flex-1 text-sm">
         <strong className="block">Imagine this with your numbers.</strong>

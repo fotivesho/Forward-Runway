@@ -2,6 +2,7 @@
 
 import { formatShort, type ISODate } from "@/lib/dates";
 import type { DashboardModel } from "@/lib/view/dashboard";
+import { Glyph } from "@/components/icon";
 import { Money } from "./privacy";
 
 /** "3 h ago" style freshness. */
@@ -65,7 +66,7 @@ function SnapTile({ icon, label, value, sub, bar, title }: { icon: string; label
   return (
     <li title={title} className="min-w-0 rounded-xl border border-line bg-surface-2/50 p-2.5 sm:p-3">
       <p className="flex items-center gap-1.5 truncate text-xs font-bold text-ink">
-        <span aria-hidden>{icon}</span>
+        <Glyph name={icon} size="xs" bare />
         {label}
       </p>
       <p className="mt-0.5 text-xl font-bold tabular text-ink sm:text-2xl">{value}</p>

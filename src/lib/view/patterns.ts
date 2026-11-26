@@ -374,3 +374,38 @@ export function typicalDays(s: Snapshot, today: ISODate, end: ISODate): Record<I
   for (const l of m.lumpy) if (out[l.nextAround]) out[l.nextAround]!.why = `${out[l.nextAround]!.why ? out[l.nextAround]!.why + "; " : ""}${l.category} (~${usd(l.avgCents)}) usually comes around now`;
   return out;
 }
+
+export interface Habit {
+  category: string;
+  /** Days a week you usually spend on it. */
+  perWeek: number;
+  /** A usual purchase. */
+  avgCents: Cents;
+  /** Expected over the next `days` days, from your patterns. */
+  expectedCents: Cents;
+}
+
+/**
+ * The things you spend on almost every week (lunch, transit, coffee), how often, and what the next
+ * few days will likely cost. Nobody schedules these, which is why they're predicted.
+ */
+export function everydayHabits(s: Snapshot, today: ISODate, days = 7, m: SpendModel | null = spendModel(s, today)): Habit[] {
+  if (!m) return [];
+  const end = addDays(m.from, m.days - 1);
+  const p = predict(m, today, addDays(today, days - 1));
+  const expected = new Map(p.byCategory.map((c) => [c.category, c.cents]));
+  const by = new Map<string, { dates: Set<ISODate>; n: number; total: number }>();
+  for (const t of everyday(s, m.from, end)) {
+    const c = t.category ?? "Other";
+    if (!expected.has(c)) continue;
+    const e = by.get(c) ?? { dates: new Set(), n: 0, total: 0 };
+    e.dates.add(t.date);
+    e.n += 1;
+    e.total += t.amountCents;
+    by.set(c, e);
+  }
+  return [...by.entries()]
+    .map(([category, e]) => ({ category, perWeek: (e.dates.size / m.days) * 7, avgCents: Math.round(e.total / e.n), expectedCents: expected.get(category) ?? 0 }))
+    .filter((h) => h.perWeek >= 0.75)
+    .sort((a, b) => b.expectedCents - a.expectedCents);
+}

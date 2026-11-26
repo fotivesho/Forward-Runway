@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { disconnectBankNow, finishBankLink, startBankLink, syncBankNow, type BankResult } from "@/app/app/bank-actions";
 import { Badge } from "./ui";
+import { Glyph } from "@/components/icon";
 import { Info } from "./info";
 
 export interface BankConnectionView {
@@ -178,7 +179,7 @@ export function BankConnections({
           {connections.map((c) => (
             <li key={c.id} className="rounded-xl border border-line p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="font-medium text-ink">🏦 {c.institutionName ?? "Your bank"}</p>
+                <p className="font-medium text-ink"><Glyph name="🏦" size="xs" /> {c.institutionName ?? "Your bank"}</p>
                 {c.status === "ok" ? <Badge tone="good">Connected</Badge> : c.status === "needs_reauth" ? <Badge tone="warn">Sign in again</Badge> : <Badge tone="bad">Sync failed</Badge>}
               </div>
               <p className="mt-0.5 text-xs text-muted">

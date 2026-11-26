@@ -27,7 +27,7 @@ export function CashPath({ dates, lines, floorCents, height = 96, endLabel }: { 
   const path = (cs: number[]) => cs.map((c, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(c).toFixed(1)}`).join("");
   return (
     <figure>
-      <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" className="block h-24 w-full overflow-visible" role="img" aria-label={lines.map((l) => `${l.label} ends at $${Math.round(l.cents[l.cents.length - 1]! / 100)}`).join("; ")}>
+      <svg viewBox={`0 0 ${W} ${height}`} preserveAspectRatio="none" className="block w-full overflow-visible" style={{ height }} role="img" aria-label={lines.map((l) => `${l.label} ends at $${Math.round(l.cents[l.cents.length - 1]! / 100)}`).join("; ")}>
         {floorCents != null && <line x1="0" x2={W} y1={y(floorCents)} y2={y(floorCents)} className="text-warn/70" stroke="currentColor" strokeDasharray="3 4" strokeWidth="1" vectorEffect="non-scaling-stroke" />}
         {lines.map((l) => (
           <path key={l.id} d={path(l.cents)} fill="none" stroke="currentColor" className={`${l.color} ${l.faint ? "opacity-40" : ""}`} strokeWidth={l.faint ? 1.5 : 2.5} strokeDasharray={l.dashed ? "5 4" : undefined} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />

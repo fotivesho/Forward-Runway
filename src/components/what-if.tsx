@@ -14,6 +14,7 @@ import { predict, spendModel } from "@/lib/view/patterns";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
 import { Money } from "./privacy";
+import { Glyph } from "@/components/icon";
 import { Card, Disclosure, EmptyState, Notice } from "./ui";
 
 
@@ -150,12 +151,12 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
           <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
             {plans.map((v) => (
               <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
-                📅 {v.event.title} · <Money cents={v.plannedCents} whole />
+                <Glyph name="📅" size="xs" /> {v.event.title} · <Money cents={v.plannedCents} whole />
               </button>
             ))}
             {COMMON.map((c) => (
               <button key={c.label} type="button" className={chip(what === c.label)} onClick={() => pick(c.label, c.cents)}>
-                {c.emoji} {c.label}
+                <Glyph name={c.emoji} size="xs" bare /> {c.label}
               </button>
             ))}
           </div>

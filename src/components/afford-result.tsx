@@ -6,6 +6,7 @@ import { useContext, useState, useTransition } from "react";
 import { DemoCtx } from "./form";
 import { Info } from "./info";
 import { formatCents } from "@/lib/money";
+import { Glyph } from "@/components/icon";
 import type { AffordCheck } from "@/lib/engine";
 
 /** Colours and icon for each verdict, shared by the checker and every plan card. */
@@ -364,7 +365,7 @@ export function PlanImpact({
               {opts.map((x, i) => (
                 <li key={x.title} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
                   <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-semibold leading-snug text-ink">
-                    <span aria-hidden className="text-[13px]">{icon[x.kind] ?? "•"}</span>
+                    <Glyph name={icon[x.kind]} size="xs" />
                     <span className="min-w-0" title={x.title}>
                       {i === 0 && <span className="mr-1 text-warn" title="Best option">★</span>}
                       {shortTitle(x.title)}

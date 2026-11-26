@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { formatLong } from "@/lib/dates";
-import { iconFor } from "@/lib/categories";
 import { GROUPS, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
+import { Glyph } from "@/components/icon";
 import { Money, useHideAmounts } from "./privacy";
 
 const COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
@@ -71,7 +71,7 @@ export function ReportsView({
     return (items[cat] ?? []).filter((i) => i.date >= from && i.date <= to);
   }, [cat, picked, data, items]);
 
-  const title = cat ? `${iconFor(cat)} ${cat}` : focus === "all" ? "Spending by group" : GROUPS.find((g) => g.id === focus)!.label;
+  const title = cat ? cat : focus === "all" ? "Spending by group" : GROUPS.find((g) => g.id === focus)!.label;
   const periodName = (m: SpendingReport[number]) => (by === "month" ? `${m.label} ${m.month.slice(0, 4)}` : m.label);
 
   return (
@@ -153,7 +153,7 @@ export function ReportsView({
             return (
               <li key={r.c} className={`transition ${dim ? "opacity-40" : ""}`}>
                 <button type="button" onClick={() => setCat(active ? null : r.c)} aria-pressed={active} className={`flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left ${active ? "bg-brand/10 ring-1 ring-brand" : ""}`}>
-                  <span aria-hidden className="text-lg">{iconFor(r.c)}</span>
+                  <Glyph name={r.c} size="md" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-ink">{r.c}</span>
                     <span className="block text-[11px] text-muted">{GROUPS.find((g) => g.id === (groupOf[r.c] ?? "wants"))!.label} · avg <Money cents={r.avg} whole />/{by === "month" ? "mo" : "period"}</span>
@@ -172,7 +172,7 @@ export function ReportsView({
       {cat && (
         <section className="card p-4 sm:p-5" aria-labelledby="txn-title">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 id="txn-title" className="text-base font-bold text-ink">{iconFor(cat)} {cat} transactions</h2>
+            <h2 id="txn-title" className="text-base font-bold text-ink"><Glyph name={cat} size="xs" /> {cat} transactions</h2>
             <span className="text-xs text-muted">{picked ? periodName(picked) : `last ${range} ${by === "month" ? "months" : "pay periods"}`}</span>
           </div>
           {txns.length === 0 ? (

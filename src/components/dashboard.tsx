@@ -6,7 +6,6 @@ import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/l
 import type { Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { buildBudget } from "@/lib/view/budget";
-import { iconFor } from "@/lib/categories";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { ForecastChart } from "./forecast-chart";
 import { Money } from "./privacy";
@@ -15,6 +14,8 @@ import { Badge, Card, Disclosure, EmptyState } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { Info } from "./info";
 import { lifeSummary } from "@/lib/view/life";
+import { everydayHabits, typicalDays } from "@/lib/view/patterns";
+import { Glyph } from "./icon";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
@@ -65,7 +66,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               {m.goals.map((g) => (
                 <li key={g.goal.id} className="py-1">
                   <span className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-ink">{g.goal.protected ? "🔒 " : ""}{g.goal.name}</span>
+                    <span className="truncate text-ink">{g.goal.protected && <Glyph name="lock" size="xs" bare />} {g.goal.name}</span>
                     <span className="tabular"><Money cents={g.balanceCents} whole /> <span className="text-faint">/ <Money cents={g.goal.targetCents} whole /></span></span>
                   </span>
                   <span className="mt-1 block h-1.5 rounded-full bg-surface-3"><span className={`block h-1.5 rounded-full ${g.onTrack === false ? "bg-warn" : "bg-brand"}`} style={{ width: `${g.pct}%` }} /></span>
@@ -142,7 +143,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                 </p>
               </div>
             )}
-            <DailyCaps m={m} today={today} />
+            <DailyCaps m={m} today={today} snapshot={snapshot} />
             <div className="mt-3">
               <Link href={base + "/what-if#afford"} className="btn btn-secondary btn-sm">
                 Can I afford it? →
@@ -229,17 +230,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
 
       <div className="flex flex-col gap-4">
         {/* Coming up */}
-        <Card title="Coming up">
-          {m.upcoming.length === 0 ? (
-            <p className="text-sm text-muted">Nothing scheduled.</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {m.upcoming.map((it) => (
-                <ItemRow key={it.id} item={it} showDate />
-              ))}
-            </ul>
-          )}
-        </Card>
+        <ComingUp m={m} snapshot={snapshot} today={today} />
 
         {/* Spending */}
         <SpendingVsBudget m={m} snapshot={snapshot} today={today} base={base} />
@@ -263,7 +254,8 @@ function Stat({ label, value, sub }: { label: string; value: React.ReactNode; su
 
 
 /** Daily caps until payday. Tap a day to see what makes up its cap and what else happens that day. */
-function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: ISODate }) {
+function DailyCaps({ m, today, snapshot }: { m: ReturnType<typeof buildDashboard>; today: ISODate; snapshot: Snapshot }) {
+  const typical = useMemo(() => typicalDays(snapshot, today, m.plan.days.at(-1)?.date ?? today), [snapshot, today, m.plan.days]);
   const days = m.plan.days;
   const [showAll, setShowAll] = useState(false);
   const [selected, setSelected] = useState<ISODate | null>(days[0]?.date ?? null);
@@ -301,47 +293,80 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
           );
         })}
       </ol>
-      {sel && (
-        <div className="mt-2 rounded-xl border border-line bg-surface-2/50 p-3 text-sm" aria-live="polite">
-          <p className="flex justify-between gap-2 font-semibold text-ink">
-            <span>{sel.date === today ? "Today" : formatWeekday(sel.date)}, {formatShort(sel.date)}</span>
-            <span>{sel.spentCents > 0 ? "left " : "cap "}<Money cents={sel.capCents} /></span>
+      {sel && <DayCard sel={sel} fday={fday} planById={planById} today={today} typical={typical?.[sel.date] ?? null} />}
+    </div>
+  );
+}
+
+/**
+ * One day, straight to the point: what's left (big), how much of the day is used (bar, with a tick
+ * at what a usual day like this costs), what happened or is due, and where the balance ends.
+ */
+function DayCard({
+  sel,
+  fday,
+  planById,
+  today,
+  typical,
+}: {
+  sel: ReturnType<typeof buildDashboard>["plan"]["days"][number];
+  fday: ReturnType<typeof buildDashboard>["forecast90"]["days"][number] | undefined;
+  planById: Map<string, ReturnType<typeof buildDashboard>["allEvents"][number]>;
+  today: ISODate;
+  typical: { cents: number; why: string | null } | null;
+}) {
+  const isToday = sel.date === today;
+  const total = sel.capCents + sel.spentCents;
+  const usual = typical?.cents ?? 0;
+  const over = usual > total;
+  const items = [
+    ...sel.eventIds.map((id) => {
+      const v = planById.get(id);
+      return { id, icon: "plan" as const, label: v?.event.title ?? "Plan", cents: -(v?.advice?.capCents ?? 0) };
+    }),
+    ...(fday?.items ?? []).map((it) => ({ id: it.id, icon: (it.cashEffectCents > 0 ? "in" : "out") as "in" | "out", label: it.label, cents: it.cashEffectCents })),
+  ];
+  return (
+    <div className="mt-2 rounded-2xl border border-line bg-surface-2/50 p-3.5" aria-live="polite">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-sm font-bold text-ink">{isToday ? "Today" : formatWeekday(sel.date)} · {formatShort(sel.date)}</p>
+        {fday && (
+          <p className={`text-xs ${fday.belowFloor ? "font-semibold text-warn" : "text-muted"}`}>
+            Tonight <Money cents={fday.closingCents} whole className="font-semibold text-ink" />
           </p>
-          <ul className="mt-1.5 space-y-1 text-muted">
-            <li className="flex justify-between gap-2"><span>Everyday</span><Money cents={sel.baseCents} /></li>
-            {sel.eventIds.map((id) => {
-              const v = planById.get(id);
-              return (
-                <li key={id} className="flex justify-between gap-2">
-                  <span className="text-info">📅 {v?.event.title ?? "Plan"}</span>
-                  <Money cents={v?.advice?.capCents ?? 0} />
-                </li>
-              );
-            })}
-            {sel.spentCents > 0 && (
-              <li className="flex justify-between gap-2"><span>Spent</span><Money cents={-sel.spentCents} sign /></li>
-            )}
-          </ul>
-          {fday && fday.items.length > 0 && (
-            <>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">{sel.date === today ? "Today" : sel.date === addDays(today, 1) ? "Tomorrow" : formatShort(sel.date)}</p>
-              <ul className="mt-1 space-y-1">
-                {fday.items.map((it) => (
-                  <li key={it.id} className="flex justify-between gap-2">
-                    <span className="truncate text-ink">{it.cashEffectCents > 0 ? "💰" : "🧾"} {it.label}</span>
-                    <Money cents={it.cashEffectCents} sign tone="auto" />
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-          {fday && (
-            <p className="mt-2 border-t border-line pt-1.5 text-xs text-muted">
-              End of day <Money cents={fday.closingCents} whole className="font-semibold text-ink" />
-              {fday.belowFloor && <span className="text-warn"> · below your floor</span>}
-            </p>
-          )}
+        )}
+      </div>
+      <p className="mt-1 flex items-baseline gap-1.5">
+        <Money cents={sel.capCents} className="text-3xl font-extrabold tracking-tight text-ink" />
+        <span className="text-sm font-semibold text-muted">{isToday || sel.spentCents > 0 ? "left" : "to spend"}</span>
+      </p>
+      {total > 0 && (
+        <div className="relative mt-2 h-2 rounded-full bg-surface-3" aria-hidden>
+          <div className="h-2 rounded-full bg-out" style={{ width: `${Math.min(100, (sel.spentCents / Math.max(total, usual, 1)) * 100)}%` }} />
+          <span className="absolute -inset-y-0.5 w-0.5 rounded bg-brand" style={{ left: `${Math.min(100, (total / Math.max(total, usual, 1)) * 100)}%` }} />
+          {usual > 0 && <span className="absolute -inset-y-1 w-0.5 rounded bg-ink/50" style={{ left: `${Math.min(100, (usual / Math.max(total, usual, 1)) * 100)}%` }} />}
         </div>
+      )}
+      <p className="mt-1.5 flex flex-wrap justify-between gap-x-2 text-xs text-muted">
+        <span>{sel.spentCents > 0 ? <>Spent <Money cents={sel.spentCents} whole className="font-semibold text-ink" /> of <Money cents={total} whole /></> : <>Cap <Money cents={total} whole className="font-semibold text-ink" /></>}</span>
+        {usual > 0 && (
+          <span className={over ? "font-semibold text-warn" : ""}>
+            Usual ~<Money cents={usual} whole />{over ? " · runs over" : ""}
+          </span>
+        )}
+      </p>
+      {items.length > 0 && (
+        <ul className="mt-3 space-y-1.5 border-t border-line pt-2.5">
+          {items.map((it) => (
+            <li key={it.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="flex min-w-0 items-center gap-2 text-ink">
+                <Glyph name={it.icon === "plan" ? "plan" : it.icon === "in" ? "income" : "spend"} />
+                <span className="truncate">{it.label}</span>
+              </span>
+              <Money cents={it.cents} sign tone={it.icon === "plan" ? undefined : "auto"} className="font-semibold tabular" />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -357,7 +382,7 @@ function AcctRow({ name, cents, fresh, stale, sub }: { name: string; cents: numb
       </span>
       <span className="shrink-0 text-right">
         <Money cents={cents} whole sign={cents < 0} className="font-semibold tabular" />
-        <span className={`block text-[10px] ${stale ? "text-warn" : "text-faint"}`}>{stale ? "⚠ " : ""}{fresh.replace(" ago", "")}</span>
+        <span className={`block text-[10px] ${stale ? "text-warn" : "text-faint"}`}>{stale ? <Glyph name="⚠" size="xs" bare /> : null}{fresh.replace(" ago", "")}</span>
       </span>
     </li>
   );
@@ -400,7 +425,7 @@ function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof b
             return (
               <li key={r.category} className="text-xs">
                 <span className="flex justify-between gap-2">
-                  <span className="truncate text-ink">{iconFor(r.category)} {r.category}</span>
+                  <span className="truncate text-ink"><Glyph name={r.category} size="xs" bare /> {r.category}</span>
                   <span className="tabular">
                     <Money cents={r.spentCents} whole className={over ? "font-semibold text-danger" : "text-ink"} />
                     {r.budgetCents > 0 && <span className="text-faint"> / <Money cents={r.budgetCents} whole /></span>}
@@ -434,7 +459,7 @@ function PatternPulse({ m, snapshot, today, base }: { m: ReturnType<typeof build
           <span className="font-semibold tabular">
             ~<Money cents={life.pace.usualCents} whole className="text-ink" />{" "}
             <span className={short ? "text-warn" : "text-brand"}>
-              {short ? <>· <Money cents={-life.pace.gapCents} whole /> short</> : <>· <Money cents={life.pace.gapCents} whole /> spare</>}
+              {short ? <>· <Money cents={-life.pace.gapCents} whole /> short</> : <>· <Money cents={life.pace.gapCents} whole /> left</>}
             </span>
           </span>
         </p>
@@ -443,11 +468,70 @@ function PatternPulse({ m, snapshot, today, base }: { m: ReturnType<typeof build
         <ul className="mt-2 flex gap-1.5 overflow-hidden">
           {life.insights.slice(0, 2).map((i) => (
             <li key={i.id} className="min-w-0 flex-1 truncate rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
-              {i.icon} <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
+              <Glyph name={i.icon} size="xs" bare /> <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
             </li>
           ))}
         </ul>
       )}
     </Link>
+  );
+}
+
+const KIND_GLYPH: Record<string, string> = { income: "income", bill: "bill", subscription: "Subscriptions", loan_payment: "Debt", card_payment: "card", savings_transfer: "save", expense: "spend" };
+const perWeekLabel = (n: number) => (n >= 5.5 ? "daily" : n >= 1.5 ? `${Math.round(n)}×/wk` : "weekly");
+
+/** The next 7 days: what's scheduled, and the everyday spending your habits say is coming. */
+function ComingUp({ m, snapshot, today }: { m: ReturnType<typeof buildDashboard>; snapshot: Snapshot; today: ISODate }) {
+  const habits = useMemo(() => everydayHabits(snapshot, today, 7), [snapshot, today]);
+  const end = addDays(today, 6);
+  // Spending that already happened today isn't "coming up".
+  const ahead = m.upcoming.filter((it) => !(it.source === "one_time" && it.date <= today));
+  const scheduled = ahead.filter((it) => it.date <= end);
+  const later = ahead.filter((it) => it.date > end).slice(0, 3);
+  const everyday = habits.reduce((a, h) => a + h.expectedCents, 0);
+  const amount = (it: (typeof m.upcoming)[number]) => (it.cashEffectCents === 0 ? -it.postings.reduce((t, p) => t + Math.max(0, -p.deltaCents), 0) : it.cashEffectCents);
+  const row = (it: (typeof m.upcoming)[number]) => (
+    <li key={it.id} className="flex items-center gap-2.5 py-1.5">
+      <Glyph name={KIND_GLYPH[it.kind] ?? it.category ?? "bill"} size="sm" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-semibold leading-snug text-ink">{it.label}</span>
+        <span className="block text-[11px] text-muted">{it.date === today ? "Today" : it.date === addDays(today, 1) ? "Tomorrow" : `${formatWeekday(it.date)} ${formatShort(it.date)}`}</span>
+      </span>
+      <Money cents={amount(it)} whole sign tone="auto" className="text-sm font-bold tabular" />
+    </li>
+  );
+  return (
+    <Card title="Coming up" action={<span className="text-xs text-muted">Next 7 days</span>}>
+      {scheduled.length > 0 ? <ul>{scheduled.map(row)}</ul> : <p className="text-sm text-muted">Nothing scheduled this week.</p>}
+      {habits.length > 0 && (
+        <div className="mt-3 border-t border-line pt-3">
+          <p className="flex items-center justify-between text-sm font-bold text-ink">
+            <span>
+              Everyday
+              <Info label="Everyday">Not on any calendar, but it happens: learned from how often you spend on each, and what a usual purchase costs.</Info>
+            </span>
+            <span className="tabular">~<Money cents={everyday} whole /></span>
+          </p>
+          <ul className="mt-2 grid grid-cols-2 gap-1.5">
+            {habits.slice(0, 6).map((h) => (
+              <li key={h.category} className="flex items-center gap-2 rounded-xl border border-dashed border-line px-2 py-1.5">
+                <Glyph name={h.category} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-xs font-bold text-ink">{h.category}</span>
+                  <span className="block text-[10px] text-muted">{perWeekLabel(h.perWeek)} · ~<Money cents={h.avgCents} whole /></span>
+                </span>
+                <Money cents={h.expectedCents} whole className="text-xs font-bold tabular text-ink" />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {later.length > 0 && (
+        <details className="mt-2 text-sm">
+          <summary className="cursor-pointer text-xs font-medium text-brand">Later</summary>
+          <ul>{later.map(row)}</ul>
+        </details>
+      )}
+    </Card>
   );
 }

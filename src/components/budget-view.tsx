@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { saveCategorySetting } from "@/app/app/actions";
 import { formatLong, formatShort } from "@/lib/dates";
-import { iconFor } from "@/lib/categories";
 import { GROUPS, type BudgetPlan, type CategoryBudget, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
 import { Money } from "./privacy";
+import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
 
 const GROUP_COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
@@ -160,8 +160,8 @@ export function BudgetView({
                     <button type="button" onClick={() => setEdit(c)} className="w-full py-2.5 text-left" aria-haspopup="dialog">
                       <span className="flex items-baseline justify-between gap-2">
                         <span className="min-w-0 truncate text-sm font-medium text-ink">
-                          <span aria-hidden>{iconFor(c.category)}</span> {c.category} {c.basis === "yours" ? <Badge>Yours</Badge> : c.basis === "pattern" ? <Badge tone="info">Predicted</Badge> : c.basis === "set-aside" ? <Badge tone="warn">Set aside</Badge> : <Badge>Usual</Badge>}
-                          {c.planCents > 0 && <span className="ml-1 rounded-full bg-info/15 px-1.5 py-0.5 text-[10px] font-semibold text-info">📅 +<Money cents={c.planCents} whole /></span>}
+                          <Glyph name={c.category} size="xs" /> {c.category} {c.basis === "yours" ? <Badge>Yours</Badge> : c.basis === "pattern" ? <Badge tone="info">Predicted</Badge> : c.basis === "set-aside" ? <Badge tone="warn">Set aside</Badge> : <Badge>Usual</Badge>}
+                          {c.planCents > 0 && <span className="ml-1 rounded-full bg-info/15 px-1.5 py-0.5 text-[10px] font-semibold text-info"><Glyph name="📅" size="xs" /> +<Money cents={c.planCents} whole /></span>}
                         </span>
                         <span className="shrink-0 text-sm tabular"><Money cents={c.spentCents} whole /> <span className="text-muted">/ <Money cents={c.budgetCents} whole /></span></span>
                       </span>
@@ -181,7 +181,7 @@ export function BudgetView({
 
 
       {edit && (
-        <Modal open onClose={() => setEdit(null)} icon={iconFor(edit.category)} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
+        <Modal open onClose={() => setEdit(null)} icon={edit.category} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
           <BudgetEditor key={edit.category} c={edit} history={history} demo={demo} onDone={() => setEdit(null)} />
           <CategoryTransactions items={items[edit.category] ?? []} />
         </Modal>

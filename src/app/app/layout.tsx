@@ -6,6 +6,7 @@ import { ThemeToggle } from "@/components/theme";
 import { getAppSession } from "@/lib/data/session";
 import { formatLong } from "@/lib/dates";
 import { setHideAmounts, signOut } from "./actions";
+import { Glyph } from "@/components/icon";
 import { Logo } from "@/components/logo";
 
 export const metadata: Metadata = { title: "Today", robots: { index: false, follow: false } };
@@ -16,7 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hide = snapshot.profile.hideAmounts;
   return (
     <PrivacyProvider hide={hide}>
-      <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-24 pt-4 sm:px-6 lg:pb-10">
+      <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-32 pt-4 sm:px-6 lg:pb-10">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Link href="/app" className="flex items-center">
             <Logo />
@@ -30,7 +31,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {hide ? "Show amounts" : "Hide amounts"}
               </button>
             </form>
-            <Link href="/app/settings" className="btn btn-ghost btn-sm lg:hidden" aria-label="Settings" title="Settings">⚙</Link>
+            <Link href="/app/settings" className="btn btn-ghost btn-sm lg:hidden" aria-label="Settings" title="Settings"><Glyph name="⚙" size="xs" /></Link>
             <form action={signOut}>
               <button className="btn btn-ghost btn-sm" title={user.email ?? undefined}>Sign out</button>
             </form>

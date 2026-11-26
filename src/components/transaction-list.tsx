@@ -13,7 +13,8 @@ import type { CategoryBucket } from "@/lib/view/spend";
 import { Money } from "./privacy";
 import { Badge, EmptyState } from "./ui";
 import { APP_NAME } from "@/lib/brand";
-import { iconFor, isNotSpending } from "@/lib/categories";
+import { Glyph } from "@/components/icon";
+import { isNotSpending } from "@/lib/categories";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
@@ -63,7 +64,7 @@ export function TransactionList({
           <button type="button" onClick={() => setCat(null)} aria-pressed={cat === null} className={chip(cat === null)}>All</button>
           {chips.map(([c, cents]) => (
             <button key={c} type="button" onClick={() => setCat(cat === c ? null : c)} aria-pressed={cat === c} className={chip(cat === c)}>
-              <span aria-hidden>{iconFor(c)}</span> {c} <Money cents={cents} whole className="font-semibold" />
+              <Glyph name={c} size="xs" bare /> {c} <Money cents={cents} whole className="font-semibold" />
             </button>
           ))}
         </div>
@@ -82,7 +83,7 @@ export function TransactionList({
                 {list.map((t) => (
                   <li key={t.id}>
                     <button type="button" onClick={() => setOpen(t.id)} aria-haspopup="dialog" className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-2/60">
-                      <span aria-hidden className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-3 text-base">{t.direction === "in" ? "💰" : iconFor(t.category)}</span>
+                      <Glyph name={t.direction === "in" ? "income" : t.category} size="md" />
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-sm font-medium text-ink">{t.description}</span>
                         <span className="block truncate text-xs text-muted">
@@ -107,7 +108,7 @@ export function TransactionList({
             setOpen(null);
             setRepeat(false);
           }}
-          icon={current.direction === "in" ? "💰" : iconFor(current.category)}
+          icon={current.direction === "in" ? "income" : (current.category ?? "spend")}
           tone={current.direction === "in" ? "in" : "out"}
           title={current.description}
           subtitle={
@@ -147,7 +148,7 @@ export function TransactionList({
             <>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
               {!isNotSpending(current.category) && (
-                <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => setRepeat(true)}>🔁 This repeats: add it as repeating</button>
+                <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => setRepeat(true)}><Glyph name="🔁" size="xs" /> This repeats: add it as repeating</button>
               )}
             </>
           )}

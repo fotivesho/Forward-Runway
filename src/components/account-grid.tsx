@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "./modal";
+import { Glyph } from "@/components/icon";
 import { Money } from "./privacy";
 
 export interface AccountTile {
@@ -36,7 +37,7 @@ export function AccountGrid({ tiles }: { tiles: AccountTile[] }) {
               className={`flex h-full w-full flex-col rounded-2xl border bg-surface p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${t.warn ? "border-warn/60" : "border-line"}`}
             >
               <span className="flex items-center justify-between gap-1">
-                <span aria-hidden className="text-lg">{t.icon}</span>
+                <Glyph name={t.icon} size="md" />
                 {t.tag && <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium text-muted">{t.tag}</span>}
               </span>
               <span className="mt-1 truncate text-sm font-bold text-ink">{t.name}</span>

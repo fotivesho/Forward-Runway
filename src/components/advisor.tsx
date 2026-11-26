@@ -11,6 +11,7 @@ import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
+import { Modal } from "./modal";
 import { EditPlanButton, PlanCtx } from "./calendar-forms";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
@@ -124,6 +125,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const { event, estimate, advice, duplicate } = view;
   const savedCredit = !!view.creditCardId && event.paymentAccountId === view.creditCardId;
   const [credit, setCredit] = useState(savedCredit);
+  const [open, setOpen] = useState(false);
   const check = view.checkCredit && credit ? view.checkCredit : (view.checkDebit ?? view.check);
   const saved = view.check;
   const other = credit ? view.checkDebit : view.checkCredit;
@@ -144,8 +146,12 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   ) : null;
   return (
     <li className="list-none">
-      <details className={`group rounded-xl border border-l-4 border-line bg-surface-2/40 ${needs ? "border-l-info" : saved ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[saved.verdict] : "border-l-line"}`}>
-        <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        className={`flex w-full items-center gap-3 rounded-xl border border-l-4 border-line bg-surface-2/40 px-3 py-2.5 text-left transition hover:bg-surface-2 ${needs ? "border-l-info" : saved ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[saved.verdict] : "border-l-line"}`}
+      >
           <span className="min-w-0 flex-1">
             <span className="block font-medium leading-snug text-ink [overflow-wrap:anywhere]">{event.title}</span>
             <span className="block text-sm font-semibold text-ink/80">
@@ -155,9 +161,16 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             </span>
           </span>
           {badge}
-          <span aria-hidden className="text-faint transition group-open:rotate-90">›</span>
-        </summary>
-        <div className="border-t border-line px-3 pb-3 pt-2">
+          <span aria-hidden className="text-faint">›</span>
+      </button>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        icon="plan"
+        title={event.title}
+        subtitle={<span className="flex flex-wrap items-center gap-2">{formatShort(event.date)}{!needs && cents > 0 && <> · <Money cents={cents} whole className="font-semibold text-ink" /></>} {badge}</span>}
+      >
+        <div>
           {duplicate ? (
             <>
               <p className="text-sm text-ink">Same as “{duplicate.ofTitle}”? Counted once.</p>
@@ -218,7 +231,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             </>
           )}
         </div>
-      </details>
+      </Modal>
     </li>
   );
 }
