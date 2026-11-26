@@ -2,6 +2,7 @@
 
 import { createContext, useActionState, useContext, useEffect, useId, useRef } from "react";
 import { useFormStatus } from "react-dom";
+import { Info } from "./info";
 import type { ActionState } from "@/app/app/actions";
 
 type Action = (state: ActionState, form: FormData) => Promise<ActionState>;
@@ -105,15 +106,13 @@ function FieldShell({
 }) {
   return (
     <div className={`flex flex-col gap-1 ${className}`}>
-      <label htmlFor={id} className="text-sm font-medium text-ink">
-        {label}
-      </label>
+      <span className="flex items-center">
+        <label htmlFor={id} className="text-sm font-medium text-ink">
+          {label}
+        </label>
+        {hint && <Info label={`About ${typeof label === "string" ? label : "this field"}`}><span id={`${id}-hint`}>{hint}</span></Info>}
+      </span>
       {children}
-      {hint && !error && (
-        <p id={`${id}-hint`} className="text-xs text-faint">
-          {hint}
-        </p>
-      )}
       {error && (
         <p id={`${id}-error`} className="text-xs font-medium text-danger">
           {error}
@@ -205,9 +204,7 @@ export function CheckboxField({ name, label, hint, defaultChecked, ...rest }: { 
           {label}
         </label>
         {hint && (
-          <p id={`${id}-hint`} className="text-xs text-faint">
-            {hint}
-          </p>
+          <Info label="More info"><span id={`${id}-hint`}>{hint}</span></Info>
         )}
       </div>
     </div>

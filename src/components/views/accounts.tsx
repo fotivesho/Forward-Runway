@@ -1,7 +1,9 @@
 import { AccountForm, BalanceForm, GoalForm, StatementForm } from "@/components/entity-forms";
 import { QuickAction } from "@/components/form";
 import { Money } from "@/components/privacy";
-import { Badge, Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
+import { Badge, Disclosure, EmptyState, PageHeader } from "@/components/ui";
+import { AccountGrid, AddInModal, type AccountTile } from "@/components/account-grid";
+import { Info } from "@/components/info";
 import type { ViewProps } from "./types";
 import { BankConnections, type BankConnectionView } from "@/components/bank-connect";
 import { diffDays, formatShort } from "@/lib/dates";
@@ -11,8 +13,7 @@ import { BankAccountPanel } from "@/components/bank-account-panel";
 import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
 import { toEngineInput } from "@/lib/data/snapshot";
 
-const KIND = { checking: "Checking", savings: "Savings", cash: "Cash", credit_card: "Credit card", loan: "Loan" } as const;
-const SOURCE = { manual: "entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "from your bank" } as const;
+const SOURCE = { manual: "Entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "From your bank" } as const;
 
 export function AccountsView({
   snapshot,
@@ -24,131 +25,191 @@ export function AccountsView({
   const accounts = snapshot.accounts;
   const active = accounts.filter((a) => !a.archived);
   const archived = accounts.filter((a) => a.archived);
-  // For bank-connected cards: the forecast's view of upcoming statements, and usual spending until they close.
   const input = toEngineInput(snapshot, today);
-  const cardProjections = active.some((a) => a.bankConnectionId && a.kind === "credit_card") ? buildForecast(input, 90).cards : [];
+  const forecast = buildForecast(input, 90);
   const nowMs = Date.now();
-  return (
-    <>
-      <PageHeader title="Accounts & goals" subtitle="Balances, cards and goals." />
-      <div className="grid gap-4">
-        {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} redirectReady={bank.redirectReady} />}
-        {!bank && !demo && bankSetupMissing && (
-          <section className="card border-warn/50 p-4 text-sm sm:p-5">
-            <h2 className="text-base font-semibold text-ink">Bank connections are almost set up</h2>
-            <p className="mt-1 text-muted">These settings are missing or not quite right on the server (Vercel → Settings → Environment Variables, Production), then redeploy:</p>
-            <ul className="mt-2 list-disc pl-5 font-mono text-xs text-ink">{bankSetupMissing.map((m) => <li key={m}>{m}</li>)}</ul>
-          </section>
-        )}
-        {active.length === 0 && <EmptyState title="No accounts yet">{bank ? "Connect your bank above, or add your checking account by hand." : "Add your checking account first."}</EmptyState>}
-        {active.map((a) => {
-          const age = a.balanceAsOf ? diffDays(a.balanceAsOf, today) : null;
-          const stale = age == null || age > (a.kind === "credit_card" ? Math.max(7, snapshot.settings.staleAfterDays) : a.isSpendable ? snapshot.settings.staleAfterDays : 30);
-          const statements = snapshot.statements.filter((s) => s.accountId === a.id).sort((x, y) => (x.closingDate < y.closingDate ? 1 : -1));
-          const liability = a.kind === "credit_card" || a.kind === "loan";
-          return (
-            <Card key={a.id} title={<>{a.name} <span className="ml-1 align-middle"><Badge>{KIND[a.kind]}</Badge></span> {a.isSpendable && <Badge tone="good">Spendable</Badge>} {a.bankConnectionId && <Badge tone="info" title="Kept up to date by your bank">🏦 Bank</Badge>}</>}>
-              {a.bankConnectionId ? (
-                (() => {
-                  const projection = cardProjections.find((c) => c.accountId === a.id);
-                  const next = projection?.statements.find((s) => s.isProjected);
-                  const usual = a.kind === "credit_card" && next ? avgDailyCardSpend(input, a.id) * Math.max(0, diffDays(today, next.closingDate)) : 0;
-                  return (
-                    <>
-                      <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />
-                      
-                    </>
-                  );
-                })()
-              ) : (
-              <>
-              <p className="text-2xl font-semibold">
-                {a.balanceCents == null ? <span className="text-danger text-base">No balance yet</span> : <Money cents={a.balanceCents} />}
-                {liability && a.balanceCents != null && <span className="ml-1 text-sm text-muted">owed</span>}
-              </p>
-              <p className="text-xs text-muted">
-                {a.balanceAsOf ? `As of ${formatShort(a.balanceAsOf)} (${age === 0 ? "today" : `${age} day${age === 1 ? "" : "s"} ago`})` : "No date"} · {SOURCE[a.balanceSource]}
-                {stale && <span className="text-warn"> · out of date</span>}
-              </p>
-              {a.kind === "credit_card" && (
-                <p className="mt-1 text-xs text-muted">
-                  Closes on day {a.statementCloseDay ?? "?"} · due on day {a.paymentDueDay ?? "?"} · {a.payInFull !== false ? "paid in full" : "minimum payments"}
-                  {a.aprBps != null && ` · ${(a.aprBps / 100).toFixed(2)}% APR`}
-                </p>
-              )}
-              {(() => {
-                // A hand-entered account next to a connected one of the same type is probably the same account.
-                if (a.bankConnectionId || demo) return null;
-                const fam = (k: string) => (k === "credit_card" ? "card" : k === "loan" ? "loan" : "cash");
-                const options = active.filter((b) => b.bankConnectionId && fam(b.kind) === fam(a.kind));
-                if (options.length === 0) return null;
-                return (
-                  <div className="mt-3 rounded-xl border border-warn/50 bg-warn/5 p-3 text-sm">
-                    <p className="font-medium text-ink">Is this the same account your bank now keeps up to date?</p>
-                    <p className="mt-0.5 text-xs text-muted">If so, replace it: your paydays, bills, card payments, goals and plans move to the bank account and this one is archived, so your money isn't counted twice.</p>
-                    <div className="mt-2"><ReplaceWithBankForm from={a.id} options={options.map((b) => ({ id: b.id, name: b.name }))} /></div>
-                  </div>
-                );
-              })()}
-              <div className="mt-3"><BalanceForm account={a} today={today} /></div>
-              {a.kind === "credit_card" && (
-                <div className="mt-3">
-                  <h3 className="mb-1 text-sm font-semibold">Statements</h3>
-                  {statements.length === 0 ? (
-                    <p className="text-sm text-muted">No statements yet. Add the latest one so the next payment is exact rather than estimated.</p>
-                  ) : (
-                    <ul className="divide-y divide-line text-sm">
-                      {statements.slice(0, 6).map((s) => (
-                        <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                          <span>
-                            Closed {formatShort(s.closingDate)} · <Money cents={s.statementBalanceCents} /> · due {formatShort(s.dueDate)}{" "}
-                            {s.status === "paid" ? <Badge tone="good">Paid</Badge> : s.status === "partial" ? <Badge tone="warn">Partly paid (<Money cents={s.paidCents} />)</Badge> : s.dueDate < today ? <Badge tone="bad">Past due</Badge> : <Badge tone="info">Unpaid — scheduled on due date</Badge>}
-                          </span>
-                          <span className="flex gap-1">
-                            {s.status !== "paid" && <QuickAction action={markStatementPaid} fields={{ id: s.id }} variant="secondary">Mark paid</QuickAction>}
-                            <QuickAction action={deleteStatement} fields={{ id: s.id }} confirm="Delete this statement?" label="Delete statement">Delete</QuickAction>
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <div className="mt-2"><Disclosure summary="Add a statement"><StatementForm card={a} /></Disclosure></div>
-                </div>
-              )}
-              <div className="mt-3 flex flex-wrap gap-2">
-                <div className="w-full"><Disclosure summary="Edit account details"><AccountForm account={a} accounts={accounts} today={today} /></Disclosure></div>
-                <QuickAction action={archiveAccount} fields={{ id: a.id, archived: "true" }} variant="secondary">Archive</QuickAction>
-                <QuickAction action={deleteAccount} fields={{ id: a.id }} variant="danger" confirm={`Delete ${a.name} and everything linked to it (recurring items, transactions, statements)? This can't be undone.`}>Delete</QuickAction>
-              </div>
-              </>
-              )}
-            </Card>
-          );
-        })}
-        <Card title="Add an account"><AccountForm accounts={accounts} today={today} /></Card>
+  const fam = (k: string) => (k === "credit_card" ? "card" : k === "loan" ? "loan" : "cash");
+  const ago = (iso: string | null) => {
+    if (!iso) return "never";
+    const h = Math.round((nowMs - Date.parse(iso)) / 3_600_000);
+    return h < 1 ? "just now" : h < 48 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+  };
+  const isStale = (a: (typeof active)[number]) => {
+    const age = a.balanceAsOf ? diffDays(a.balanceAsOf, today) : null;
+    return age == null || age > (a.kind === "credit_card" ? Math.max(7, snapshot.settings.staleAfterDays) : a.isSpendable ? snapshot.settings.staleAfterDays : 30);
+  };
 
-        <Card title="Savings goals">
-          {snapshot.goals.length === 0 ? (
-            <p className="mb-3 text-sm text-muted">Add your wedding fund (or any goal) to keep it separate from spendable cash and track progress.</p>
-          ) : (
-            <ul className="mb-3 space-y-2">
-              {snapshot.goals.map((g) => (
-                <li key={g.id} className="rounded-xl border border-line p-3">
-                  <p className="font-medium">{g.name} {g.protected !== false && <Badge>Protected</Badge>}</p>
-                  <p className="text-sm text-muted">Target <Money cents={g.targetCents} />{g.targetDate && ` by ${formatShort(g.targetDate)}`} · held in {accounts.find((a) => a.id === g.accountId)?.name ?? "no account"}</p>
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    <div className="w-full"><Disclosure summary="Edit goal"><GoalForm goal={g} accounts={accounts} /></Disclosure></div>
-                    <QuickAction action={deleteGoal} fields={{ id: g.id }} variant="danger" confirm="Delete this goal? The account and its money stay.">Delete goal</QuickAction>
-                  </div>
+  // Totals for the picture at the top.
+  const sum = (f: (a: (typeof active)[number]) => boolean) => active.filter(f).reduce((t, a) => t + (a.balanceCents ?? 0), 0);
+  const cash = sum((a) => a.isSpendable && fam(a.kind) === "cash");
+  const saved = sum((a) => !a.isSpendable && fam(a.kind) === "cash");
+  const cardsOwed = sum((a) => a.kind === "credit_card");
+  const loans = sum((a) => a.kind === "loan");
+  const assets = cash + saved;
+  const owed = cardsOwed + loans;
+  const scale = Math.max(1, assets, owed);
+
+  const detailFor = (a: (typeof active)[number]) => {
+    const statements = snapshot.statements.filter((st) => st.accountId === a.id).sort((x, y) => (x.closingDate < y.closingDate ? 1 : -1));
+    if (a.bankConnectionId) {
+      const projection = forecast.cards.find((c) => c.accountId === a.id);
+      const next = projection?.statements.find((st) => st.isProjected);
+      const usual = a.kind === "credit_card" && next ? avgDailyCardSpend(input, a.id) * Math.max(0, diffDays(today, next.closingDate)) : 0;
+      return <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />;
+    }
+    const options = active.filter((b) => b.bankConnectionId && fam(b.kind) === fam(a.kind));
+    return (
+      <div className="grid gap-4">
+        <p className="text-xs text-muted">
+          {SOURCE[a.balanceSource]} · {a.balanceAsOf ? `as of ${formatShort(a.balanceAsOf)}` : "no date"}
+          {a.kind === "credit_card" && <> · closes day {a.statementCloseDay ?? "?"} · due day {a.paymentDueDay ?? "?"}</>}
+        </p>
+        {!demo && options.length > 0 && (
+          <div className="rounded-xl border border-warn/50 bg-warn/5 p-3 text-sm">
+            <p className="font-medium text-ink">
+              Same as a bank account?
+              <Info>Replace it: paydays, bills, card payments, goals and plans move to the bank account, and this one is archived so nothing is counted twice.</Info>
+            </p>
+            <div className="mt-2"><ReplaceWithBankForm from={a.id} options={options.map((b) => ({ id: b.id, name: b.name }))} /></div>
+          </div>
+        )}
+        <BalanceForm account={a} today={today} />
+        {a.kind === "credit_card" && (
+          <section>
+            <h3 className="mb-1 text-sm font-semibold">Statements</h3>
+            <ul className="divide-y divide-line text-sm">
+              {statements.slice(0, 6).map((st) => (
+                <li key={st.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span>
+                    <Money cents={st.statementBalanceCents} whole /> · due {formatShort(st.dueDate)}{" "}
+                    {st.status === "paid" ? <Badge tone="good">Paid</Badge> : st.status === "partial" ? <Badge tone="warn">Part paid</Badge> : st.dueDate < today ? <Badge tone="bad">Past due</Badge> : <Badge tone="info">Unpaid</Badge>}
+                  </span>
+                  <span className="flex gap-1">
+                    {st.status !== "paid" && <QuickAction action={markStatementPaid} fields={{ id: st.id }} variant="secondary">Paid</QuickAction>}
+                    <QuickAction action={deleteStatement} fields={{ id: st.id }} confirm="Delete this statement?" label="Delete statement">✕</QuickAction>
+                  </span>
                 </li>
               ))}
             </ul>
-          )}
-          <Disclosure summary="Add a goal"><GoalForm accounts={accounts} /></Disclosure>
-        </Card>
+            <div className="mt-2"><Disclosure summary="Add a statement"><StatementForm card={a} /></Disclosure></div>
+          </section>
+        )}
+        <Disclosure summary="Edit details"><AccountForm account={a} accounts={accounts} today={today} /></Disclosure>
+        <div className="flex flex-wrap gap-2">
+          <QuickAction action={archiveAccount} fields={{ id: a.id, archived: "true" }} variant="secondary">Archive</QuickAction>
+          <QuickAction action={deleteAccount} fields={{ id: a.id }} variant="danger" confirm={`Delete ${a.name} and everything linked to it? This can't be undone.`}>Delete</QuickAction>
+        </div>
+      </div>
+    );
+  };
+
+  const ICON = { checking: "💳", savings: "🛟", cash: "💵", credit_card: "💳", loan: "🏦" } as const;
+  // Accounts that hold a goal show once, as the goal.
+  const goalAccounts = new Set(snapshot.goals.map((g) => g.accountId).filter(Boolean));
+  const tiles: AccountTile[] = active.filter((a) => !goalAccounts.has(a.id)).map((a) => {
+    const owedSide = a.kind === "credit_card" || a.kind === "loan";
+    const latest = snapshot.statements.filter((st) => st.accountId === a.id).sort((x, y) => (x.closingDate < y.closingDate ? 1 : -1))[0];
+    const stale = isStale(a);
+    const used = a.kind === "credit_card" && a.creditLimitCents ? ((a.balanceCents ?? 0) / a.creditLimitCents) * 100 : null;
+    return {
+      id: a.id,
+      name: a.name,
+      icon: a.kind === "checking" ? "🏦" : ICON[a.kind],
+      cents: a.balanceCents == null ? null : owedSide ? -a.balanceCents : a.balanceCents,
+      tag: a.bankConnectionId ? "Bank" : a.isSpendable ? "Spend" : undefined,
+      warn: stale && !a.bankConnectionId,
+      bar: used != null ? { pct: used, tone: used > 70 ? "bad" : used > 30 ? "warn" : "good" } : undefined,
+      sub:
+        a.kind === "credit_card" && latest && latest.status !== "paid"
+          ? <>bill <Money cents={latest.statementBalanceCents - latest.paidCents} whole /> · {formatShort(latest.dueDate)}</>
+          : stale && !a.bankConnectionId
+            ? "⚠ update balance"
+            : ago(a.balanceUpdatedAt),
+      detail: detailFor(a),
+    };
+  });
+
+  const goalTiles: AccountTile[] = snapshot.goals.map((g) => {
+    const bal = g.accountId ? (forecast.openingByAccount[g.accountId] ?? 0) : 0;
+    const pct = g.targetCents ? (bal / g.targetCents) * 100 : 0;
+    return {
+      id: `goal-${g.id}`,
+      name: g.name,
+      icon: g.protected !== false ? "🔒" : "🎯",
+      cents: bal,
+      bar: { pct, tone: "good" },
+      sub: <>{Math.round(pct)}% of <Money cents={g.targetCents} whole />{g.targetDate ? ` · ${formatShort(g.targetDate)}` : ""}</>,
+      detail: (
+        <div className="grid gap-3">
+          {(() => {
+            const acct = active.find((x) => x.id === g.accountId);
+            return acct ? (acct.bankConnectionId ? <p className="text-xs text-muted">Held in {acct.name}, kept up to date by your bank.</p> : <BalanceForm account={acct} today={today} />) : null;
+          })()}
+          <Disclosure summary="Edit goal"><GoalForm goal={g} accounts={accounts} /></Disclosure>
+          <QuickAction action={deleteGoal} fields={{ id: g.id }} variant="danger" confirm="Delete this goal? The account and its money stay.">Delete goal</QuickAction>
+        </div>
+      ),
+    };
+  });
+
+  return (
+    <>
+      <PageHeader title="Accounts" action={<AddInModal label="+ Add" title="Add an account" icon="🏦"><AccountForm accounts={accounts} today={today} /></AddInModal>} />
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
+        {!bank && !demo && bankSetupMissing && (
+          <section className="card border-warn/50 p-4 text-sm">
+            <p className="font-semibold text-ink">Bank connections: settings missing <Info>Vercel → Settings → Environment Variables (Production), then redeploy.</Info></p>
+            <ul className="mt-1 list-disc pl-5 font-mono text-xs text-ink">{bankSetupMissing.map((m) => <li key={m}>{m}</li>)}</ul>
+          </section>
+        )}
+
+        {/* The whole picture: what you have vs what you owe */}
+        <section className="card p-4 sm:p-5" aria-label="Net worth">
+          <p className="text-xs font-semibold text-muted">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></p>
+          <p className={`text-3xl font-extrabold tabular ${assets - owed < 0 ? "text-danger" : "text-ink"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
+          <div className="mt-3 space-y-1.5">
+            <div className="flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+              <span className="bg-brand" style={{ width: `${(cash / scale) * 100}%` }} />
+              <span className="bg-info" style={{ width: `${(saved / scale) * 100}%` }} />
+            </div>
+            <div className="flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+              <span className="bg-warn" style={{ width: `${(cardsOwed / scale) * 100}%` }} />
+              <span className="bg-danger/80" style={{ width: `${(loans / scale) * 100}%` }} />
+            </div>
+          </div>
+          <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-4">
+            {[
+              ["bg-brand", "Cash", cash],
+              ["bg-info", "Savings", saved],
+              ["bg-warn", "Cards", -cardsOwed],
+              ["bg-danger/80", "Loans", -loans],
+            ].map(([cls, label, v]) => (
+              <li key={label as string} className="flex items-center justify-between gap-1">
+                <span className="text-muted"><span className={`mr-1 inline-block h-2 w-2 rounded-full ${cls}`} />{label}</span>
+                <Money cents={v as number} whole sign={(v as number) < 0} className="font-semibold tabular text-ink" />
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {active.length === 0 ? (
+          <EmptyState title="No accounts yet" />
+        ) : (
+          <AccountGrid tiles={tiles} />
+        )}
+
+        <section aria-labelledby="goals-h">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 id="goals-h" className="text-sm font-semibold text-ink">Goals <Info>Money set aside for something. Protected goals (🔒) are never suggested to pay for anything else.</Info></h2>
+            <AddInModal label="+ Goal" title="Add a goal" icon="🎯"><GoalForm accounts={accounts} /></AddInModal>
+          </div>
+          {goalTiles.length > 0 ? <AccountGrid tiles={goalTiles} /> : <p className="text-sm text-muted">No goals yet.</p>}
+        </section>
+
+        {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} redirectReady={bank.redirectReady} />}
 
         {archived.length > 0 && (
-          <Card title="Archived accounts">
+          <Disclosure summary={`Archived (${archived.length})`}>
             <ul className="space-y-2 text-sm">
               {archived.map((a) => (
                 <li key={a.id} className="flex items-center justify-between">
@@ -157,7 +218,7 @@ export function AccountsView({
                 </li>
               ))}
             </ul>
-          </Card>
+          </Disclosure>
         )}
       </div>
     </>

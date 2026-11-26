@@ -6,6 +6,7 @@ import { addDays, dayOfWeek, formatShort, isISODate, type ISODate } from "@/lib/
 import { parseDollars } from "@/lib/money";
 import { checkAffordability, compareScenario, nextOccurrence, ruleOccurrences, type Adjustment } from "@/lib/engine";
 import { LOOK, PlanImpact } from "./afford-result";
+import { Info } from "./info";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
 import { buildDashboard } from "@/lib/view/dashboard";
@@ -226,7 +227,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             >
               {added ? "✓ Added" : "Add to my plans"}
             </button>
-            <span className="text-xs text-muted">{added ?? "It joins your forecast and calendar, where you can do an option in one tap."}</span>
+            {added ? <span className="text-xs text-muted">{added}</span> : <Info label="Add to my plans">It joins your forecast and calendar, where you can do an option in one tap.</Info>}
           </div>
         </section>
       )}

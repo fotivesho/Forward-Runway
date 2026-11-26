@@ -13,6 +13,7 @@ import { Money } from "./privacy";
 import { ItemRow } from "./timeline";
 import { Badge, Card, Disclosure, EmptyState } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
+import { Info } from "./info";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
@@ -130,22 +131,18 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           <div className="p-4 sm:p-5">
             {allowance.status === "shortfall" && (
               <div className="mb-3">
-                <details className="rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm">
-                  <summary className="cursor-pointer font-semibold text-ink">Why $0 today ›</summary>
-                  <p className="mt-1 text-muted">{allowance.explanation[0]}</p>
-                  <p className="mt-1 text-muted">{allowance.explanation[1]}</p>
-                  <Link href={base + "/what-if"} className="mt-1 inline-block font-semibold text-brand underline">Fix it with savings →</Link>
-                </details>
+                <p className="rounded-xl border border-danger/50 bg-danger/5 px-3 py-2 text-sm font-semibold text-ink">
+                  Bills come first, so everyday spending is $0
+                  <Info label="Why $0 today">{allowance.explanation[0]} {allowance.explanation[1]}</Info>
+                  <Link href={base + "/what-if"} className="ml-2 font-semibold text-brand underline">Fix it →</Link>
+                </p>
               </div>
             )}
             <DailyCaps m={m} today={today} />
             {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
-              <details className="mt-3 text-xs text-muted">
-                <summary className="cursor-pointer">Notes</summary>
-                <ul className="mt-1 space-y-1">
-                  {plan.notes.filter((n) => n !== allowance.explanation[0]).map((n) => <li key={n}>• {n}</li>)}
-                </ul>
-              </details>
+              <p className="mt-2 text-xs text-muted">
+                Notes <Info label="Notes">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</Info>
+              </p>
             )}
             <div className="mt-3">
               <Link href={base + "/what-if#afford"} className="btn btn-secondary btn-sm">

@@ -3,6 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import { disconnectBankNow, finishBankLink, startBankLink, syncBankNow, type BankResult } from "@/app/app/bank-actions";
 import { Badge } from "./ui";
+import { Info } from "./info";
 
 export interface BankConnectionView {
   id: string;
@@ -151,11 +152,10 @@ export function BankConnections({
     <section className="card p-4 sm:p-5" aria-labelledby="bank-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="bank-title" className="text-base font-semibold text-ink">Bank connections</h2>
-          <p className="mt-1 max-w-xl text-sm text-muted">
-            Updates itself. Your bank login stays with Plaid.
-            {mode !== "production" && <span className="text-warn"> {mode === "mock" ? "Test bank: made-up data." : "Sandbox: Plaid's test banks only."}</span>}
-          </p>
+          <h2 id="bank-title" className="text-base font-semibold text-ink">
+            Banks <Info>Balances, statements and transactions update themselves. You sign in with Plaid; your login never reaches this app, and nothing can move your money.</Info>
+          </h2>
+          {mode !== "production" && <p className="text-xs text-warn">{mode === "mock" ? "Test bank: made-up data." : "Sandbox: test banks only."}</p>}
         </div>
         <button type="button" className="btn btn-primary btn-sm" onClick={() => link()} disabled={pending}>
           {pending ? "Working…" : connections.length ? "+ Connect another" : "Connect your bank"}

@@ -8,6 +8,7 @@ import { GROUPS, type BudgetPlan, type CategoryBudget, type CategoryItem, type S
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
+import { Info } from "./info";
 import { Money } from "./privacy";
 import { Badge } from "./ui";
 
@@ -55,7 +56,12 @@ export function BudgetView({
       {/* Where the month's income goes. */}
       <section className="card p-4 sm:p-5" aria-labelledby="split-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="split-title" className="text-base font-semibold text-ink">{monthName}'s plan</h2>
+          <h2 id="split-title" className="text-base font-semibold text-ink">
+            {monthName}'s plan
+            <Info label="How smart budgets work">
+              Income first, then savings and calendar plans come off the top. Each category starts at your usual month (last {plan.monthsOfHistory || "few"} months). If it doesn't fit, needs stay and wants shrink. No history? 50/30/20. Budgets you set always win. The tick on a bar is an even pace.
+            </Info>
+          </h2>
           <span className="text-xs text-muted">{Math.round(plan.progress * 100)}% through the month</span>
         </div>
         {plan.incomeCents > 0 ? (
@@ -91,7 +97,7 @@ export function BudgetView({
         ) : (
           <p className="mt-1 text-sm text-muted">Add your paycheck as repeating (Money → Overview) so budgets can start from your income.</p>
         )}
-        {plan.notes.length > 0 && <ul className="mt-2 space-y-1 text-xs text-muted">{plan.notes.map((n) => <li key={n}>• {n}</li>)}</ul>}
+        {plan.notes.length > 0 && <p className="mt-2 text-xs text-warn">Heads up <Info label="Budget notes">{plan.notes.join(" ")}</Info></p>}
       </section>
 
       {/* Each group and its categories. */}
@@ -142,18 +148,6 @@ export function BudgetView({
         );
       })}
 
-      <details className="rounded-xl border border-line p-3 text-sm">
-        <summary className="cursor-pointer font-medium text-ink">How smart budgets work</summary>
-        <ol className="mt-2 list-decimal space-y-1 pl-5 text-muted">
-          <li>Start with your income for the month.</li>
-          <li>Savings come off the top: your savings transfers and goal contributions.</li>
-          <li>Calendar plans this month are set aside next, at their caps.</li>
-          <li>Each category starts at your usual month (the average of your last {plan.monthsOfHistory || "few"} full months).</li>
-          <li>If that doesn't fit, needs keep their usual amount and wants shrink to fit.</li>
-          <li>No history yet? It starts from 50/30/20. Any budget you set yourself always wins.</li>
-        </ol>
-        <p className="mt-2 text-xs text-faint">The tick on each bar is where you'd be spending evenly through the month. Card payments and transfers never count as spending.</p>
-      </details>
 
       {edit && (
         <Modal open onClose={() => setEdit(null)} icon={iconFor(edit.category)} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>

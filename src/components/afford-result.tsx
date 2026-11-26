@@ -4,6 +4,7 @@ import { formatShort, type ISODate } from "@/lib/dates";
 import { applyPlanOption } from "@/app/app/actions";
 import { useContext, useState, useTransition } from "react";
 import { DemoCtx } from "./form";
+import { Info } from "./info";
 import { formatCents } from "@/lib/money";
 import type { AffordCheck } from "@/lib/engine";
 
@@ -338,14 +339,12 @@ export function PlanImpact({
           status={after < floor ? `${dollars(floor - after)} below cushion` : `${dollars(after - floor)} above cushion`}
         />
       </div>
-      <details className="mt-2 text-xs text-muted">
-        <summary className="cursor-pointer list-none text-faint [&::-webkit-details-marker]:hidden">ⓘ What these mean</summary>
-        <p className="mt-1">
-          <strong className="text-ink">Spending money</strong> is what's left this pay period after bills, savings and your other plans.{" "}
-          <strong className="text-ink">Lowest balance</strong> is the tightest your account gets in the next 90 days; your{" "}
-          <strong className="text-ink">cushion</strong> ({dollars(floor)}) is the amount you never want to go below.
-        </p>
-      </details>
+      <p className="mt-1.5 text-[11px] text-faint">
+        What these mean
+        <Info label="What these mean">
+          <strong>Spending money</strong>: what's left this pay period after bills, savings and other plans. <strong>Lowest balance</strong>: the tightest your account gets in 90 days. <strong>Cushion</strong> ({dollars(floor)}): what you never want to go below.
+        </Info>
+      </p>
       {check.cash.viaCard && !check.cash.beyondHorizon && <p className="mt-1.5 text-[11px] text-muted">On {check.cash.viaCard.split(" ")[0]}: cash leaves {formatShort(check.cash.date)}</p>}
       {check.verdict !== "yes" && (() => {
         const opts = [check.action, ...check.alternatives].filter((x) => x.kind !== "none");
