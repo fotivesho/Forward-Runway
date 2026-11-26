@@ -188,7 +188,7 @@ function Meter({ label, when, value, pos, tone, status }: { label: string; when?
   const text = { good: "text-brand", warn: "text-warn", bad: "text-danger" }[tone];
   return (
     <div className="min-w-0 flex-1 rounded-xl bg-surface px-2.5 py-2 shadow-sm">
-      <p className="text-[11px] font-semibold leading-tight text-muted">{label}</p>
+      <p className="text-[13px] font-bold leading-tight text-ink">{label}</p>
       {when && <p className="text-[10px] leading-tight text-faint">{when}</p>}
       <p className="text-2xl font-extrabold leading-tight tabular text-ink">{value}</p>
       <div className="relative mt-1 h-2 rounded-full bg-surface-3" aria-hidden>
@@ -198,6 +198,15 @@ function Meter({ label, when, value, pos, tone, status }: { label: string; when?
       <p className={`mt-1 text-[11px] font-semibold leading-tight ${text}`}>{status}</p>
     </div>
   );
+}
+
+/** Option titles short enough for one line: "Move $410 from savings", "Skip Lake trip + $150 savings". */
+function shortTitle(t: string): string {
+  return t
+    .replace(/ by [A-Z][a-z]{2} \d+$/, "")
+    .replace(/ from [^$]*?(Savings|savings|Fund|fund)\b.*$/, " from savings")
+    .replace(/ and move (\$[\d,]+)$/, " + $1 savings")
+    .replace(/^Skip (Weekend |The )?/, "Skip ");
 }
 
 /** A one-line "doable" headline from the main option. */
@@ -227,28 +236,26 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
   const after = check.lowest.after.cents;
   const below = after < floor;
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
-  const days = Math.max(1, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 86_400_000) + 1);
-  const perDay = dollars(Math.floor(r.after / days));
 
   if (check.verdict === "yes") {
     if (reservedCents > 0 && check.headline === "Yes, it's already planned.") {
-      return { title: "Already covered", why: `Your spending plan already holds ${dollars(reservedCents)} for this, so nothing else changes.` };
+      return { title: "Already covered", why: `${dollars(reservedCents)} already set aside for this.` };
     }
     if (card) {
-      return { title: "You're good", why: `It goes on your ${card.name.split(" ")[0]}. The bill due ${formatShort(card.due)} would be ${dollars(card.withCents)}, which you can pay in full.` };
+      return { title: "You're good", why: `${card.name.split(" ")[0]} bill ${formatShort(card.due)} becomes ${dollars(card.withCents)}, payable in full.` };
     }
     if (r.borrowed > 0) {
-      return { title: "You're good, just", why: `It's ${dollars(r.borrowed)} more than your spending money for ${period}, so the next pay period gives up about that much.` };
+      return { title: "You're good, just", why: `Uses ${dollars(r.borrowed)} of next pay period's money.` };
     }
-    return { title: "You're good", why: `You'd still have ${dollars(r.after)} to spend ${period}, about ${perDay} a day.` };
+    return { title: "You're good", why: `${dollars(r.after)} left for ${period} after this.` };
   }
   const gap = below
-    ? `It would take your lowest balance to ${dollars(after)}, below the ${dollars(floor)} cushion you keep.`
+    ? `Drops you to ${dollars(after)}, under your ${dollars(floor)} cushion.`
     : card
-      ? `The ${card.name.split(" ")[0]} bill due ${formatShort(card.due)} would be ${dollars(card.withCents)}, ${dollars(card.withCents - card.capCents)} more than you can pay in full.`
-      : `It's ${dollars(r.shortfall)} more than the ${dollars(r.before)} you have to spend ${period}.`;
+      ? `${card.name.split(" ")[0]} bill would be ${dollars(card.withCents - card.capCents)} more than you can pay.`
+      : `${dollars(r.shortfall)} over your ${dollars(r.before)} for ${period}.`;
   if (check.verdict === "yes_with_plan") return { title: doableTitle(check.action), why: gap };
-  return { title: "Not yet", why: `${gap} Even your savings can't cover it right now.` };
+  return { title: "Not yet", why: `${gap} Savings can't cover it yet.` };
 }
 
 /**
@@ -271,7 +278,7 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
         <span aria-hidden>{look.icon}</span>
         <span className="truncate">{title}</span>
       </p>
-      <p className="mt-0.5 text-xs leading-snug text-muted">{why}</p>
+      <p className="mt-0.5 truncate text-[11px] text-muted" title={why}>{why}</p>
       <div className="mt-3 flex gap-3">
         {card ? (
           <Meter
@@ -325,15 +332,15 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
         return (
           <div className="mt-3">
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">{check.verdict === "not_yet" ? "Ways to make it work" : "Options"}</p>
-            <ul className="grid gap-1.5">
+            <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
               {opts.map((x, i) => (
-                <li key={x.title} className={`rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
-                  <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ink">
+                <li key={x.title} className={`min-w-0 overflow-hidden rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
+                  <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
                     <span aria-hidden>{icon[x.kind] ?? "•"}</span>
-                    <span className="min-w-0 flex-1">{x.title}</span>
+                    <span className="min-w-0 flex-1 truncate" title={x.title}>{shortTitle(x.title)}</span>
                     {i === 0 && <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">best</span>}
                   </p>
-                  <p className="text-[11px] leading-snug text-muted">{x.detail}</p>
+                  <p className="pl-6 text-[10px] leading-snug text-faint">{x.detail}</p>
                 </li>
               ))}
             </ul>

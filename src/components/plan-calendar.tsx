@@ -130,8 +130,8 @@ export function PlanCalendar({
           })}
         </ol>
         <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted">
-          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-brand align-middle" />Fits</span>
-          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-warn align-middle" />With a plan</span>
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-brand align-middle" />You're good</span>
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-warn align-middle" />Doable</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger align-middle" />Not yet</span>
           <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-info align-middle" />Needs a cost</span>
           <span><span className="mr-1 rounded bg-brand px-1 text-[9px] font-bold uppercase text-brand-ink">Pay</span>Payday</span>

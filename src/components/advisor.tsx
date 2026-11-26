@@ -127,7 +127,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
     <Badge tone="warn">Needs a cost</Badge>
   ) : check && !advice?.userDecided ? (
     <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[check.verdict].badge}`}>
-      {LOOK[check.verdict].icon} {check.verdict === "yes" ? "Fits" : check.verdict === "yes_with_plan" ? "With a plan" : "Not yet"}
+      {LOOK[check.verdict].icon} {check.verdict === "yes" ? (check.headline === "Yes, it's already planned." ? "Covered" : "You're good") : check.verdict === "yes_with_plan" ? "Doable" : "Not yet"}
     </span>
   ) : advice && !duplicate ? (
     <Badge tone={REC_TONE[advice.recommendation]}>{advice.userDecided ? "Your call: " : ""}{REC_LABEL[advice.recommendation]}</Badge>
@@ -140,9 +140,9 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
         <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium text-ink">{event.title}</span>
-            <span className="block text-xs text-muted">
+            <span className="block text-sm font-semibold text-ink/80">
               {formatShort(event.date)}
-              {!needs && cents > 0 && <> · <Money cents={cents} whole /></>}
+              {!needs && cents > 0 && <> · <Money cents={cents} whole className="text-ink" /></>}
               {event.missingFromFeed && " · removed from calendar"}
             </span>
           </span>
