@@ -1,6 +1,7 @@
 /**
  * Bank access tokens are encrypted before they're stored (AES-256-GCM), on top of living in a
- * table only the server can read. The key (PLAID_TOKEN_KEY: 32 bytes, base64 or hex) is a server
+ * table only the server can read. The key (PLAID_TOKEN_KEY: any random password of 32+ characters,
+ * or 32 bytes as hex/base64) is a server
  * environment variable, so a database leak alone doesn't expose a usable token.
  */
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
@@ -12,9 +13,12 @@ export function tokenKey(raw: string | undefined, mock = false): Buffer {
     if (mock) return createHash("sha256").update("runway-mock-bank-only").digest();
     throw new Error("PLAID_TOKEN_KEY is not set");
   }
-  const key = /^[0-9a-f]{64}$/i.test(raw) ? Buffer.from(raw, "hex") : Buffer.from(raw, "base64");
-  if (key.length !== 32) throw new Error("PLAID_TOKEN_KEY must be 32 bytes (64 hex characters or 44 base64 characters)");
-  return key;
+  if (/^[0-9a-f]{64}$/i.test(raw)) return Buffer.from(raw, "hex");
+  const b64 = /^[A-Za-z0-9+/]{43}=$/.test(raw) ? Buffer.from(raw, "base64") : null;
+  if (b64?.length === 32) return b64;
+  // Or any long random password (easy to make in a password manager): stretched to 32 bytes.
+  if (raw.length >= 32) return createHash("sha256").update(raw, "utf8").digest();
+  throw new Error("PLAID_TOKEN_KEY must be at least 32 characters");
 }
 
 export function encryptToken(plain: string, key: Buffer): string {

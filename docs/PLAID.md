@@ -51,7 +51,7 @@ appears anywhere on the site.
    | `PLAID_ENV` | `sandbox` first, `production` when approved |
    | `PLAID_CLIENT_ID` | from Plaid → Team Settings → Keys |
    | `PLAID_SECRET` | the secret for that environment |
-   | `PLAID_TOKEN_KEY` | 32 random bytes: `openssl rand -base64 32` (keep it; changing it means reconnecting banks) |
+   | `PLAID_TOKEN_KEY` | any random password of 32+ characters, e.g. from a password manager (keep it; changing it means reconnecting banks) |
    | `SUPABASE_SERVICE_ROLE_KEY` | already set (used for account deletion) |
 
 4. Redeploy. The **Bank connections** card appears on Accounts.
