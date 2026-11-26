@@ -67,7 +67,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <Link href="/login?mode=signup" className={SECONDARY}>Create your runway</Link>
             </div>
             <p className="mt-4 text-sm text-[#b9cbb4]">
-              No bank login needed · About five minutes to set up · <span className="text-[#ddefbf]">Bank sync &amp; one-tap calendars coming soon</span>
+              Connect your bank or type it in · About five minutes to set up · <span className="text-[#ddefbf]">One-tap calendars coming soon</span>
             </p>
           </div>
         </main>
@@ -92,15 +92,48 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         {/* ---------------------------------------------- supporting proof, compact */}
         <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
           <h2 id="also-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Behind that answer.</h2>
-          <article className="card mt-8 p-4 sm:p-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <article className="card p-4 sm:p-5">
               <h3 className="font-semibold text-ink">Everything, in one look</h3>
-              <p className="text-sm text-muted">The first thing you see each morning, with when each number was last updated.</p>
-            </div>
-            <div className="mt-3">
-              <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
-            </div>
-          </article>
+              <p className="mt-1 text-sm text-muted">Balances and card statements straight from your bank, or typed in. Always with when each was last updated.</p>
+              <div className="mt-3">
+                <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
+              </div>
+            </article>
+            <article className="card p-4 sm:p-5">
+              <h3 className="font-semibold text-ink">A budget that fits your month</h3>
+              <p className="mt-1 text-sm text-muted">Built from your income and your usual month. Savings and plans first; wants flex to fit.</p>
+              {(() => {
+                const b = d.budget;
+                const parts = [
+                  { k: "Needs", c: b.groups.needs, cls: "bg-info" },
+                  { k: "Wants", c: b.groups.wants, cls: "bg-brand" },
+                  { k: "Savings", c: b.groups.savings, cls: "bg-warn" },
+                ];
+                return (
+                  <>
+                    <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+                      {parts.map((p) => <span key={p.k} className={p.cls} style={{ width: `${(p.c.budgetCents / Math.max(1, b.incomeCents)) * 100}%` }} />)}
+                    </div>
+                    <ul className="mt-3 space-y-2.5 text-sm">
+                      {parts.map((p) => {
+                        const pct = p.c.budgetCents ? Math.min(100, (p.c.spentCents / p.c.budgetCents) * 100) : 0;
+                        return (
+                          <li key={p.k}>
+                            <span className="flex justify-between">
+                              <span className="text-ink"><span className={`mr-1.5 inline-block h-2 w-2 rounded-full ${p.cls}`} />{p.k}</span>
+                              <span className="tabular text-muted">${Math.round(p.c.spentCents / 100).toLocaleString("en-US")} of ${Math.round(p.c.budgetCents / 100).toLocaleString("en-US")}</span>
+                            </span>
+                            <span className="mt-1 block h-1.5 rounded-full bg-surface-3"><span className={`block h-1.5 rounded-full ${p.cls}`} style={{ width: `${pct}%` }} /></span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                );
+              })()}
+            </article>
+          </div>
           <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
             <article className="card p-5">
               <h3 className="font-semibold text-ink">Your calendar, priced</h3>
@@ -166,7 +199,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <h2 id="how-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Five minutes to your number.</h2>
           <ol className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
             {[
-              ["Add your balance and payday", "Plus your main bills. No bank login."],
+              ["Connect your bank", "Or type your balance, payday and main bills. Your bank login never reaches us."],
               ["Add your calendars", "Google, iCloud or Outlook, shared ones too, with a private calendar link."],
               ["Check your number each morning", "And ask “can I afford it?” whenever you need."],
             ].map(([t, body], i) => (
@@ -183,7 +216,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             <div>
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Coming soon</h3>
               <ul className="mt-3 space-y-2 text-sm text-muted">
-                <li><span className="font-semibold text-ink">Bank sync.</span> Balances, transactions and statements update themselves. Always optional.</li>
+                <li><span className="font-semibold text-ink">Spending patterns.</span> Payday splurges, creeping categories and forgotten subscriptions, with one nudge at a time.</li>
                 <li><span className="font-semibold text-ink">One-tap calendars.</span> Sign in with Google or Apple. No links to copy.</li>
               </ul>
             </div>
@@ -191,6 +224,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Private by design</h3>
               <ul className="mt-3 space-y-2 text-sm text-muted">
                 <li><span className="font-semibold text-ink">Only you can see your data.</span> The database itself enforces it.</li>
+                <li><span className="font-semibold text-ink">Bank connections are read-only,</span> through Plaid. Nothing can move your money.</li>
                 <li><span className="font-semibold text-ink">Every number explainable.</span> Plain math, assumptions listed.</li>
                 <li><span className="font-semibold text-ink">Export or delete anytime,</span> from Settings.</li>
               </ul>

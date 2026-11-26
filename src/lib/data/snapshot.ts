@@ -77,6 +77,15 @@ export interface ScenarioRow {
 }
 
 /** Everything the signed-in experience needs, in engine-friendly shape. */
+export type CategoryGroup = "needs" | "wants" | "savings";
+
+/** Your choices for a category: its group and, optionally, a budget you set yourself. */
+export interface CategorySetting {
+  name: string;
+  group: CategoryGroup;
+  monthlyBudgetCents: Cents | null;
+}
+
 export interface Snapshot {
   profile: Profile;
   settings: ForecastSettings;
@@ -92,6 +101,8 @@ export interface Snapshot {
   corrections: CorrectionRow[];
   decisions: DecisionRow[];
   scenarios: ScenarioRow[];
+  /** Missing before the categories update is applied, and in the demo. */
+  categorySettings?: CategorySetting[];
 }
 
 export const DEFAULT_SETTINGS: ForecastSettings = {

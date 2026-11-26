@@ -50,7 +50,18 @@ export async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> 
   )?.error;
   if (firstError) throw new LoadError(`Couldn't load your data: ${firstError.message}`);
 
+  // Category settings arrived in a later update: if its table isn't there yet, carry on without it.
+  const cats = await supabase.from("category_settings").select("name, grp, monthly_budget_cents");
+  const categorySettings = cats.error
+    ? []
+    : (cats.data ?? []).map((r) => ({
+        name: String(r.name),
+        group: (["needs", "wants", "savings"].includes(String(r.grp)) ? r.grp : "wants") as "needs" | "wants" | "savings",
+        monthlyBudgetCents: r.monthly_budget_cents == null ? null : Number(r.monthly_budget_cents),
+      }));
+
   return {
+    categorySettings,
     profile: mapProfile(profile.data),
     settings: mapSettings(settings.data, DEFAULT_SETTINGS),
     accounts: (accounts.data ?? []).map(mapAccount),

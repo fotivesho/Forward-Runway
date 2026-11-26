@@ -163,6 +163,16 @@ set role service_role;
 select pg_temp.assert((select count(*) = 1 from app.bank_secrets), 'the server (service role) can read the token to sync');
 reset role;
 
+-- Category settings: own rows only.
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+insert into app.category_settings (name, grp, monthly_budget_cents) values ('Dining', 'wants', 30000);
+reset role;
+select pg_temp.as_user('22222222-2222-2222-2222-222222222222');
+select pg_temp.assert((select count(*) = 0 from app.category_settings), 'bob cannot see alice''s budgets');
+update app.category_settings set monthly_budget_cents = 1;
+reset role;
+select pg_temp.assert((select monthly_budget_cents = 30000 from app.category_settings where user_id = '11111111-1111-1111-1111-111111111111'), 'bob cannot change alice''s budgets');
+
 -- Deleting a user cascades everything.
 delete from auth.users where id = '11111111-1111-1111-1111-111111111111';
 select pg_temp.assert((select count(*) = 0 from app.accounts where user_id = '11111111-1111-1111-1111-111111111111'),

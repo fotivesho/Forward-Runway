@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { parseDollars } from "@/lib/money";
 import { disconnectAllBanks } from "@/lib/plaid/sync";
 import { normalizeTitle } from "@/lib/calendar/estimate";
 import { syncSource } from "@/lib/calendar/sync";
@@ -270,6 +271,29 @@ export async function dismissRecurring(form: FormData) {
   if (!key) return;
   await supabase.from("corrections").upsert({ kind: "preference", match_key: `recurring_dismissed:${key}`, value: { dismissed: true } }, { onConflict: "user_id,kind,match_key" });
   revalidatePath("/app", "layout");
+}
+
+/** A category's group (needs / wants / savings) and, optionally, your own monthly budget (blank = smart). */
+export async function saveCategorySetting(_: ActionState, form: FormData): Promise<ActionState> {
+  const { supabase } = await session();
+  const name = String(form.get("name") ?? "").trim().slice(0, 40);
+  const grp = String(form.get("group") ?? "");
+  if (!name) return invalid({ name: "Choose a category." });
+  if (!["needs", "wants", "savings"].includes(grp)) return invalid({ group: "Choose needs, wants or savings." });
+  const raw = String(form.get("budget") ?? "").trim();
+  let budget: number | null = null;
+  if (raw) {
+    const cents = parseDollars(raw);
+    if (cents == null || cents < 0) return invalid({ budget: "Enter an amount like 250, or leave it blank for a smart budget." });
+    budget = cents;
+  }
+  const { error } = await supabase.from("category_settings").upsert({ name, grp, monthly_budget_cents: budget }, { onConflict: "user_id,name" });
+  if (error) {
+    if (/category_settings/.test(error.message ?? "")) return fail("Budgets need one more database update: run supabase/migrations/20261128000000_categories.sql in Supabase's SQL editor.");
+    return dbError(error);
+  }
+  revalidatePath("/app", "layout");
+  return ok(budget == null ? "Saved. Using a smart budget." : "Saved.");
 }
 
 export async function deleteTransaction(form: FormData) {

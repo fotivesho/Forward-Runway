@@ -3,6 +3,7 @@ import { Money } from "@/components/privacy";
 import { AddButton, RecurringTiles, type RuleTile } from "@/components/spend-modals";
 import { CashFlowCard } from "@/components/spend-insights";
 import { TransactionList } from "@/components/transaction-list";
+import { MoneyTabs } from "@/components/money-tabs";
 import { isNotSpending } from "@/lib/categories";
 import { findRecurring } from "@/lib/view/recurring";
 import { RecurringSuggestions } from "@/components/recurring-suggestions";
@@ -20,7 +21,7 @@ const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
 ];
 
 /** Spend: what repeats (tiles), cash flow, then every transaction with its category. Edits open in pop-ups. */
-export function SpendView({ snapshot, today }: ViewProps) {
+export function SpendView({ snapshot, today, demo = false }: ViewProps) {
   const accountName = (id?: string | null) => snapshot.accounts.find((a) => a.id === id)?.name ?? "—";
   const accounts = snapshot.accounts;
   const hasAccounts = accounts.some((a) => !a.archived);
@@ -70,6 +71,7 @@ export function SpendView({ snapshot, today }: ViewProps) {
   return (
     <>
       <PageHeader title="Money" subtitle="Money in and out: what repeats, where it goes, and every transaction. Tap anything to change it." />
+      <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
           <Summary label="Spent this month" value={<Money cents={spentThisMonth} whole />} />

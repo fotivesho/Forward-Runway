@@ -8,6 +8,7 @@ import { demoSnapshot } from "../data/demo";
 import type { Snapshot } from "../data/snapshot";
 import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
+import { buildBudget, type BudgetPlan } from "./budget";
 
 export interface LandingStep {
   date: ISODate;
@@ -40,6 +41,8 @@ export interface LandingData {
   wedding: { balanceCents: Cents; targetCents: Cents; pct: number } | null;
   /** The Today tab's snapshot tiles, from the same sample data. */
   overview: Pick<DashboardModel, "cash" | "savings" | "goals" | "cards" | "loans">;
+  /** This month's smart budget for the sample person. */
+  budget: BudgetPlan;
 }
 
 export function buildLanding(today: ISODate, nowIso: string): LandingData {
@@ -67,6 +70,7 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     snapshot,
     afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
+    budget: buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }))),
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,
       poolCents: m.plan.poolCents,
