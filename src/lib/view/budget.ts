@@ -11,12 +11,13 @@
  *  7. Any budget you set yourself wins over the suggestion.
  * Card payments and transfers between your own accounts are never spending.
  */
-import { addMonths, daysInMonth, endOfMonth, parts, startOfMonth, type ISODate } from "../dates";
+import { addDays, addMonths, daysInMonth, endOfMonth, parts, startOfMonth, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { ruleOccurrences, spendingByCategory } from "../engine";
 import { isNotSpending } from "../categories";
 import { toEngineInput, type CategoryGroup, type Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
+import { payPeriodBuckets } from "./spend";
 
 export const GROUPS: Array<{ id: CategoryGroup; label: string; hint: string }> = [
   { id: "needs", label: "Needs", hint: "Rent, bills, groceries, getting around" },
@@ -36,24 +37,31 @@ export function groupOf(category: string, s: Pick<Snapshot, "categorySettings">)
 
 const round5 = (c: Cents) => Math.round(c / 500) * 500;
 
-/** Spending per category for each calendar month in [from, to] (to clamped to today). */
-export function monthlyByCategory(s: Snapshot, today: ISODate, months: ISODate[]): Array<{ month: ISODate; byCategory: Map<string, Cents> }> {
+/** Spending per category for each period [start, end] (end clamped to today). */
+export function spendByBuckets(s: Snapshot, today: ISODate, buckets: Array<{ start: ISODate; end: ISODate }>): Array<{ start: ISODate; byCategory: Map<string, Cents> }> {
   const input = toEngineInput(s, today);
   const loanRules = s.rules.filter((r) => r.active !== false && r.kind === "loan_payment");
   const bankAccounts = new Set(s.accounts.filter((a) => a.balanceSource === "bank").map((a) => a.id));
-  return months.map((m) => {
-    const end = endOfMonth(m) < today ? endOfMonth(m) : today;
+  return buckets.map(({ start, end: bucketEnd }) => {
+    const end = bucketEnd < today ? bucketEnd : today;
     const map = new Map<string, Cents>();
-    if (m > today) return { month: m, byCategory: map };
-    for (const t of spendingByCategory(input, m, end)) if (!isNotSpending(t.category) && t.cents > 0) map.set(t.category, t.cents);
+    if (start > today) return { start, byCategory: map };
+    for (const t of spendingByCategory(input, start, bucketEnd)) if (!isNotSpending(t.category) && t.cents > 0) map.set(t.category, t.cents);
     // Loan payments are a need too (they aren't "spending" in the forecast's sense).
     for (const r of loanRules) {
       if (bankAccounts.has(r.accountId)) continue;
-      const paid = ruleOccurrences(r, s.overrides, m, end).reduce((t, o) => t + o.amountCents, 0);
+      const paid = ruleOccurrences(r, s.overrides, addDays(start, -7), addDays(bucketEnd, 7))
+        .filter((o) => o.originalDate >= start && o.originalDate <= bucketEnd && o.date <= end)
+        .reduce((t, o) => t + o.amountCents, 0);
       if (paid) map.set("Debt", (map.get("Debt") ?? 0) + paid);
     }
-    return { month: m, byCategory: map };
+    return { start, byCategory: map };
   });
+}
+
+/** Spending per category for each calendar month. */
+export function monthlyByCategory(s: Snapshot, today: ISODate, months: ISODate[]): Array<{ month: ISODate; byCategory: Map<string, Cents> }> {
+  return spendByBuckets(s, today, months.map((m) => ({ start: m, end: endOfMonth(m) }))).map((b) => ({ month: b.start, byCategory: b.byCategory }));
 }
 
 export interface CategoryBudget {
@@ -197,14 +205,29 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
   };
 }
 
-/** Spending by group and category for the last `count` months (oldest first), for reports. */
-export function spendingReport(s: Snapshot, today: ISODate, count = 6) {
-  const month = startOfMonth(today);
-  const months = Array.from({ length: count }, (_, i) => addMonths(month, i - count + 1));
-  return monthlyByCategory(s, today, months).map((h) => ({
-    month: h.month,
-    current: h.month === month,
-    categories: Object.fromEntries(h.byCategory),
+/**
+ * Spending by group and category, oldest first: the last `count` months, or the last `count` pay
+ * periods (payday to the day before the next). Starts at your first period with any spending.
+ */
+export function spendingReport(s: Snapshot, today: ISODate, count = 6, by: "month" | "period" = "month") {
+  let buckets: Array<{ start: ISODate; end: ISODate; label: string; current: boolean }>;
+  if (by === "period") {
+    buckets = (payPeriodBuckets(s, today, count) ?? []).map((b) => ({ start: b.start, end: b.end, label: b.label, current: b.current }));
+  } else {
+    const month = startOfMonth(today);
+    buckets = Array.from({ length: count }, (_, i) => addMonths(month, i - count + 1)).map((m) => ({
+      start: m,
+      end: endOfMonth(m),
+      label: SHORT_MONTHS[parts(m).m - 1]!,
+      current: m === month,
+    }));
+  }
+  const rows = spendByBuckets(s, today, buckets).map((h, i) => ({
+    month: h.start,
+    end: buckets[i]!.end,
+    label: buckets[i]!.label,
+    current: buckets[i]!.current,
+    categories: Object.fromEntries(h.byCategory) as Record<string, Cents>,
     groups: [...h.byCategory].reduce<Record<CategoryGroup, Cents>>(
       (g, [c, v]) => {
         g[groupOf(c, s)] += v;
@@ -213,7 +236,10 @@ export function spendingReport(s: Snapshot, today: ISODate, count = 6) {
       { needs: 0, wants: 0, savings: 0 },
     ),
   }));
+  const first = rows.findIndex((r) => Object.keys(r.categories).length > 0);
+  return first > 0 ? rows.slice(first) : rows;
 }
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 export type SpendingReport = ReturnType<typeof spendingReport>;
 
 export interface CategoryItem {
@@ -249,7 +275,11 @@ export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Recor
     const a = acct.get(r.accountId);
     if (!a || a.balanceSource === "bank") continue;
     const cat = r.kind === "loan_payment" ? "Debt" : (r.category ?? r.name);
-    for (const o of ruleOccurrences(r, s.overrides, from, today)) add(cat, { date: o.date, label: r.name, cents: o.amountCents, account: a.name, repeating: true });
+    for (const o of ruleOccurrences(r, s.overrides, addDays(from, -7), addDays(today, 7))) {
+      if (o.originalDate < from || o.date > today) continue;
+      // Listed under the month it's for (the scheduled date), matching the budget and reports.
+      add(cat, { date: o.originalDate, label: o.date !== o.originalDate ? `${r.name} (paid ${o.date.slice(5).replace('-', '/')})` : r.name, cents: o.amountCents, account: a.name, repeating: true });
+    }
   }
   for (const list of Object.values(out)) list.sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
   return out;

@@ -22,13 +22,20 @@ export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps)
 }
 
 export function ReportsPage({ snapshot, today, demo = false }: ViewProps) {
-  const report12 = spendingReport(snapshot, today, 12);
-  const names = new Set(report12.flatMap((m) => Object.keys(m.categories)));
+  const byMonth = spendingReport(snapshot, today, 12, "month");
+  const byPeriod = spendingReport(snapshot, today, 12, "period");
+  const names = new Set([...byMonth, ...byPeriod].flatMap((m) => Object.keys(m.categories)));
+  const from = [byMonth[0]?.month, byPeriod[0]?.month].filter(Boolean).sort()[0] ?? today;
   return (
     <>
-      <PageHeader title="Money" subtitle="Slice and dice: groups and categories over time." />
+      <PageHeader title="Money" subtitle="Slice and dice: tap a group, a category or a bar to filter." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
-      <ReportsView report6={report12.slice(-6)} report12={report12} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} />
+      <ReportsView
+        byMonth={byMonth}
+        byPeriod={byPeriod}
+        groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))}
+        items={categoryItems(snapshot, today, from)}
+      />
     </>
   );
 }

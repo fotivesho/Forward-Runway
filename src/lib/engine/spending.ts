@@ -48,7 +48,11 @@ export function spendingByCategory(input: EngineInput, from: ISODate, to: ISODat
     const acct = accounts.get(r.accountId);
     // A connected bank already shows what was actually paid; counting the bill too would double it.
     if (acct?.balanceSource === "bank") continue;
-    for (const o of ruleOccurrences(r, input.overrides, from, until)) add(r.category ?? r.name, o.amountCents, acct, true);
+    // Counted in the period it's for: rent due the 1st but paid early on the 30th still belongs to the 1st's month.
+    for (const o of ruleOccurrences(r, input.overrides, addDays(from, -7), addDays(until, 7))) {
+      if (o.originalDate < from || o.originalDate > to || o.date > until) continue;
+      add(r.category ?? r.name, o.amountCents, acct, true);
+    }
   }
   return [...totals.values()].filter((t) => t.cents !== 0).sort((a, b) => b.cents - a.cents || a.category.localeCompare(b.category));
 }

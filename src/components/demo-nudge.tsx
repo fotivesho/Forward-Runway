@@ -48,7 +48,7 @@ export function DemoNudge() {
     >
       <p className="min-w-0 flex-1 text-sm">
         <strong className="block">Imagine this with your numbers.</strong>
-        <span className="text-[#b9cbb4]">About five minutes to set up. No bank login.</span>
+        <span className="text-[#b9cbb4]">About five minutes to set up. Connect your bank or type it in.</span>
       </p>
       <Link href="/login?mode=signup" className="btn btn-sm shrink-0 bg-[#ddefbf] text-[#182d26] hover:bg-white">Create yours</Link>
       <button type="button" onClick={dismiss} className="btn btn-sm btn-ghost shrink-0 text-[#b9cbb4]" aria-label="Dismiss">✕</button>

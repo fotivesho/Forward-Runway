@@ -3,11 +3,10 @@
 import { useState } from "react";
 import { saveCategorySetting } from "@/app/app/actions";
 import { formatLong, formatShort } from "@/lib/dates";
-import { centsToInput } from "@/lib/money";
 import { iconFor } from "@/lib/categories";
 import { GROUPS, type BudgetPlan, type CategoryBudget, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
-import { ActionForm, MoneyField, SelectField, Submit } from "./form";
+import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Money } from "./privacy";
 import { Badge } from "./ui";
@@ -157,19 +156,9 @@ export function BudgetView({
       </details>
 
       {edit && (
-        <Modal open onClose={() => setEdit(null)} icon={iconFor(edit.category)} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> of <Money cents={edit.budgetCents} whole /> this month · usually <Money cents={edit.usualCents} whole /></>}>
-          <CategoryHistory category={edit.category} budget={edit.budgetCents} history={history} />
+        <Modal open onClose={() => setEdit(null)} icon={iconFor(edit.category)} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
+          <BudgetEditor key={edit.category} c={edit} history={history} demo={demo} onDone={() => setEdit(null)} />
           <CategoryTransactions items={items[edit.category] ?? []} />
-          <section className="mt-4 border-t border-line pt-4" aria-label="Group and budget">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Group and budget</h3>
-            <ActionForm action={saveCategorySetting} onSuccess={() => setEdit(null)} className="grid gap-3" aria-label={`Budget for ${edit.category}`}>
-              <input type="hidden" name="name" value={edit.category} />
-              <SelectField name="group" label="Group" defaultValue={edit.group} options={GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` }))} />
-              <MoneyField name="budget" label="Monthly budget" defaultValue={edit.yours ? centsToInput(edit.budgetCents) : ""} placeholder={`Smart: ${centsToInput(edit.budgetCents)}`} hint="Leave blank to let the app suggest one each month." />
-              <Submit>Save</Submit>
-              {demo && <p className="text-xs text-muted">Demo: saving is off.</p>}
-            </ActionForm>
-          </section>
         </Modal>
       )}
     </div>
@@ -179,36 +168,83 @@ export function BudgetView({
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthName = (m: string) => MONTHS[Number(m.slice(5, 7)) - 1]!;
 
-/** The last months for one category, with this month's budget as a line. */
-function CategoryHistory({ category, budget, history }: { category: string; budget: number; history: SpendingReport }) {
-  const vals = history.map((m) => ({ month: m.month, current: m.current, cents: m.categories[category] ?? 0 }));
-  const max = Math.max(1, budget, ...vals.map((v) => v.cents));
-  // The same "usual month" the budget uses: the last three full months that had any spending.
-  const full = vals.filter((v) => !v.current).slice(-3);
-  const counted = history.filter((m) => !m.current).slice(-3).filter((m) => Object.keys(m.categories).length > 0).length || 1;
-  const avg = Math.round(full.reduce((t, v) => t + v.cents, 0) / counted);
+/**
+ * The budget, editable right at the top: type it or drag the slider and the line on the chart moves
+ * with it. The dotted line is your usual month. Blank = smart budget.
+ */
+function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history: SpendingReport; demo: boolean; onDone: () => void }) {
+  const [value, setValue] = useState(c.yours ? String(Math.round(c.budgetCents / 100)) : "");
+  const typed = value.trim() === "" ? null : Math.max(0, Math.round(Number(value.replace(/[$,]/g, "")) * 100) || 0);
+  const budget = typed ?? c.budgetCents;
+  const vals = history.slice(-6).map((m) => ({ month: m.month, label: m.label, current: m.current, cents: m.categories[c.category] ?? 0 }));
+  const top = Math.max(1, c.usualCents, c.budgetCents, ...vals.map((v) => v.cents)) * 1.25;
+  const sliderMax = Math.max(1000, Math.ceil(top / 500) * 500);
+  const line = (cents: number) => `calc(1.25rem + ${(Math.min(cents, top) / top) * 7}rem)`;
   return (
-    <section aria-label="Spending by month">
-      <div className="relative">
-        {budget > 0 && (
-          <span className="pointer-events-none absolute inset-x-0 border-t border-dashed border-ink/50" style={{ bottom: `calc(1.25rem + ${(budget / max) * 7}rem)` }} aria-hidden>
-            <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] text-muted">budget</span>
+    <ActionForm action={saveCategorySetting} onSuccess={onDone} className="grid gap-3" aria-label={`Budget for ${c.category}`}>
+      <input type="hidden" name="name" value={c.category} />
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+          Monthly budget
+          <span className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
+            <input
+              name="budget"
+              inputMode="decimal"
+              className="input w-36 pl-7 text-lg font-bold tabular"
+              value={value}
+              placeholder={String(Math.round(c.budgetCents / 100))}
+              onChange={(e) => setValue(e.target.value)}
+              aria-describedby="budget-hint"
+            />
+          </span>
+        </label>
+        <div className="text-right text-xs text-muted">
+          <p>Usual month <Money cents={c.usualCents} whole className="font-semibold text-ink" /></p>
+          <p>{typed == null ? "Smart budget (blank)" : "Your budget"}</p>
+        </div>
+      </div>
+      <input
+        type="range"
+        min={0}
+        max={sliderMax}
+        step={sliderMax > 20_000 ? 1000 : 500}
+        value={Math.min(budget, sliderMax)}
+        onChange={(e) => setValue(String(Math.round(Number(e.target.value) / 100)))}
+        className="w-full accent-[var(--color-brand)]"
+        aria-label="Drag to set the budget"
+      />
+      <p id="budget-hint" className="-mt-1 flex flex-wrap gap-2 text-xs">
+        <button type="button" className="text-brand underline" onClick={() => setValue(String(Math.round(c.usualCents / 100)))}>Use usual</button>
+        <button type="button" className="text-brand underline" onClick={() => setValue("")}>Use smart</button>
+      </p>
+
+      <div className="relative" aria-label="Spending by month">
+        <span className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-ink/70" style={{ bottom: line(budget) }} aria-hidden>
+          <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] font-semibold text-ink">budget <Money cents={budget} whole /></span>
+        </span>
+        {c.usualCents > 0 && (
+          <span className="pointer-events-none absolute inset-x-0 z-10 border-t border-dotted border-info" style={{ bottom: line(c.usualCents) }} aria-hidden>
+            <span className="absolute -top-4 left-0 rounded bg-surface px-1 text-[10px] text-info">usual <Money cents={c.usualCents} whole /></span>
           </span>
         )}
         <ol className="grid items-end gap-1.5" style={{ gridTemplateColumns: `repeat(${vals.length}, minmax(0, 1fr))` }}>
           {vals.map((v) => (
             <li key={v.month} className="flex flex-col items-center">
-              <span className="mb-0.5 text-[9px] tabular text-muted"><Money cents={v.cents} whole /></span>
               <span className="flex h-28 w-full max-w-8 items-end">
-                <span className={`w-full rounded-t ${v.cents > budget && budget > 0 ? "bg-warn" : "bg-brand"} ${v.current ? "opacity-60" : ""}`} style={{ height: `${Math.max(v.cents ? 3 : 0, (v.cents / max) * 100)}%` }} />
+                <span className={`w-full rounded-t ${v.cents > budget ? "bg-warn" : "bg-brand"} ${v.current ? "opacity-60" : ""}`} style={{ height: `${Math.max(v.cents ? 3 : 0, (v.cents / top) * 100)}%` }} />
               </span>
-              <span className={`mt-1 h-4 text-[10px] ${v.current ? "font-semibold text-ink" : "text-faint"}`}>{monthName(v.month)}</span>
+              <span className={`mt-1 h-4 text-[10px] ${v.current ? "font-semibold text-ink" : "text-faint"}`}>{v.label}</span>
             </li>
           ))}
         </ol>
       </div>
-      <p className="mt-1 text-xs text-muted">Usual month <Money cents={avg} whole /> (average of the last 3 full months). Faded = this month so far; amber = over this month's budget.</p>
-    </section>
+      <p className="-mt-1 text-[11px] text-muted">Amber months were over this budget. Faded = this month so far. Usual = average of your last 3 full months.</p>
+
+      <SelectField name="group" label="Group" defaultValue={c.group} options={GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` }))} />
+      <Submit>Save</Submit>
+      {demo && <p className="text-xs text-muted">Demo: saving is off.</p>}
+    </ActionForm>
   );
 }
 
