@@ -143,7 +143,6 @@ export function BankAccountPanel({
 
       <div className="mt-3 rounded-xl border border-line p-3">
         <p className="text-sm font-medium text-ink">How you pay this card</p>
-        <p className="text-xs text-muted">Banks don't share this, so the forecast needs it: it uses this to schedule the payment from checking on each due date.</p>
         <div className="mt-2 flex flex-wrap gap-2">
           <QuickAction action={setCardPayInFull} fields={{ id: a.id, payInFull: "true" }} variant={a.payInFull !== false ? "primary" : "secondary"}>
             {a.payInFull !== false ? "✓ " : ""}Statement in full

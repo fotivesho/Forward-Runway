@@ -67,7 +67,6 @@ export function CashFlowCard({ months, periods }: { months: FlowBucket[]; period
           {b.savingsCents > 0 && <> (incl. <Money cents={b.savingsCents} /> to savings)</>}
         </p>
       </div>
-      <p className="mt-2 text-xs text-faint">Card purchases count when you buy. Card payments and moves between your own accounts aren't counted again.</p>
     </section>
   );
 }

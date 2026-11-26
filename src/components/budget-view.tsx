@@ -239,7 +239,7 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
           ))}
         </ol>
       </div>
-      <p className="-mt-1 text-[11px] text-muted">Amber months were over this budget. Faded = this month so far. Usual = average of your last 3 full months.</p>
+      <p className="-mt-1 text-[11px] text-muted">Amber = over budget · faded = this month</p>
 
       <SelectField name="group" label="Group" defaultValue={c.group} options={GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` }))} />
       <Submit>Save</Submit>

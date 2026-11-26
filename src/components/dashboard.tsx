@@ -11,7 +11,7 @@ import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { ForecastChart } from "./forecast-chart";
 import { Money } from "./privacy";
 import { ItemRow } from "./timeline";
-import { Badge, Card, Disclosure, EmptyState, Notice } from "./ui";
+import { Badge, Card, Disclosure, EmptyState } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
 
@@ -48,7 +48,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
 
   return (
     <PlanProvider value={{ snapshot, today, nextPayday: m.nextPayday, events: m.planned, calendarIncomplete: m.coverage.incomplete }}>
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
       {/* Snapshot: the whole picture first */}
       <section aria-labelledby="snapshot-title" className="card p-4 sm:p-5 lg:col-span-2">
         <div className="mb-3 flex items-center justify-between gap-2">
@@ -188,39 +188,36 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               <Money cents={plan.todayCap.capCents} />
             </p>
             <p className="mt-1 text-sm text-muted">
-              {plan.todayCap.spentCents > 0 && (
-                <>
-                  <Money cents={plan.todayCap.spentCents} /> already logged today. {" "}
-                </>
-              )}
               {allowance.status === "shortfall" ? (
-                <>Cash is projected to fall <Money cents={allowance.shortfallCents} /> below your floor on {formatShort(allowance.shortfallDate!)}.</>
+                <><Money cents={allowance.shortfallCents} whole /> short on {formatShort(allowance.shortfallDate!)}</>
               ) : (
                 <>
-                  <Money cents={plan.poolCents} /> for flexible spending until {formatShort(allowance.current.end)}
-                  {daysToPayday != null && ` · payday in ${daysToPayday} day${daysToPayday === 1 ? "" : "s"}`}.
+                  <Money cents={plan.poolCents} whole /> left until {formatShort(allowance.current.end)}
+                  {daysToPayday != null && ` · payday in ${daysToPayday}d`}
                 </>
               )}
+              {plan.todayCap.spentCents > 0 && <> · <Money cents={plan.todayCap.spentCents} whole /> spent today</>}
             </p>
           </div>
           <div className="p-4 sm:p-5">
             {allowance.status === "shortfall" && (
               <div className="mb-3">
-                <Notice tone="bad" title="Bills come before flexible spending">
-                  {allowance.explanation[1]}{" "}
-                  <Link href={base + "/what-if"} className="font-semibold text-brand underline">
-                    See how savings could cover it
-                  </Link>
-                </Notice>
+                <details className="rounded-xl border border-danger/50 bg-danger/5 p-3 text-sm">
+                  <summary className="cursor-pointer font-semibold text-ink">Why $0 today ›</summary>
+                  <p className="mt-1 text-muted">{allowance.explanation[0]}</p>
+                  <p className="mt-1 text-muted">{allowance.explanation[1]}</p>
+                  <Link href={base + "/what-if"} className="mt-1 inline-block font-semibold text-brand underline">Fix it with savings →</Link>
+                </details>
               </div>
             )}
             <DailyCaps m={m} today={today} />
-            {plan.notes.length > 0 && (
-              <ul className="mt-3 space-y-1 text-xs text-muted">
-                {plan.notes.map((n) => (
-                  <li key={n}>• {n}</li>
-                ))}
-              </ul>
+            {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
+              <details className="mt-3 text-xs text-muted">
+                <summary className="cursor-pointer">Notes</summary>
+                <ul className="mt-1 space-y-1">
+                  {plan.notes.filter((n) => n !== allowance.explanation[0]).map((n) => <li key={n}>• {n}</li>)}
+                </ul>
+              </details>
             )}
             <div className="mt-3">
               <Link href={base + "/what-if#afford"} className="btn btn-secondary btn-sm">
@@ -299,7 +296,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         {/* Plans */}
         <Card
           id="plans"
-          title="Plans on your calendar"
+          title="Plans"
           action={
             <span className="flex items-center gap-1">
               <AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} className="btn btn-secondary btn-sm" />
@@ -311,17 +308,14 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         >
           {m.coverage.incomplete && (
             <div className="mb-3">
-              <Notice tone="warn" title={m.coverage.status === "none" ? "No calendars connected" : "Some calendars can't be read right now"}>
-                {m.coverage.notes.join(" ")} Missing plans are never treated as "no plans".
-              </Notice>
+              <details className="rounded-xl border border-warn/50 bg-warn/5 px-3 py-2 text-sm">
+                <summary className="cursor-pointer font-medium text-ink">{m.coverage.status === "none" ? "No calendars connected" : "A calendar can't be read"} ›</summary>
+                <p className="mt-1 text-xs text-muted">{m.coverage.notes.join(" ")} A small buffer is held back for plans we can't see.</p>
+              </details>
             </div>
           )}
           {costly.length === 0 ? (
-            <EmptyState title="No plans found in the next 30 days">
-              {m.coverage.status === "complete"
-                ? "Nothing on your connected calendars costs money soon. Plans that aren't on a calendar aren't included."
-                : "Connect a calendar or add a plan so it can be budgeted for."}
-            </EmptyState>
+            <EmptyState title="No plans in the next 30 days" />
           ) : (
             <ul className="space-y-2">
               {costly.map((v) => (
@@ -334,7 +328,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
 
       <div className="flex flex-col gap-4">
         {/* Coming up */}
-        <Card title="Coming up (14 days)">
+        <Card title="Coming up">
           {m.upcoming.length === 0 ? (
             <p className="text-sm text-muted">Nothing scheduled.</p>
           ) : (
@@ -352,7 +346,6 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           <div className="mt-4">
             <SpendingBars title={`This month`} totals={m.spending.month} total={m.spending.monthTotal} />
           </div>
-          <p className="mt-3 text-xs text-faint">Card purchases count once, when you buy. Card payments and transfers aren't spending.</p>
         </Card>
       </div>
     </div>

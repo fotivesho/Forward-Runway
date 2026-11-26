@@ -197,7 +197,7 @@ export function AddPlanButton(props: Omit<React.ComponentProps<typeof AddPlanFor
   return (
     <>
       <button type="button" className={className} onClick={() => setOpen(true)}>
-        + Add a plan
+        + Add
       </button>
       <Modal open={open} onClose={() => setOpen(false)} icon="📅" title="Add a plan" subtitle="For anything that isn't on a calendar. See if it fits before you save it.">
         <AddPlanForm {...form} onDone={() => setOpen(false)} />

@@ -3,16 +3,14 @@
 import Link from "next/link";
 import { useContext } from "react";
 import { correctEvent, saveRule, saveTransaction, setEventDuplicate, updateBalance } from "@/app/app/actions";
-import { formatLong, formatShort, type ISODate } from "@/lib/dates";
-import { centsToInput } from "@/lib/money";
+import { formatShort, type ISODate } from "@/lib/dates";
 import type { Account } from "@/lib/engine";
 import type { EventView, Question } from "@/lib/view/dashboard";
-import { ActionForm, CheckboxField, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
+import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { EditPlanButton } from "./calendar-forms";
-import { APP_NAME } from "@/lib/brand";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
 
@@ -117,82 +115,63 @@ export function QuickLog({ accounts, today }: { accounts: Account[]; today: ISOD
   );
 }
 
-export function EventCard({ view, accounts }: { view: EventView; accounts: Account[] }) {
-  const demo = useContext(DemoCtx);
+/**
+ * One plan, collapsed to a single line: what, when, how much, and the verdict.
+ * Tap to see the full answer and change it.
+ */
+export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const { event, estimate, advice, duplicate, check } = view;
-  const payWith = accounts.filter((a) => !a.archived && (a.isSpendable || a.kind === "credit_card"));
+  const needs = !duplicate && estimate.needsInput && event.capCents == null;
+  const cents = advice?.capCents ?? estimate.cents;
+  const badge = needs ? (
+    <Badge tone="warn">Needs a cost</Badge>
+  ) : check && !advice?.userDecided ? (
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[check.verdict].badge}`}>
+      {LOOK[check.verdict].icon} {check.verdict === "yes" ? "Fits" : check.verdict === "yes_with_plan" ? "With a plan" : "Not yet"}
+    </span>
+  ) : advice && !duplicate ? (
+    <Badge tone={REC_TONE[advice.recommendation]}>{advice.userDecided ? "Your call: " : ""}{REC_LABEL[advice.recommendation]}</Badge>
+  ) : duplicate ? (
+    <Badge tone="info">Duplicate?</Badge>
+  ) : null;
   return (
-    <li className="rounded-xl border border-line bg-surface-2/40 p-3">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="font-medium text-ink">{event.title}</p>
-          <p className="text-xs text-muted">
-            {formatLong(event.date)} · {view.sourceName}
-            {event.missingFromFeed && " · no longer on the calendar"}
-          </p>
-        </div>
-        {advice && !duplicate && estimate.needsInput && event.capCents == null ? (
-          <Badge tone="warn">Needs estimate</Badge>
-        ) : check && !advice?.userDecided ? (
-          <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[check.verdict].badge}`}>
-            {LOOK[check.verdict].icon} {check.verdict === "yes" ? "Fits" : check.verdict === "yes_with_plan" ? "With a plan" : "Not yet"}
+    <li className="list-none">
+      <details className="group rounded-xl border border-line bg-surface-2/40">
+        <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-medium text-ink">{event.title}</span>
+            <span className="block text-xs text-muted">
+              {formatShort(event.date)}
+              {!needs && cents > 0 && <> · <Money cents={cents} whole /></>}
+              {event.missingFromFeed && " · removed from calendar"}
+            </span>
           </span>
-        ) : advice && !duplicate && (
-          <Badge tone={REC_TONE[advice.recommendation]}>
-            {advice.userDecided ? "Your call: " : ""}
-            {REC_LABEL[advice.recommendation]}
-          </Badge>
-        )}
-      </div>
-
-      {duplicate ? (
-        <div className="mt-2 rounded-lg border border-info/40 bg-info/5 p-2 text-sm">
-          <p className="text-ink">Likely duplicate of “{duplicate.ofTitle}”.</p>
-          <p className="text-xs text-muted">{duplicate.reason}. It's counted once in your caps.</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <QuickAction action={setEventDuplicate} fields={{ id: event.id, other: duplicate.ofId, verdict: "duplicate" }} variant="secondary">
-              Same event — hide it
-            </QuickAction>
-            <QuickAction action={setEventDuplicate} fields={{ id: event.id, other: duplicate.ofId, verdict: "different" }} variant="ghost">
-              Different events
-            </QuickAction>
-          </div>
-        </div>
-      ) : (
-        <>
-          <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-            <div>
-              <dt className="text-xs text-faint">Estimated cost</dt>
-              <dd>
-                {estimate.needsInput && event.capCents == null ? <span className="text-warn">Unknown</span> : <Money cents={estimate.cents} className="font-semibold" />}
-                <span className="block text-xs text-faint">{SOURCE_LABEL[estimate.source] ?? estimate.basis}</span>
-              </dd>
-            </div>
-            <div>
-              <dt className="text-xs text-faint">Suggested cap</dt>
-              <dd>
-                {advice ? <Money cents={advice.capCents} className="font-semibold" /> : <span className="text-faint">Outside this forecast</span>}
-                {advice?.suggestedDate && <span className="block text-xs text-info">Try on or after {formatShort(advice.suggestedDate)}</span>}
-              </dd>
-            </div>
-          </dl>
-          {check ? (
-            <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} />
+          {badge}
+          <span aria-hidden className="text-faint transition group-open:rotate-90">›</span>
+        </summary>
+        <div className="border-t border-line px-3 pb-3 pt-2">
+          {duplicate ? (
+            <>
+              <p className="text-sm text-ink">Same as “{duplicate.ofTitle}”? Counted once.</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <QuickAction action={setEventDuplicate} fields={{ id: event.id, other: duplicate.ofId, verdict: "duplicate" }} variant="secondary">Same, hide it</QuickAction>
+                <QuickAction action={setEventDuplicate} fields={{ id: event.id, other: duplicate.ofId, verdict: "different" }} variant="ghost">Different</QuickAction>
+              </div>
+            </>
           ) : (
-            advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
+            <>
+              <p className="text-xs text-muted">
+                {needs ? "No cost yet." : <>Estimate <Money cents={estimate.cents} whole /> · cap <Money cents={advice?.capCents ?? 0} whole /> · {SOURCE_LABEL[estimate.source] ?? estimate.basis}</>}
+                {advice?.suggestedDate && <> · try after {formatShort(advice.suggestedDate)}</>}
+              </p>
+              {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
+              <div className="mt-2 flex justify-end">
+                <EditPlanButton view={view} />
+              </div>
+            </>
           )}
-          {!check && advice && advice.impacts.length > 0 && (
-            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted">
-              {advice.impacts.map((i) => (
-                <li key={i}>{i}</li>
-              ))}
-            </ul>
-          )}
-          <div className="mt-2 flex justify-end">
-            <EditPlanButton view={view} />
-          </div>
-        </>
-      )}
+        </div>
+      </details>
     </li>
   );
 }

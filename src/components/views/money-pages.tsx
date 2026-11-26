@@ -11,7 +11,7 @@ export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps)
   const plans = m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }));
   return (
     <>
-      <PageHeader title="Money" subtitle="A plan for this month: needs, wants and savings, built from your income and your usual month." />
+      <PageHeader title="Money" subtitle="This month's plan." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       {(() => {
         const history = spendingReport(snapshot, today, 6);
@@ -28,7 +28,7 @@ export function ReportsPage({ snapshot, today, demo = false }: ViewProps) {
   const from = [byMonth[0]?.month, byPeriod[0]?.month].filter(Boolean).sort()[0] ?? today;
   return (
     <>
-      <PageHeader title="Money" subtitle="Slice and dice: tap a group, a category or a bar to filter." />
+      <PageHeader title="Money" subtitle="Tap anything to filter." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <ReportsView
         byMonth={byMonth}

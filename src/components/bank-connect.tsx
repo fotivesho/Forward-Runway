@@ -153,7 +153,7 @@ export function BankConnections({
         <div>
           <h2 id="bank-title" className="text-base font-semibold text-ink">Bank connections</h2>
           <p className="mt-1 max-w-xl text-sm text-muted">
-            Balances, card statements and transactions update themselves. You sign in to your bank in Plaid's secure window; your login never touches this app.
+            Updates itself. Your bank login stays with Plaid.
             {mode !== "production" && <span className="text-warn"> {mode === "mock" ? "Test bank: made-up data." : "Sandbox: Plaid's test banks only."}</span>}
           </p>
         </div>

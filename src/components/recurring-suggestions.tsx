@@ -35,7 +35,6 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
   return (
     <section className="mb-4 rounded-xl border border-info/40 bg-info/5 p-3" aria-labelledby="found-title">
       <h3 id="found-title" className="text-sm font-semibold text-ink">Found in your history</h3>
-      <p className="text-xs text-muted">These repeat in your transactions. Add them so the forecast knows they're coming.</p>
       <ul className="mt-2 space-y-2">
         {suggestions.slice(0, 8).map((s) => (
           <li key={s.key} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface px-3 py-2">

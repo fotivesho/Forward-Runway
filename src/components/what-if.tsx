@@ -37,9 +37,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
     <div className="grid gap-4">
       <section className="card p-4 sm:p-5" aria-labelledby="afford-card-title">
         <h2 id="afford-card-title" className="text-base font-semibold text-ink">Can I afford it?</h2>
-        <p className="mb-4 mt-1 text-sm text-muted">
-          Pick one of your upcoming plans or type any amount. The answer uses the same “safe to spend today” number as your Today screen.
-        </p>
+        <p className="mb-4 mt-1 text-sm text-muted">Pick a plan or type an amount.</p>
         {hasAccounts ? (
           <AffordIt
             snapshot={snapshot}
@@ -78,7 +76,7 @@ function PurchasePlanner({ snapshot, input, today }: { snapshot: Snapshot; input
 
   return (
     <Card title="Plan a big purchase in detail" id="purchase">
-      <p className="mb-3 text-sm text-muted">See if it fits, how much “savings ammo” it would take, where it comes from, and how long it takes to rebuild. Nothing is saved until you choose to.</p>
+      <p className="mb-3 text-sm text-muted">What it takes from savings, and how long to rebuild.</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="p-label" className="text-sm font-medium">What is it?</label>

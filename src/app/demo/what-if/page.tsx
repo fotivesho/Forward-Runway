@@ -8,7 +8,7 @@ export default function Page() {
   const s = getDemoSession();
   return (
     <>
-      <PageHeader title="What if…" subtitle="Test a big purchase or a change to your plan before you commit. Your real data isn't changed." />
+      <PageHeader title="What if…" subtitle="Try it before you buy. Nothing is saved." />
       <WhatIf snapshot={s.snapshot} today={s.today} nowIso={s.nowIso} demo />
     </>
   );

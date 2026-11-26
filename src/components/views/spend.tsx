@@ -70,7 +70,7 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
 
   return (
     <>
-      <PageHeader title="Money" subtitle="Money in and out: what repeats, where it goes, and every transaction. Tap anything to change it." />
+      <PageHeader title="Money" subtitle="What repeats and every transaction." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">

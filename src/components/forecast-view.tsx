@@ -24,7 +24,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
     <>
       <PageHeader
         title="Cash forecast"
-        subtitle={`${formatShort(f.startDate)} – ${formatShort(f.endDate)} · spendable cash only (savings, cards and loans are tracked separately)`}
+        subtitle={`${formatShort(f.startDate)} – ${formatShort(f.endDate)} · spendable cash`}
         action={
           <div role="group" aria-label="Forecast horizon" className="flex rounded-lg border border-line p-0.5">
             {HORIZONS.map((h) => (

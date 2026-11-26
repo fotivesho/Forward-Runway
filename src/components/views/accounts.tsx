@@ -30,7 +30,7 @@ export function AccountsView({
   const nowMs = Date.now();
   return (
     <>
-      <PageHeader title="Accounts & goals" subtitle="Balances are the opening balance on their “as of” date. Keep spendable balances fresh for an accurate forecast." />
+      <PageHeader title="Accounts & goals" subtitle="Balances, cards and goals." />
       <div className="grid gap-4">
         {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} redirectReady={bank.redirectReady} />}
         {!bank && !demo && bankSetupMissing && (
@@ -56,7 +56,7 @@ export function AccountsView({
                   return (
                     <>
                       <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />
-                      <p className="mt-3 text-xs text-faint">Kept up to date by your bank. To stop updates or remove it, use Bank connections above.</p>
+                      
                     </>
                   );
                 })()
