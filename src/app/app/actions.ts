@@ -241,21 +241,23 @@ export async function setOverride(_: ActionState, form: FormData): Promise<Actio
 
 export async function saveTransaction(_: ActionState, form: FormData): Promise<ActionState> {
   const { supabase } = await session();
-  const parsed = parseForm(transactionSchema, form);
-  if (!parsed.ok) return invalid(parsed.fieldErrors);
-  const { id, row } = parsed.data;
-  if (id) {
-    const { data: existing } = await supabase.from("transactions").select("external_id").eq("id", id).maybeSingle();
+  // From the bank: its amount, date, account and status are facts; only your labels change. The bank
+  // edit form only sends those labels, so it's checked on its own (not against the full schema).
+  const rawId = String(form.get("id") ?? "");
+  if (rawId) {
+    const { data: existing } = await supabase.from("transactions").select("external_id").eq("id", rawId).maybeSingle();
     if (existing?.external_id) {
-      // From the bank: its amount, date, account and status are facts; only your labels change.
-      const { error } = await supabase
-        .from("transactions")
-        .update({ description: row.description, category: row.category, flexible: form.get("flexible") === "on" })
-        .eq("id", id);
+      const description = String(form.get("description") ?? "").trim().slice(0, 120);
+      if (!description) return invalid({ description: "Give it a name." });
+      const category = String(form.get("category") ?? "").trim().slice(0, 40) || null;
+      const { error } = await supabase.from("transactions").update({ description, category, flexible: form.get("flexible") === "on" }).eq("id", rawId);
       if (error) return dbError(error);
       return ok("Saved.");
     }
   }
+  const parsed = parseForm(transactionSchema, form);
+  if (!parsed.ok) return invalid(parsed.fieldErrors);
+  const { id, row } = parsed.data;
   // Status follows the date: anything after today is planned, anything up to today happened.
   const { today } = await userToday(supabase);
   const finalRow = { ...row, status: row.date > today ? ("planned" as const) : ("posted" as const) };

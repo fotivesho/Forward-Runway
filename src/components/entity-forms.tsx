@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { saveAccount, saveGoal, saveRule, saveStatement, saveTransaction, saveTransfer, updateBalance } from "@/app/app/actions";
 import type { Account, CardStatement, RecurringRule, SavingsGoal } from "@/lib/engine";
 import { centsToInput } from "@/lib/money";
@@ -261,11 +261,20 @@ export function CategoryField({ name = "category", label = "Category", defaultVa
   const known = initial === "" || all.includes(initial);
   const [choice, setChoice] = useState(known ? initial : "__new");
   const [custom, setCustom] = useState(known ? "" : initial);
+  // React resets a form's fields after it submits; keep showing the category that's actually chosen.
+  const ref = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    const form = ref.current?.form;
+    if (!form) return;
+    const keep = () => setTimeout(() => ref.current && (ref.current.value = choice), 0);
+    form.addEventListener("reset", keep);
+    return () => form.removeEventListener("reset", keep);
+  }, [choice]);
   return (
     <div className={`flex flex-col gap-1 ${wrapperClassName}`}>
       <label className="text-sm font-medium text-ink">
         {label}
-        <select className="input mt-1 font-normal" value={choice} name={choice === "__new" ? undefined : name} onChange={(e) => setChoice(e.target.value)}>
+        <select ref={ref} className="input mt-1 font-normal" value={choice} name={choice === "__new" ? undefined : name} onChange={(e) => setChoice(e.target.value)}>
           <option value="">Choose…</option>
           {yours.length > 0 && (
             <optgroup label="Your categories">{yours.map((c) => <option key={c} value={c}>{c}</option>)}</optgroup>
