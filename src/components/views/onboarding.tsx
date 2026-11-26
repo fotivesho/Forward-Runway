@@ -10,7 +10,7 @@ function Step({ n, title, done, optional, children, why }: { n: number; title: s
   return (
     <section aria-labelledby={`step-${n}`} className={`card p-4 sm:p-5 ${done ? "border-brand/40" : ""}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={`step-${n}`} className="text-lg font-semibold">
+        <h2 id={`step-${n}`} className="text-lg font-bold text-ink">
           <span className="mr-2 text-faint">{n}.</span>{title}
         </h2>
         {done ? <Badge tone="good">Done</Badge> : optional ? <Badge>Optional</Badge> : <Badge tone="warn">To do</Badge>}
@@ -31,7 +31,7 @@ export function OnboardingView({ snapshot, today, demo = false }: ViewProps) {
   const ready = required.every(Boolean);
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-bold tracking-tight">Set up your runway</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-ink">Set up your runway</h1>
       <p className="mb-4 mt-1 text-muted">About five minutes. Use real numbers where you know them and tick “estimate” where you don't — {APP_NAME} keeps facts and estimates separate. Everything can be changed later.</p>
       <div className="flex flex-col gap-4">
         <Step n={1} title="About you" done={!!snapshot.profile.onboardedAt || !!snapshot.profile.displayName} optional why="Your time zone decides what “today” is.">

@@ -88,7 +88,7 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
               if (rules.length === 0) return null;
               return (
                 <section key={g.title} aria-label={g.title}>
-                  <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">{g.title}</h3>
+                  <h3 className="mb-2 text-sm font-bold text-ink">{g.title}</h3>
                   <RecurringTiles tiles={rules.map(tile)} accounts={accounts} today={today} />
                 </section>
               );

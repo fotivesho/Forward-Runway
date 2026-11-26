@@ -64,7 +64,7 @@ export function SnapshotTiles({ m, today, nowMs }: { m: SnapshotModel; today: IS
 function SnapTile({ icon, label, value, sub, bar, title }: { icon: string; label: string; value: React.ReactNode; sub: React.ReactNode; bar?: number; title?: string }) {
   return (
     <li title={title} className="min-w-0 rounded-xl border border-line bg-surface-2/50 p-2.5 sm:p-3">
-      <p className="flex items-center gap-1.5 truncate text-xs text-faint">
+      <p className="flex items-center gap-1.5 truncate text-xs font-bold text-ink">
         <span aria-hidden>{icon}</span>
         {label}
       </p>

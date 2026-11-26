@@ -120,7 +120,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
       <section className="card overflow-hidden" aria-labelledby="wi-q">
         <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2">
-            <h2 id="wi-q" className="text-sm font-semibold uppercase tracking-wide text-muted">What if I spend</h2>
+            <h2 id="wi-q" className="text-base font-bold text-ink">What if I spend</h2>
             {check && (
               <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${LOOK[check.verdict].badge}`} aria-live="polite">
                 {LOOK[check.verdict].icon} {VERDICT_SHORT[check.verdict]}
@@ -144,7 +144,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             className="mt-1 w-full border-b border-line bg-transparent pb-1 text-base text-ink outline-none placeholder:text-faint focus:border-brand"
             value={what}
             onChange={(e) => { setWhat(e.target.value); setReserved(0); }}
-            placeholder="on… dinner, flights, a couch"
+            placeholder="on what?"
             maxLength={80}
           />
           <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
@@ -179,10 +179,10 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
           {[
             { label: "Spending money", v: free, sub: `to ${formatShort(m.plan.allowance.current.end)}` },
             { label: "Lowest ahead", v: m.forecast90.lowest.cents, sub: formatShort(m.forecast90.lowest.date) },
-            { label: "Savings to tap", v: savings, sub: "not protected" },
+            { label: "Savings", v: savings, sub: "not protected" },
           ].map((t) => (
             <div key={t.label} className="min-w-0 px-1 py-2">
-              <dt className="truncate text-[10px] font-semibold uppercase tracking-wide text-faint">{t.label}</dt>
+              <dt className="truncate text-[11px] font-bold text-ink">{t.label}</dt>
               <dd className="truncate text-base font-extrabold tabular text-ink"><Money cents={t.v} whole /></dd>
               <dd className="truncate text-[10px] text-faint">{t.sub}</dd>
             </div>
@@ -197,8 +197,8 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
           <PlanImpact check={check} reservedCents={reserved} />
           {ripple && (
             <div className="mt-4 rounded-xl border border-line p-3">
-              <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-faint">
-                <span>The ripple: your cash, next 60 days</span>
+              <p className="flex items-center justify-between text-sm font-bold text-ink">
+                <span>Next 60 days</span>
                 <Info label="The ripple">
                   Cash after bills, paychecks and your usual everyday spending (learned from your patterns), with and without this. Dashed: your cash floor.
                 </Info>
@@ -215,7 +215,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
               </div>
               {ripple.usualCents > 0 && (
                 <p className="mt-2 text-xs text-muted">
-                  Usual life to {formatShort(m.plan.allowance.current.end)}: ~<Money cents={ripple.usualCents} whole className="font-semibold text-ink" />
+                  Usual spend to {formatShort(m.plan.allowance.current.end)} ~<Money cents={ripple.usualCents} whole className="font-semibold text-ink" />
                   {ripple.lowWith < snapshot.settings.cashFloorCents && Math.min(...ripple.without) >= snapshot.settings.cashFloorCents && <span className="font-semibold text-warn"> · dips under your floor {formatShort(ripple.lowDate)}</span>}
                 </p>
               )}
@@ -224,7 +224,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
 
           {timeChecks.length > 1 && (
             <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Best time to buy</p>
+              <p className="text-sm font-bold text-ink">Best day</p>
               <div className="mt-1.5 grid grid-cols-3 gap-1.5 sm:grid-cols-5">
                 {timeChecks.map((t) => (
                   <button
@@ -241,14 +241,14 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
                 ))}
               </div>
               {firstGood && firstGood.date !== date && check.verdict !== "yes" && (
-                <p className="mt-1 text-xs text-brand">Wait until {formatShort(firstGood.date)} and it simply fits.</p>
+                <p className="mt-1 text-xs text-brand">Fits on {formatShort(firstGood.date)}.</p>
               )}
             </div>
           )}
 
           {payChecks.length > 1 && (
             <div className="mt-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-faint">Debit or credit</p>
+              <p className="text-sm font-bold text-ink">Debit or credit</p>
               <div className="mt-1.5 grid gap-1.5" style={{ gridTemplateColumns: `repeat(${payChecks.length}, minmax(0, 1fr))` }}>
                 {payChecks.map((o) => (
                   <button key={o.name} type="button" onClick={() => setPayWith(o.id)} aria-pressed={payWith === o.id}
@@ -442,7 +442,7 @@ function ScenarioBuilder({ snapshot, input, today }: { snapshot: Snapshot; input
         </div>
       )}
 
-      <h3 className="mt-5 text-sm font-semibold">Saved scenarios</h3>
+      <h3 className="mt-5 text-sm font-bold text-ink">Saved scenarios</h3>
       {snapshot.scenarios.length === 0 ? (
         <EmptyState title="No saved scenarios" />
       ) : (

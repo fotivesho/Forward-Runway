@@ -81,7 +81,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
         >
           {open.occurrences.length > 0 && (
             <section aria-label="Upcoming dates" className="mb-4">
-              <h3 className="mb-1 text-xs font-semibold uppercase tracking-wide text-faint">Upcoming</h3>
+              <h3 className="mb-1 text-sm font-bold text-ink">Upcoming</h3>
               <ul className="divide-y divide-line rounded-xl border border-line">
                 {open.occurrences.slice(0, 4).map((o) => (
                   <li key={o.originalDate} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
@@ -97,7 +97,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
               </ul>
             </section>
           )}
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-faint">Details</h3>
+          <h3 className="mb-2 text-sm font-bold text-ink">Details</h3>
           <RuleForm rule={open.rule} accounts={accounts} today={today} onDone={() => setOpenId(null)} />
           <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
             <QuickAction action={toggleRule} fields={{ id: open.rule.id, active: open.rule.active === false ? "true" : "false" }} variant="secondary">

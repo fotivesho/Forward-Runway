@@ -25,7 +25,7 @@ export function CashFlowCard({ months, periods }: { months: FlowBucket[]; period
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="flow-title">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 id="flow-title" className="text-base font-semibold text-ink">Net cash flow</h2>
+        <h2 id="flow-title" className="text-base font-bold text-ink">Net cash flow</h2>
         {periods && (
           <div role="group" aria-label="Group by" className="flex rounded-lg border border-line p-0.5">
             <button type="button" className={toggle(mode === "month")} aria-pressed={mode === "month"} onClick={() => { setMode("month"); setSel(null); }}>By month</button>

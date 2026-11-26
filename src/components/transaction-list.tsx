@@ -74,7 +74,7 @@ export function TransactionList({
           const dayOut = list.filter((t) => t.direction === "out").reduce((s, t) => s + t.amountCents, 0);
           return (
             <section key={date} aria-label={formatLong(date)}>
-              <h3 className="mb-1 flex justify-between text-xs font-semibold uppercase tracking-wide text-faint">
+              <h3 className="mb-1 flex justify-between text-sm font-bold text-ink">
                 <span>{date === today ? "Today" : formatLong(date)}</span>
                 {dayOut > 0 && <Money cents={-dayOut} sign />}
               </h3>

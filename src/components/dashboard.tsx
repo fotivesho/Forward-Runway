@@ -52,7 +52,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
       {/* Snapshot: the whole picture first */}
       <section aria-labelledby="snapshot-title" className="card p-4 sm:p-5 lg:col-span-2">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <h2 id="snapshot-title" className="text-sm font-semibold uppercase tracking-wide text-muted">Snapshot</h2>
+          <h2 id="snapshot-title" className="text-base font-bold text-ink">Snapshot</h2>
           <Link href={base + "/accounts"} className="btn btn-ghost btn-sm">Accounts →</Link>
         </div>
         <SnapshotTiles m={m} today={today} nowMs={now.getTime()} />
@@ -104,7 +104,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         <section aria-labelledby="safe-title" className="card overflow-hidden">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <h2 id="safe-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
+              <h2 id="safe-title" className="text-base font-bold text-ink">
                 Safe to spend today
                 {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
                   <Info label="Notes">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</Info>
@@ -125,11 +125,11 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                 <><Money cents={allowance.shortfallCents} whole /> short on {formatShort(allowance.shortfallDate!)}</>
               ) : (
                 <>
-                  <Money cents={plan.poolCents} whole /> left until {formatShort(allowance.current.end)}
+                  <Money cents={plan.poolCents} whole /> left to {formatShort(allowance.current.end)}
                   {daysToPayday != null && ` · payday in ${daysToPayday}d`}
                 </>
               )}
-              {plan.todayCap.spentCents > 0 && <> · <Money cents={plan.todayCap.spentCents} whole /> spent today</>}
+              
             </p>
           </div>
           <div className="p-4 sm:p-5">
@@ -275,7 +275,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-ink">Daily caps until payday</h3>
+        <h3 className="text-sm font-bold text-ink">Daily caps until payday</h3>
         {days.length > 7 && (
           <button type="button" className="text-xs font-medium text-brand" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
             {showAll ? "Next 7 days" : `All ${days.length} days`}
@@ -430,7 +430,7 @@ function PatternPulse({ m, snapshot, today, base }: { m: ReturnType<typeof build
     <Link href={base + "/spend/patterns"} className="card block p-3 transition hover:border-brand/60">
       {life.pace && (
         <p className="flex items-center justify-between gap-2 text-sm">
-          <span className="text-muted">Usual life until {formatShort(life.periodEnd)}</span>
+          <span className="font-bold text-ink">Usual spend to {formatShort(life.periodEnd)}</span>
           <span className="font-semibold tabular">
             ~<Money cents={life.pace.usualCents} whole className="text-ink" />{" "}
             <span className={short ? "text-warn" : "text-brand"}>

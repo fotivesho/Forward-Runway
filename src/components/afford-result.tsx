@@ -328,7 +328,7 @@ export function PlanImpact({
           />
         ) : (
           <Meter
-            label="Spending money left"
+            label="Spending money"
             when={span(r.start, r.end)}
             value={dollars(r.after)}
             pos={gauge(used, r.before, r.before)}
@@ -337,7 +337,7 @@ export function PlanImpact({
           />
         )}
         <Meter
-          label="Lowest balance ahead"
+          label="Lowest balance"
           when={formatShort(check.lowest.after.date)}
           value={dollars(after)}
           pos={gauge(after, floor, cushionBefore > 0 ? cushionBefore : floor)}
@@ -359,7 +359,7 @@ export function PlanImpact({
         const icon: Record<string, string> = { move: "🛟", skip_plan: "✂️", lean: "🥗", wait: "⏳", goal: "🎯", cheaper: "🏷️" };
         return (
           <div className="mt-3">
-            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">{check.verdict === "not_yet" ? "Ways to make it work" : "Options"}</p>
+            <p className="mb-1.5 text-sm font-bold text-ink">{check.verdict === "not_yet" ? "Options" : "Options"}</p>
             <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
               {opts.map((x, i) => (
                 <li key={x.title} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>

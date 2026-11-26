@@ -8,6 +8,7 @@ import { deleteEvent } from "@/app/app/actions";
 import { EventCard } from "./advisor";
 import { QuickAction } from "./form";
 import { Money } from "./privacy";
+import { Info } from "./info";
 import { EmptyState } from "./ui";
 
 export interface DayMark {
@@ -142,7 +143,7 @@ export function PlanCalendar({
           <span><span className="mr-1 rounded bg-brand px-1 text-[9px] font-bold uppercase text-brand-ink">Pay</span>Payday</span>
           <span><span className="mr-1 rounded bg-out px-1 text-[9px] font-bold uppercase text-surface">Bill</span>Bill due</span>
           <span><span className="mr-1 rounded bg-warn px-1 text-[9px] font-bold uppercase text-surface">Save</span>From savings</span>
-          <span>Amount under a date = safe to spend that day</span>
+          <Info label="Calendar key">The amount under a date is what's safe to spend that day.</Info>
         </p>
       </div>
 
@@ -184,9 +185,8 @@ export function PlanCalendar({
               if (!p) return null;
               return (
                 <p className="mt-0.5 text-xs text-muted">
-                  {selected === p.start && selected !== today ? "Payday starts a new pay period: " : "Pay period "}
-                  {formatShort(p.start)}–{formatShort(p.end)} has <Money cents={p.freeCents} whole /> free after bills, savings and plans, about{" "}
-                  <Money cents={p.perDayCents} whole /> a day.
+                  {formatShort(p.start)}–{formatShort(p.end)} · <Money cents={p.freeCents} whole /> free · ~<Money cents={p.perDayCents} whole />/day
+                  <Info label="Pay period">Free money for the pay period after bills, savings and plans{selected === p.start && selected !== today ? ". Payday starts a new period" : ""}.</Info>
                 </p>
               );
             })()}
@@ -210,7 +210,7 @@ export function PlanCalendar({
           <div className="space-y-4">
             {[...groups.entries()].map(([date, list]) => (
               <section key={date} aria-label={formatLong(date)}>
-                {!selected && <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-faint">{formatLong(date)}{date === addDays(today, 1) ? " · tomorrow" : date === today ? " · today" : ""}</h3>}
+                {!selected && <h3 className="mb-1.5 text-sm font-bold text-ink">{formatLong(date)}{date === addDays(today, 1) ? " · tomorrow" : date === today ? " · today" : ""}</h3>}
                 <ul className="space-y-2">
                   {list.map((v) => (
                     <div key={v.event.id}>

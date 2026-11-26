@@ -15,7 +15,7 @@ export function Card({ title, action, children, className = "", id, as: Tag = "s
       {(title || action) && (
         <div className="mb-3 flex items-start justify-between gap-3">
           {title && (
-            <h2 id={headingId} className="text-base font-semibold text-ink">
+            <h2 id={headingId} className="text-base font-bold text-ink">
               {title}
             </h2>
           )}

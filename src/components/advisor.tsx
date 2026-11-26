@@ -34,7 +34,7 @@ export function QuestionCard({ question, accounts, today }: { question: Question
   return (
     <section aria-labelledby="question-title" className="card border-warn/50 p-4 sm:p-5">
       <p className="text-xs font-semibold uppercase tracking-wide text-warn">One question</p>
-      <h2 id="question-title" className="mt-1 text-lg font-semibold text-ink">
+      <h2 id="question-title" className="mt-1 text-lg font-bold text-ink">
         {question.text}
         <Info label="Why we ask">{question.why} Until then, the forecast is marked incomplete and uses the assumptions listed below it.</Info>
       </h2>

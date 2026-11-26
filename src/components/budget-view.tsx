@@ -90,19 +90,19 @@ export function BudgetView({
       {/* Where the month's income goes. */}
       <section className="card p-4 sm:p-5" aria-labelledby="split-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 id="split-title" className="text-base font-semibold text-ink">
+          <h2 id="split-title" className="text-base font-bold text-ink">
             {monthName}'s plan
             <Info label="How smart budgets work">
               Not a copy of last month. Bills and calendar plans (organized life) are counted as scheduled. Everyday categories are predicted from your patterns: this month's weekends and paydays included. Big rare costs get a monthly set-aside. If it doesn't fit, needs stay and wants shrink. Budgets you set always win. The tick on a bar is an even pace.
               {plan.notes.length > 0 && <span className="mt-2 block text-warn">{plan.notes.join(" ")}</span>}
             </Info>
           </h2>
-          <span className="text-xs text-muted">{Math.round(plan.progress * 100)}% through the month</span>
+          <span className="text-xs text-muted">{Math.round(plan.progress * 100)}% through</span>
         </div>
         {plan.incomeCents > 0 ? (
           <>
             <p className="mt-1 text-sm text-muted">
-              <Money cents={plan.incomeCents} whole className="font-semibold text-ink" /> income{plan.incomeSource === "history" ? " (your recent average)" : ""} goes to:
+              <Money cents={plan.incomeCents} whole className="font-semibold text-ink" /> income{plan.incomeSource === "history" ? " (avg)" : ""}
             </p>
             <div className="mt-3 flex h-4 overflow-hidden rounded-full bg-surface-3" aria-hidden>
               {GROUPS.map((g) => (
@@ -112,15 +112,14 @@ export function BudgetView({
             <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
               {GROUPS.map((g) => (
                 <li key={g.id} className="rounded-xl bg-surface-2/60 p-2.5">
-                  <p className="flex items-center gap-1.5 text-xs text-faint"><span className={`h-2 w-2 rounded-full ${GROUP_COLOR[g.id]}`} />{g.label}</p>
+                  <p className="flex items-center gap-1.5 text-xs font-bold text-ink"><span className={`h-2 w-2 rounded-full ${GROUP_COLOR[g.id]}`} />{g.label}</p>
                   <p className="text-lg font-bold tabular text-ink"><Money cents={plan.groups[g.id].budgetCents} whole /></p>
-                  <p className="text-[11px] text-muted">{Math.round((plan.groups[g.id].budgetCents / Math.max(plan.incomeCents, 1)) * 100)}% of income</p>
+                  <p className="text-[11px] text-muted">{Math.round((plan.groups[g.id].budgetCents / Math.max(plan.incomeCents, 1)) * 100)}%</p>
                 </li>
               ))}
               <li className="rounded-xl bg-surface-2/60 p-2.5">
-                <p className="text-xs text-faint">{plan.unassignedCents >= 0 ? "Left unassigned" : "Over income"}</p>
+                <p className="text-xs font-bold text-ink">{plan.unassignedCents >= 0 ? "Unassigned" : "Over income"}</p>
                 <p className={`text-lg font-bold tabular ${plan.unassignedCents >= 0 ? "text-ink" : "text-danger"}`}><Money cents={Math.abs(plan.unassignedCents)} whole /></p>
-                <p className="text-[11px] text-muted">{plan.unassignedCents > 0 ? "buffer, or save more" : plan.unassignedCents < 0 ? "trim a want or a plan" : "every dollar has a job"}</p>
               </li>
             </ul>
             <LifeSplit life={plan.life} plans={plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`)} />

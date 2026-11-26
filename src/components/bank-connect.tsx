@@ -152,7 +152,7 @@ export function BankConnections({
     <section className="card p-4 sm:p-5" aria-labelledby="bank-title">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="bank-title" className="text-base font-semibold text-ink">
+          <h2 id="bank-title" className="text-base font-bold text-ink">
             Banks <Info>Balances, statements and transactions update themselves. You sign in with Plaid; your login never reaches this app, and nothing can move your money.</Info>
           </h2>
           {mode !== "production" && <p className="text-xs text-warn">{mode === "mock" ? "Test bank: made-up data." : "Sandbox: test banks only."}</p>}

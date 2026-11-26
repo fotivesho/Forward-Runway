@@ -97,7 +97,7 @@ export function BankAccountPanel({
 
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <section className="rounded-xl border border-warn/40 bg-warn/5 p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Latest statement</h3>
+          <h3 className="text-sm font-bold text-ink">Latest statement</h3>
           {latest ? (
             <dl className="divide-y divide-line/60">
               <Row label="Statement balance" sub={`Closed ${formatShort(latest.closingDate)}`}><Money cents={latest.statementBalanceCents} /></Row>
@@ -114,7 +114,7 @@ export function BankAccountPanel({
         </section>
 
         <section className="rounded-xl border border-info/40 bg-info/5 p-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Next statement</h3>
+          <h3 className="text-sm font-bold text-ink">Next statement</h3>
           <dl className="divide-y divide-line/60">
             <Row label="Charged since the statement" sub="Already on the card">
               <Money cents={since} />

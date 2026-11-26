@@ -19,7 +19,7 @@ export function InsightTiles({ items }: { items: Insight[] }) {
             <Info label={i.title}>{i.detail}</Info>
           </p>
           <p className={`mt-1 text-xl font-extrabold tabular ${STAT[i.tone]}`}>{i.stat}</p>
-          <p className="text-xs font-medium leading-snug text-muted">{i.title}</p>
+          <p className="text-xs font-bold leading-snug text-ink">{i.title}</p>
         </li>
       ))}
     </ul>
@@ -69,8 +69,8 @@ export function PatternsView({
         <section className="card overflow-hidden" aria-labelledby="pace-title">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2">
-              <h2 id="pace-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
-                Usual life until {formatShort(periodEnd)}
+              <h2 id="pace-title" className="text-base font-bold text-ink">
+                Usual spend to {formatShort(periodEnd)}
                 <Info label="How this is predicted">
                   Learned from your last {learnedDays} days: your daily rate, which weekdays run high, and how much more you spend right after payday. Bills and plans aren't in it: the forecast already has those.
                 </Info>
@@ -81,7 +81,7 @@ export function PatternsView({
             <p className="mt-1 text-sm text-muted">
               You have <Money cents={spendingMoneyCents} whole className="font-semibold text-ink" /> ·{" "}
               {short ? (
-                <span className="font-semibold text-warn"><Money cents={-pace.gapCents} whole /> short at your usual pace</span>
+                <span className="font-semibold text-warn"><Money cents={-pace.gapCents} whole /> short</span>
               ) : (
                 <span className="font-semibold text-brand"><Money cents={pace.gapCents} whole /> to spare</span>
               )}
@@ -96,14 +96,14 @@ export function PatternsView({
       {/* What you've been doing */}
       {insights.length > 0 && (
         <section aria-labelledby="ins-title">
-          <h2 id="ins-title" className="mb-2 text-base font-semibold text-ink">What we noticed</h2>
+          <h2 id="ins-title" className="mb-2 text-base font-bold text-ink">Noticed</h2>
           <InsightTiles items={insights.slice(0, 6)} />
         </section>
       )}
 
       {/* Your week */}
       <section className="card p-4" aria-labelledby="week-title">
-        <h2 id="week-title" className="text-base font-semibold text-ink">
+        <h2 id="week-title" className="text-base font-bold text-ink">
           Your week <Info label="Your week">A typical day of everyday spending for each weekday, and right after payday.</Info>
         </h2>
         <div className="mt-3 grid grid-cols-8 items-end gap-1.5" aria-hidden>
@@ -120,7 +120,7 @@ export function PatternsView({
       {/* The next 30 days */}
       <section className="card p-4" aria-labelledby="ahead-title">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 id="ahead-title" className="text-base font-semibold text-ink">
+          <h2 id="ahead-title" className="text-base font-bold text-ink">
             Next 30 days <Info label="Next 30 days">Organized life is what's scheduled: bills and calendar plans. Predicted life is everyday spending from your patterns, plus any big cost that usually comes around now. Budgets use both.</Info>
           </h2>
           <Money cents={ahead.totalCents} whole className="text-lg font-extrabold text-ink" />
@@ -138,7 +138,7 @@ export function PatternsView({
         </ul>
         {(ahead.categories.length > 0 || ahead.lumpy.length > 0) && (
           <>
-            <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-faint">Placeholders for everyday life</p>
+            <p className="mt-3 text-sm font-bold text-ink">Expected</p>
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {ahead.categories.slice(0, 6).map((c) => (
                 <li key={c.category} className="rounded-full border border-dashed border-brand/50 px-2.5 py-1 text-xs text-ink">

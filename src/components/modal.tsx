@@ -54,7 +54,7 @@ export function Modal({
             <div className="flex items-start gap-3">
               {icon && <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-xl shadow-sm">{icon}</span>}
               <div className="min-w-0 flex-1">
-                <h2 id={titleId} className="text-lg font-semibold leading-tight text-ink">{title}</h2>
+                <h2 id={titleId} className="text-lg font-bold leading-tight text-ink">{title}</h2>
                 {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}
               </div>
               <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-muted hover:bg-surface-3 hover:text-ink">

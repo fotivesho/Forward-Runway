@@ -92,7 +92,7 @@ export function AccountsView({
         <BalanceForm account={a} today={today} />
         {a.kind === "credit_card" && (
           <section>
-            <h3 className="mb-1 text-sm font-semibold">Statements</h3>
+            <h3 className="mb-1 text-sm font-bold text-ink">Statements</h3>
             <ul className="divide-y divide-line text-sm">
               {statements.slice(0, 6).map((st) => (
                 <li key={st.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
@@ -182,10 +182,10 @@ export function AccountsView({
         {/* The whole picture: what you have vs what you owe */}
         <section className="card overflow-hidden" aria-label="Net worth">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></h2>
+          <h2 className="text-base font-bold text-ink">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></h2>
           <p className={`mt-1 text-5xl font-bold tracking-tight tabular ${assets - owed < 0 ? "text-danger" : "text-ink"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
           <p className="mt-1 text-sm text-muted">
-            <Money cents={assets} whole className="font-semibold text-ink" /> you have · <Money cents={owed} whole className="font-semibold text-ink" /> you owe
+            Have <Money cents={assets} whole className="font-semibold text-ink" /> · Owe <Money cents={owed} whole className="font-semibold text-ink" />
           </p>
           <div className="mt-3 space-y-1.5">
             <div className="flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
@@ -213,8 +213,8 @@ export function AccountsView({
           </div>
           {path && (
             <div className="border-t border-line p-4 sm:p-5">
-              <p className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-wide text-faint">
-                <span>Where your cash is headed</span>
+              <p className="flex items-center justify-between text-sm font-bold text-ink">
+                <span>Cash ahead</span>
                 <Info label="Where your cash is headed">Scheduled: paychecks, bills and plans only. Real life: plus your usual everyday spending, learned from your patterns. Dashed: your cash floor.</Info>
               </p>
               <div className="mt-2">
@@ -239,7 +239,7 @@ export function AccountsView({
 
         <section aria-labelledby="goals-h">
           <div className="mb-2 flex items-center justify-between">
-            <h2 id="goals-h" className="text-sm font-semibold text-ink">Goals <Info>Money set aside for something. Protected goals (🔒) are never suggested to pay for anything else.</Info></h2>
+            <h2 id="goals-h" className="text-sm font-bold text-ink">Goals <Info>Money set aside for something. Protected goals (🔒) are never suggested to pay for anything else.</Info></h2>
             <AddInModal label="+ Goal" title="Add a goal" icon="🎯"><GoalForm accounts={accounts} /></AddInModal>
           </div>
           {goalTiles.length > 0 ? <AccountGrid tiles={goalTiles} /> : <p className="text-sm text-muted">No goals yet.</p>}

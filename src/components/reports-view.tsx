@@ -78,7 +78,7 @@ export function ReportsView({
     <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <section className="card p-4 sm:p-5" aria-labelledby="rep-title">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="rep-title" className="text-base font-semibold text-ink">{title}</h2>
+          <h2 id="rep-title" className="text-base font-bold text-ink">{title}</h2>
           {(cat || pick || focus !== "all") && (
             <button type="button" className="text-xs font-medium text-brand" onClick={() => { setCat(null); setPick(null); setFocus("all"); }}>Clear filters</button>
           )}
@@ -142,7 +142,7 @@ export function ReportsView({
 
       <section className="card p-4 sm:p-5" aria-labelledby="cats-title">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 id="cats-title" className="text-base font-semibold text-ink">Categories</h2>
+          <h2 id="cats-title" className="text-base font-bold text-ink">Categories</h2>
           <span className="text-xs text-muted">{picked ? periodName(picked) : by === "month" ? "This month so far" : "This pay period so far"} vs avg</span>
         </div>
         <ul className="mt-2 divide-y divide-line">
@@ -172,7 +172,7 @@ export function ReportsView({
       {cat && (
         <section className="card p-4 sm:p-5" aria-labelledby="txn-title">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 id="txn-title" className="text-base font-semibold text-ink">{iconFor(cat)} {cat} transactions</h2>
+            <h2 id="txn-title" className="text-base font-bold text-ink">{iconFor(cat)} {cat} transactions</h2>
             <span className="text-xs text-muted">{picked ? periodName(picked) : `last ${range} ${by === "month" ? "months" : "pay periods"}`}</span>
           </div>
           {txns.length === 0 ? (

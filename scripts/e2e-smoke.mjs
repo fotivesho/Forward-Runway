@@ -121,14 +121,14 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/patterns", "/d
   {
     const { page, errors } = await visit("/demo/spend/patterns", 390);
     const body = await page.locator("body").innerText();
-    check(errors.length === 0 && /What we noticed/.test(body) && /Usual life until/i.test(body) && /Next 30 days/.test(body), "patterns shows insights, pace and the next 30 days");
+    check(errors.length === 0 && /Noticed/.test(body) && /Usual spend to/i.test(body) && /Next 30 days/.test(body), "patterns shows insights, pace and the next 30 days");
     await page.close();
   }
   const { page, errors } = await visit("/demo/what-if", 390);
   check(errors.length === 0, `what-if loads without errors ${errors.join(" | ")}`);
   const body = await page.locator("main").innerText();
-  check(/Spending money/.test(body) && /Lowest balance ahead/.test(body) && /(You're good|Doable|Not yet|Already covered)/.test(body), "what-if answers in plain words with both meters");
-  check(/Best time to buy/i.test(body), "what-if compares dates");
+  check(/Spending money/.test(body) && /Lowest balance/.test(body) && /(You're good|Doable|Not yet|Already covered)/.test(body), "what-if answers in plain words with both meters");
+  check(/Best day/i.test(body), "what-if compares dates");
   check(/Debit or credit/i.test(body), "what-if compares debit and credit");
   await page.fill("#wi-amount", "2400");
   await page.waitForTimeout(300);
