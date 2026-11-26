@@ -4,6 +4,7 @@ import { formatCents } from "@/lib/money";
 import { formatShort, type ISODate } from "@/lib/dates";
 import type { LandingData } from "@/lib/view/landing";
 import { useCountUp, usePrefersReducedMotion } from "./motion";
+import { Glyph } from "@/components/icon";
 import { AFFORD_EVENT, AFFORD_PRESETS } from "./afford-it";
 
 const W = 320;
@@ -97,7 +98,7 @@ export function HeroCard({ hero }: { hero: LandingData["hero"] }) {
               }}
               className="min-h-9 rounded-full border border-[#2e7346]/40 bg-[#e4eedc] px-3 text-xs font-semibold text-[#1d3324] transition hover:bg-[#2e7346] hover:text-white"
             >
-              <span aria-hidden>{p.emoji} </span>
+              <Glyph name={p.emoji} size="xs" bare /> 
               {p.short} {formatCents(p.cents)}?
             </button>
           ))}

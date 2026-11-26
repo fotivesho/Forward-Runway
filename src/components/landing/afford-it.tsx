@@ -6,6 +6,7 @@ import { addDays, dayOfWeek, formatShort, type ISODate } from "@/lib/dates";
 import { formatCents, parseDollars } from "@/lib/money";
 import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
+import { Glyph } from "@/components/icon";
 import { AffordTiles, LOOK } from "../afford-result";
 
 export const AFFORD_EVENT = "fr-afford";
@@ -153,7 +154,7 @@ export function AffordIt({
                 aria-pressed={active}
                 className={`flex min-h-12 items-center gap-2 rounded-xl border px-2.5 py-1 text-left text-[13px] leading-tight transition sm:min-h-14 sm:px-3 sm:text-sm ${active ? "border-brand bg-brand/10 ring-1 ring-brand" : "border-line bg-surface-2/60 hover:border-brand/60"}`}
               >
-                <span aria-hidden className="text-lg sm:text-xl">{p.emoji}</span>
+                <Glyph name={p.emoji} size="md" />
                 <span className="min-w-0">
                   <span className="block truncate font-medium text-ink">{p.label}</span>
                   <span className="tabular text-muted">{formatCents(p.cents)}{p.date ? ` · ${formatShort(p.date)}` : ""}</span>

@@ -9,7 +9,7 @@ import type { Snapshot } from "../data/snapshot";
 import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
 import { buildBudget, type BudgetPlan } from "./budget";
-import { insights, type Insight } from "./patterns";
+import { everydayHabits, insights, type Habit, type Insight } from "./patterns";
 
 export interface LandingStep {
   date: ISODate;
@@ -46,6 +46,8 @@ export interface LandingData {
   budget: BudgetPlan;
   /** What the sample person's patterns show. */
   insights: Insight[];
+  /** Everyday spending the sample person's habits predict for the next 7 days. */
+  habits: Habit[];
 }
 
 export function buildLanding(today: ISODate, nowIso: string): LandingData {
@@ -73,7 +75,8 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     snapshot,
     afford: { events: m.planned, calendarIncomplete: m.coverage.incomplete },
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
-    insights: insights(snapshot, today).slice(0, 3),
+    insights: insights(snapshot, today).slice(0, 4),
+    habits: everydayHabits(snapshot, today, 7).slice(0, 4),
     budget: buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category }))),
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,

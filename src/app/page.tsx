@@ -67,8 +67,11 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <Link href="/demo" className={PRIMARY}>See it with sample money →</Link>
               <Link href="/login?mode=signup" className={SECONDARY}>Create your runway</Link>
             </div>
-            <p className="mt-4 text-sm text-[#b9cbb4]">
-              Connect your bank or type it in · About five minutes to set up · <span className="text-[#ddefbf]">One-tap calendars coming soon</span>
+            <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#b9cbb4]">
+              <span className="font-semibold text-[#ddefbf]">Connect once. That's it.</span>
+              <span className="flex items-center gap-1.5"><Glyph name="bank" size="xs" /> Bank</span>
+              <span className="flex items-center gap-1.5"><Glyph name="card" size="xs" /> Cards</span>
+              <span className="flex items-center gap-1.5"><Glyph name="plan" size="xs" /> Calendars</span>
             </p>
           </div>
         </main>
@@ -90,19 +93,40 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </div>
         </section>
 
-        {/* ---------------------------------------------- supporting proof, compact */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
-          <h2 id="also-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Behind that answer.</h2>
-          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        {/* ---------------------------------------------- it learns your life */}
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="learns-title">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">It learns you</p>
+          <h2 id="learns-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-ink sm:text-5xl">Plans you made. Habits you didn't notice.</h2>
+          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your calendar covers the planned life. Your history covers the rest: lunch, rides, the payday splurge. Budgets come from both.</p>
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <article className="card p-4 sm:p-5">
-              <h3 className="font-semibold text-ink">Everything, in one look</h3>
-              <p className="mt-1 text-sm text-muted">Balances and card statements straight from your bank, or typed in. Always with when each was last updated.</p>
-              <div className="mt-3">
-                <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
-              </div>
+              <h3 className="font-bold text-ink">What it noticed</h3>
+              <ul className="mt-3 grid grid-cols-2 gap-2">
+                {d.insights.map((i) => (
+                  <li key={i.id} className={`rounded-2xl border bg-surface p-3 ${i.tone === "warn" ? "border-warn/50" : "border-line"}`}>
+                    <Glyph name={i.icon} size="md" />
+                    <p className={`mt-2 text-xl font-extrabold tabular ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</p>
+                    <p className="text-xs font-bold leading-snug text-ink">{i.title}</p>
+                  </li>
+                ))}
+              </ul>
+              {d.habits.length > 0 && (
+                <>
+                  <h3 className="mt-5 font-bold text-ink">Next 7 days, everyday</h3>
+                  <ul className="mt-2 grid grid-cols-2 gap-1.5">
+                    {d.habits.map((h) => (
+                      <li key={h.category} className="flex items-center gap-2 rounded-xl border border-dashed border-line px-2 py-1.5">
+                        <Glyph name={h.category} size="sm" />
+                        <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink">{h.category}</span>
+                        <span className="text-xs font-bold tabular text-ink">~${Math.round(h.expectedCents / 100)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </article>
             <article className="card p-4 sm:p-5">
-              <h3 className="font-semibold text-ink">A budget that knows your life</h3>
+              <h3 className="font-bold text-ink">A budget that knows your life</h3>
               <p className="mt-1 text-sm text-muted">Not last month's copy. Bills and plans as scheduled, plus everyday life predicted from your patterns.</p>
               {(() => {
                 const b = d.budget;
@@ -130,18 +154,44 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
                         );
                       })}
                     </ul>
-                    {d.insights.length > 0 && (
-                      <ul className="mt-4 flex flex-wrap gap-1.5">
-                        {d.insights.map((i) => (
-                          <li key={i.id} className="rounded-full bg-surface-2 px-2.5 py-1 text-xs text-muted">
-                            <Glyph name={i.icon} size="xs" bare /> <span className={`font-bold ${i.tone === "warn" ? "text-warn" : "text-ink"}`}>{i.stat}</span> {i.title}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
                   </>
                 );
               })()}
+            </article>
+          </div>
+        </section>
+
+        {/* ---------------------------------------------- connect once */}
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="once-title">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
+          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-ink sm:text-6xl">Connect once. That's it.</h2>
+          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
+          <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
+            {[
+              { g: "bank", t: "Your bank and cards", b: "Balances, purchases and statements flow in. Read-only, through Plaid: your login never reaches us and nothing can move your money." },
+              { g: "plan", t: "Your calendars", b: "Google, iCloud or Outlook, shared ones too. Every plan gets a price and a verdict." },
+              { g: "💸", t: "Then it just runs", b: "Every morning: what's safe today, what's coming, and what your habits say you'll spend. Ask “can I afford it?” anytime." },
+            ].map((x, i) => (
+              <li key={x.t} className="relative rounded-2xl border border-line bg-surface p-5">
+                <span className="absolute right-4 top-4 font-display text-3xl leading-none text-brand/30">{i + 1}</span>
+                <Glyph name={x.g} size="lg" />
+                <span className="mt-3 block text-lg font-bold text-ink">{x.t}</span>
+                <span className="mt-1 block text-sm text-muted">{x.b}</span>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* ---------------------------------------------- supporting proof, compact */}
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
+          <h2 id="also-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Everything it watches for you.</h2>
+          <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 ">
+            <article className="card p-4 sm:p-5">
+              <h3 className="font-semibold text-ink">Everything, in one look</h3>
+              <p className="mt-1 text-sm text-muted">Balances and card statements straight from your bank, or typed in. Always with when each was last updated.</p>
+              <div className="mt-3">
+                <SnapshotTiles m={d.overview} today={d.today} nowMs={now.getTime()} />
+              </div>
             </article>
           </div>
           <div className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-4 md:grid-cols-3">
@@ -204,41 +254,22 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </ul>
         </section>
 
-        {/* ---------------------------------------------- how, soon, privacy: one slim strip */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="how-title">
-          <h2 id="how-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Five minutes to your number.</h2>
-          <ol className="mt-6 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
+        {/* ---------------------------------------------- privacy, slim */}
+        <section className="reveal border-t border-line py-12 sm:py-16" aria-labelledby="priv-title">
+          <h2 id="priv-title" className="text-sm font-bold uppercase tracking-[0.16em] text-brand">Private by design</h2>
+          <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ["Connect your bank", "Or type your balance, payday and main bills. Your bank login never reaches us."],
-              ["Add your calendars", "Google, iCloud or Outlook, shared ones too, with a private calendar link."],
-              ["Check your number each morning", "And ask “can I afford it?” whenever you need."],
-            ].map(([t, body], i) => (
-              <li key={t} className="flex gap-3 rounded-2xl border border-line p-4">
-                <span className="font-display text-3xl leading-none text-brand">{i + 1}</span>
-                <span>
-                  <span className="block font-semibold text-ink">{t}</span>
-                  <span className="text-sm text-muted">{body}</span>
-                </span>
+              ["lock", "Only you see your data", "The database itself enforces it."],
+              ["bank", "Read-only bank access", "Through Plaid. Nothing can move your money."],
+              ["📊", "Every number explained", "Plain math, assumptions listed."],
+              ["⚙", "Export or delete anytime", "Right from Settings."],
+            ].map(([g, t, b]) => (
+              <li key={t} className="flex gap-3">
+                <Glyph name={g} size="md" />
+                <span><span className="block font-bold text-ink">{t}</span><span className="text-muted">{b}</span></span>
               </li>
             ))}
-          </ol>
-          <div className="mt-10 grid grid-cols-[minmax(0,1fr)] gap-6 md:grid-cols-2">
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Coming soon</h3>
-              <ul className="mt-3 space-y-2 text-sm text-muted">
-                <li><span className="font-semibold text-ink">One-tap calendars.</span> Sign in with Google or Apple. No links to copy.</li>
-              </ul>
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-brand">Private by design</h3>
-              <ul className="mt-3 space-y-2 text-sm text-muted">
-                <li><span className="font-semibold text-ink">Only you can see your data.</span> The database itself enforces it.</li>
-                <li><span className="font-semibold text-ink">Bank connections are read-only,</span> through Plaid. Nothing can move your money.</li>
-                <li><span className="font-semibold text-ink">Every number explainable.</span> Plain math, assumptions listed.</li>
-                <li><span className="font-semibold text-ink">Export or delete anytime,</span> from Settings.</li>
-              </ul>
-            </div>
-          </div>
+          </ul>
         </section>
       </div>
 
@@ -246,10 +277,10 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       <section className="brand-band" aria-labelledby="cta-title">
         <div className="reveal mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 sm:py-24">
           <h2 id="cta-title" className="font-display text-5xl leading-tight sm:text-6xl">Clear for takeoff.</h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Try it with sample money, or set up your own runway in about five minutes.</p>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Connect once, and every morning you'll know what's safe to spend. Or try it first with sample money.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/demo" className={PRIMARY}>See it with sample money →</Link>
-            <Link href="/login?mode=signup" className={SECONDARY}>Create your runway</Link>
+            <Link href="/login?mode=signup" className={PRIMARY}>Create your runway →</Link>
+            <Link href="/demo" className={SECONDARY}>See it with sample money</Link>
           </div>
         </div>
         <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-6 text-xs text-[#b9cbb4] sm:px-6">
