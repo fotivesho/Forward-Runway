@@ -35,6 +35,10 @@ export interface EventView {
   advice: EventAdvice | null;
   /** The same answer "Can I afford it?" gives for this plan (null for duplicates and free events). */
   check: AffordCheck | null;
+  /** The same answer paid by debit and by your main credit card, to compare (null when there's no card). */
+  checkDebit?: AffordCheck | null;
+  checkCredit?: AffordCheck | null;
+  creditCardId?: string | null;
   sourceName: string;
 }
 
@@ -211,14 +215,16 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     forecast90.days.find((d) => d.date > today && d.items.some((i) => i.kind === "income" && i.cashEffectCents > 0))?.date ?? null;
   // Each plan gets the same answer as "Can I afford it?", with its own cap already set aside.
   const ctx = { input, events: planned, calendarIncomplete: coverage.incomplete, nextPayday };
+  const mainCard = s.accounts.find((a) => a.kind === "credit_card" && !a.archived) ?? null;
   for (const v of events) {
     if (v.duplicate || v.plannedCents <= 0 || v.event.decision === "skip") continue;
-    v.check = checkAffordability(ctx, {
-      amountCents: v.plannedCents,
-      date: v.event.date,
-      paymentAccountId: v.event.paymentAccountId,
-      reservedCents: v.advice?.capCents ?? 0,
-    });
+    const req = { amountCents: v.plannedCents, date: v.event.date, reservedCents: v.advice?.capCents ?? 0 };
+    const payCard = s.accounts.find((a) => a.id === v.event.paymentAccountId && a.kind === "credit_card") ?? null;
+    v.checkDebit = checkAffordability(ctx, { ...req, paymentAccountId: payCard ? null : v.event.paymentAccountId });
+    const card = payCard ?? mainCard;
+    v.creditCardId = card?.id ?? null;
+    v.checkCredit = card ? checkAffordability(ctx, { ...req, paymentAccountId: card.id }) : null;
+    v.check = payCard ? v.checkCredit : v.checkDebit;
   }
 
   const accounts = s.accounts.filter((a) => !a.archived);

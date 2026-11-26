@@ -568,7 +568,7 @@ export async function applyPlanOption(form: FormData) {
     return;
   }
 
-  let apply: { moves?: Array<{ fromAccountId: string; cents: number }>; date?: string; skipEventIds?: string[]; capCents?: number; newDate?: string } = {};
+  let apply: { moves?: Array<{ fromAccountId: string; cents: number }>; date?: string; skipEventIds?: string[]; capCents?: number; newDate?: string; paymentAccountId?: string | null } = {};
   try {
     apply = JSON.parse(String(form.get("apply") ?? "{}"));
   } catch {
@@ -580,7 +580,8 @@ export async function applyPlanOption(form: FormData) {
   // Savings moves land in the account that pays for it: the card's payment account, or your main cash account.
   if (apply.moves?.length) {
     const { data: accts } = await supabase.from("accounts").select("id, kind, is_spendable, payment_account_id, archived");
-    const pay = accts?.find((a) => a.id === ev.payment_account_id);
+    const payId = apply.paymentAccountId === undefined ? ev.payment_account_id : apply.paymentAccountId;
+    const pay = accts?.find((a) => a.id === payId);
     const target =
       (pay?.kind === "credit_card" ? accts?.find((a) => a.id === pay.payment_account_id) : pay?.is_spendable ? pay : null) ??
       accts?.find((a) => a.is_spendable && a.kind === "checking" && !a.archived) ??
@@ -612,6 +613,7 @@ export async function applyPlanOption(form: FormData) {
     patch.cap_cents = apply.capCents;
   }
   if (isDate(apply.newDate)) patch.date = apply.newDate;
+  if (apply.paymentAccountId === null || isId(apply.paymentAccountId)) patch.payment_account_id = apply.paymentAccountId;
   await supabase.from("calendar_events").update(patch).eq("id", eventId);
   await logDecision(supabase, "event", eventId, String(patch.decision), { title: ev.title, option: kind, via: "plan card" });
   revalidatePath("/app", "layout");

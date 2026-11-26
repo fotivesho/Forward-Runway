@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useContext } from "react";
-import { correctEvent, saveRule, saveTransaction, setEventDuplicate, updateBalance } from "@/app/app/actions";
+import { useContext, useState } from "react";
+import { applyPlanOption, correctEvent, saveRule, saveTransaction, setEventDuplicate, updateBalance } from "@/app/app/actions";
 import { formatShort, type ISODate } from "@/lib/dates";
 import type { Account } from "@/lib/engine";
 import type { EventView, Question } from "@/lib/view/dashboard";
@@ -120,14 +120,21 @@ export function QuickLog({ accounts, today }: { accounts: Account[]; today: ISOD
  * Tap to see the full answer and change it.
  */
 export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
-  const { event, estimate, advice, duplicate, check } = view;
+  const { event, estimate, advice, duplicate } = view;
+  const savedCredit = !!view.creditCardId && event.paymentAccountId === view.creditCardId;
+  const [credit, setCredit] = useState(savedCredit);
+  const check = view.checkCredit && credit ? view.checkCredit : (view.checkDebit ?? view.check);
+  const saved = view.check;
+  const other = credit ? view.checkDebit : view.checkCredit;
+  const rank = { yes: 0, yes_with_plan: 1, not_yet: 2 } as const;
+  const betterOther = other && check && rank[other.verdict] < rank[check.verdict];
   const needs = !duplicate && estimate.needsInput && event.capCents == null;
   const cents = check ? view.plannedCents : (advice?.capCents ?? estimate.cents);
   const badge = needs ? (
     <Badge tone="warn">Needs a cost</Badge>
-  ) : check && !advice?.userDecided ? (
-    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[check.verdict].badge}`}>
-      {LOOK[check.verdict].icon} {check.verdict === "yes" ? (check.headline === "Yes, it's already planned." ? "Covered" : "You're good") : check.verdict === "yes_with_plan" ? "Doable" : "Not yet"}
+  ) : saved && !advice?.userDecided ? (
+    <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs font-medium ${LOOK[saved.verdict].badge}`}>
+      {LOOK[saved.verdict].icon} {saved.verdict === "yes" ? (saved.headline === "Yes, it's already planned." ? "Covered" : "You're good") : saved.verdict === "yes_with_plan" ? "Doable" : "Not yet"}
     </span>
   ) : advice && !duplicate ? (
     <Badge tone={REC_TONE[advice.recommendation]}>{advice.userDecided ? "Your call: " : ""}{REC_LABEL[advice.recommendation]}</Badge>
@@ -136,7 +143,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   ) : null;
   return (
     <li className="list-none">
-      <details className={`group rounded-xl border border-l-4 border-line bg-surface-2/40 ${needs ? "border-l-info" : check ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[check.verdict] : "border-l-line"}`}>
+      <details className={`group rounded-xl border border-l-4 border-line bg-surface-2/40 ${needs ? "border-l-info" : saved ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[saved.verdict] : "border-l-line"}`}>
         <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium text-ink">{event.title}</span>
@@ -171,7 +178,36 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                 )}
                 {!check && advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
               </p>
-              {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} eventId={event.id} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
+              {check && view.checkCredit && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-medium text-muted">Pay with</span>
+                  <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Pay with">
+                    {[false, true].map((c) => (
+                      <button key={String(c)} type="button" onClick={() => setCredit(c)} aria-pressed={credit === c}
+                        className={`min-h-8 rounded-md px-3 text-xs font-semibold ${credit === c ? "bg-brand text-brand-ink" : "text-muted"}`}>
+                        {c ? "Credit" : "Debit"}
+                      </button>
+                    ))}
+                  </div>
+                  {betterOther && (
+                    <button type="button" onClick={() => setCredit(!credit)} className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${LOOK[other!.verdict].badge}`}>
+                      {LOOK[other!.verdict].icon} {other!.verdict === "yes" ? "You're good" : "Doable"} on {credit ? "debit" : "credit"}
+                    </button>
+                  )}
+                </div>
+              )}
+              {check ? (
+                <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} eventId={event.id} payWith={view.checkCredit ? (credit ? view.creditCardId : null) : undefined} />
+              ) : (
+                advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>
+              )}
+              {check && check.verdict === "yes" && view.checkCredit && credit !== savedCredit && (
+                <div className="mt-2 flex justify-end">
+                  <QuickAction action={applyPlanOption} fields={{ eventId: event.id, kind: "go", apply: JSON.stringify({ paymentAccountId: credit ? view.creditCardId : null }) }} variant="primary">
+                    Pay with {credit ? "credit" : "debit"}
+                  </QuickAction>
+                </div>
+              )}
               <div className="mt-2 flex justify-end">
                 <EditPlanButton view={view} />
               </div>

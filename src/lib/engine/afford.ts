@@ -40,6 +40,8 @@ export interface AffordAction {
     capCents?: Cents;
     /** Move it to this date. */
     newDate?: ISODate;
+    /** Pay with this account (a card: cash leaves on its statement due date). */
+    paymentAccountId?: string | null;
   };
 }
 

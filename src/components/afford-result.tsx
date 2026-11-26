@@ -276,7 +276,19 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
  * A plan's answer at a glance: a plain headline in the verdict's colour, one sentence of why,
  * and two numbers anyone can read: spending money left, and the lowest your balance gets.
  */
-export function PlanImpact({ check, reservedCents = 0, eventId }: { check: AffordCheck; reservedCents?: number; /** A saved plan: options get a "Do this" button. */ eventId?: string }) {
+export function PlanImpact({
+  check,
+  reservedCents = 0,
+  eventId,
+  payWith,
+}: {
+  check: AffordCheck;
+  reservedCents?: number;
+  /** A saved plan: options get a "Do this" button. */
+  eventId?: string;
+  /** The payment method shown; doing an option also saves it. */
+  payWith?: string | null;
+}) {
   const look = LOOK[check.verdict];
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
   const r = { ...check.room, before: check.room.before + reservedCents };
@@ -361,7 +373,7 @@ export function PlanImpact({ check, reservedCents = 0, eventId }: { check: Affor
                     {eventId && (x.apply || x.kind === "lean") && (
                       <QuickAction
                         action={applyPlanOption}
-                        fields={{ eventId, kind: x.kind, apply: JSON.stringify(x.apply ?? {}) }}
+                        fields={{ eventId, kind: x.kind, apply: JSON.stringify({ ...(x.apply ?? {}), ...(payWith !== undefined ? { paymentAccountId: payWith } : {}) }) }}
                         variant={i === 0 ? "primary" : "secondary"}
                         confirm={confirmText(x)}
                       >
