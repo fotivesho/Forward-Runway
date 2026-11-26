@@ -122,7 +122,7 @@ export function QuickLog({ accounts, today }: { accounts: Account[]; today: ISOD
 export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   const { event, estimate, advice, duplicate, check } = view;
   const needs = !duplicate && estimate.needsInput && event.capCents == null;
-  const cents = advice?.capCents ?? estimate.cents;
+  const cents = check ? view.plannedCents : (advice?.capCents ?? estimate.cents);
   const badge = needs ? (
     <Badge tone="warn">Needs a cost</Badge>
   ) : check && !advice?.userDecided ? (
@@ -165,11 +165,11 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                   <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">No cost yet</span>
                 ) : (
                   <>
-                    <span className="rounded-full bg-surface-3 px-2 py-0.5 text-ink">Cap <Money cents={advice?.capCents ?? 0} whole /></span>
+                    {(advice?.capCents ?? 0) > 0 && <span className="rounded-full bg-surface-3 px-2 py-0.5 text-ink">Cap <Money cents={advice!.capCents} whole /></span>}
                     <span className="rounded-full bg-surface-3 px-2 py-0.5 text-muted" title={estimate.basis}>{SOURCE_LABEL[estimate.source] ?? "Estimate"}</span>
                   </>
                 )}
-                {advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
+                {!check && advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
               </p>
               {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
               <div className="mt-2 flex justify-end">
