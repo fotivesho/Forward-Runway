@@ -246,6 +246,16 @@ function doableTitle(a: AffordCheck["action"]): string {
   }
 }
 
+/** The two ⓘ notes on a card bill: where "borrowed" comes from, and what "max" means. */
+export function billNotes(check: AffordCheck): { borrow: string; max: string } {
+  const r = check.room;
+  const c = check.card;
+  return {
+    borrow: `Your next pay period's everyday money covers it: ${dollars(r.borrowed || Math.max(0, (c?.withCents ?? 0) - (c?.capCents ?? 0)))} less to spend after ${formatShort(r.end)}, spread over the days.`,
+    max: `Max = your usual bill${c && c.typicalCents > 0 ? ` (with ~${dollars(c.typicalCents)} of everyday card spending, like groceries, until it closes ${formatShort(c.closes)})` : ""} + what's free in your ${span(r.start, r.end)} pay period after bills, savings and plans. Going right up to it uses that free money.`,
+  };
+}
+
 /** The answer in plain words: a short headline and one sentence of why, with the real numbers. */
 export function explain(check: AffordCheck, reservedCents = 0): { title: string; why: string } {
   const r = check.room;
@@ -327,7 +337,16 @@ export function PlanImpact({
       </p>
       <div className="mt-3 flex gap-3">
         {card ? (
-<BillRoom usualCents={card.usualCents} withCents={card.withCents} capCents={card.capCents} due={card.due} fits={check.verdict === "yes"} />
+<BillRoom
+            usualCents={card.usualCents}
+            withCents={card.withCents}
+            capCents={card.capCents}
+            due={card.due}
+            fits={check.verdict === "yes"}
+            borrowNote={billNotes(check).borrow}
+            maxNote={billNotes(check).max}
+            info={(label, text) => <Info label={label}>{text}</Info>}
+          />
         ) : (
           <Meter
             label="Spending money"

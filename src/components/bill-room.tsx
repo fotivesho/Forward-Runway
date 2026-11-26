@@ -39,6 +39,9 @@ export function BillRoom({
   fits,
   palette = APP_PALETTE,
   label = "Card bill",
+  borrowNote,
+  maxNote,
+  info,
 }: {
   usualCents: number;
   withCents: number;
@@ -48,6 +51,12 @@ export function BillRoom({
   fits: boolean;
   palette?: BillRoomPalette;
   label?: string;
+  /** Where "borrowed" comes from, behind ⓘ. */
+  borrowNote?: string;
+  /** What "max" means, behind ⓘ. */
+  maxNote?: string;
+  /** Renders an ⓘ bubble (the app and the landing page each have their own). */
+  info?: (label: string, text: string) => React.ReactNode;
 }) {
   const p = palette;
   const add = Math.max(0, withCents - usualCents);
@@ -63,7 +72,10 @@ export function BillRoom({
       <p className="text-[11px] font-bold" style={{ color: p.ink }}>{label} · {formatShort(due)}</p>
       <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
         <span className="font-num text-2xl leading-none" style={{ color }}>{room >= 0 ? usd(room) : borrowed ? usd(borrowed) : `−${usd(over)}`}</span>
-        <span className="text-[11px] font-semibold" style={{ color }}>{room >= 0 ? "room left" : borrowed ? "borrowed" : "over"}</span>
+        <span className="text-[11px] font-semibold" style={{ color }}>
+          {room >= 0 ? "room left" : borrowed ? "from next pay" : "over"}
+          {borrowed > 0 && borrowNote && info?.("Where it comes from", borrowNote)}
+        </span>
       </p>
       <div className="relative mt-2.5 h-2 rounded-full" style={{ background: p.track }} aria-hidden>
         <span className="absolute inset-y-0 left-0 rounded-l-full" style={{ width: pct(Math.min(usualCents, capCents)), background: p.usual }} />
@@ -79,6 +91,7 @@ export function BillRoom({
       </div>
       <p className="mt-1.5 text-[10px] leading-tight" style={{ color: p.muted }}>
         Bill {usd(withCents)} · max {usd(capCents)}
+        {maxNote && info?.("What max means", maxNote)}
       </p>
     </div>
   );

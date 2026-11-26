@@ -18,7 +18,7 @@ describe("previewing an option", () => {
         const p = previewOption(ctx, req, o);
         if (!p) continue;
         expect(rank[p.verdict]).toBeLessThanOrEqual(rank[base.verdict]);
-        if (o.kind === "move" || o.kind === "cheaper") expect(p.verdict).toBe("yes");
+        if (o.kind === "move" || o.kind === "cheaper" || o.kind === "skip_plan") expect(p.verdict).toBe("yes");
       }
     }
   });

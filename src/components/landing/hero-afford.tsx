@@ -9,7 +9,7 @@ import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import type { LandingData } from "@/lib/view/landing";
 import { Glyph } from "@/components/icon";
 import { BillRoom } from "@/components/bill-room";
-import { explain } from "../afford-result";
+import { billNotes, explain } from "../afford-result";
 import { useCountUp } from "./motion";
 
 const OPTIONS = [
@@ -220,6 +220,9 @@ export function HeroAfford({
                     due={bill.due}
                     fits={shown.verdict === "yes"}
                     palette={{ ink: C.body, muted: C.muted, good: C.good, warn: "#b07d0a", bad: C.bad, track: "#ebe4d2", usual: "#a9b8ac", box: "#ffffff" }}
+                    borrowNote={billNotes(shown).borrow}
+                    maxNote={billNotes(shown).max}
+                    info={(label, text) => <InfoDot label={label}>{text}</InfoDot>}
                   />
                 ) : (
                   <Meter

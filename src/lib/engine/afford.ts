@@ -36,6 +36,8 @@ export interface AffordAction {
     date?: ISODate;
     /** Other plans to skip. */
     skipEventIds?: string[];
+    /** What skipping them frees (their caps), so a preview adds exactly that back. */
+    freesCents?: Cents;
     /** Spend at most this on it. */
     capCents?: Cents;
     /** Move it to this date. */
@@ -290,10 +292,10 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     const single = cuttable.find((x) => x.a.capCents >= shortfall);
     const pair = !single && cuttable.length >= 2 ? cuttable.slice(-2) : null;
     if (single) {
-      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.`, apply: { skipEventIds: [single.e.id] } });
+      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.`, apply: { skipEventIds: [single.e.id], freesCents: single.a.capCents } });
     } else if (pair && pair[0]!.a.capCents + pair[1]!.a.capCents >= shortfall) {
       const freed = pair[0]!.a.capCents + pair[1]!.a.capCents;
-      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.`, apply: { skipEventIds: [pair[0]!.e.id, pair[1]!.e.id] } });
+      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.`, apply: { skipEventIds: [pair[0]!.e.id, pair[1]!.e.id], freesCents: freed } });
     } else if (cuttable.length && savingsCovers) {
       // Not enough on its own: skip the biggest plan and cover the rest from savings (a smaller move).
       const biggest = cuttable[cuttable.length - 1]!;
@@ -303,7 +305,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
         rank: 3.5,
         title: `Skip ${biggest.e.title} and move ${money(rest)}`,
         detail: `Skipping it frees ${money(biggest.a.capCents)}, so less comes from savings: ${rebuildText(rest)}.`,
-        apply: { skipEventIds: [biggest.e.id], moves: movesFor(rest), date: cash.date },
+        apply: { skipEventIds: [biggest.e.id], freesCents: biggest.a.capCents, moves: movesFor(rest), date: cash.date },
       });
     }
 
@@ -359,20 +361,22 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
 export function previewOption(ctx: AffordContext, req: AffordRequest, option: AffordAction): AffordCheck | null {
   const a = option.apply;
   if (!a) return null;
-  let events = ctx.events;
   const r: AffordRequest = { ...req };
-  if (a.skipEventIds?.length) events = events.filter((e) => !a.skipEventIds!.includes(e.id));
   if (a.capCents != null) r.amountCents = Math.min(r.amountCents, a.capCents);
   if (a.newDate) r.date = a.newDate;
   if (a.paymentAccountId !== undefined) r.paymentAccountId = a.paymentAccountId;
+  // Skipping a plan frees exactly its cap. (Re-running the whole plan would hand that money to
+  // other plans' caps instead, which isn't what the option says.)
+  const events = a.skipEventIds?.length && a.freesCents == null ? ctx.events.filter((e) => !a.skipEventIds!.includes(e.id)) : ctx.events;
   const c = checkAffordability({ ...ctx, events }, r);
   const moved = (a.moves ?? []).reduce((t, m) => t + m.cents, 0);
-  if (!moved) return c;
-  // Savings moved in land exactly where they're needed: this pay period, or the card bill.
-  const shortfall = Math.max(0, c.room.shortfall - moved);
-  const room = { ...c.room, after: c.room.after + Math.max(0, moved - c.room.shortfall), shortfall };
-  const card = c.card ? { ...c.card, capCents: c.card.capCents + moved } : null;
-  const lowest = { ...c.lowest, after: { ...c.lowest.after, cents: c.lowest.after.cents + moved } };
+  const extra = moved + (a.skipEventIds?.length ? (a.freesCents ?? 0) : 0);
+  if (!extra) return c;
+  // The extra money lands exactly where it's needed: this pay period, or the card bill.
+  const shortfall = Math.max(0, c.room.shortfall - extra);
+  const room = { ...c.room, after: c.room.after + Math.max(0, extra - c.room.shortfall), shortfall };
+  const card = c.card ? { ...c.card, capCents: c.card.capCents + extra } : null;
+  const lowest = { ...c.lowest, after: { ...c.lowest.after, cents: c.lowest.after.cents + extra } };
   const fits = shortfall === 0 && (!card || card.withCents <= card.capCents) && lowest.after.cents >= c.floorCents;
   return { ...c, room, card, lowest, verdict: fits ? "yes" : c.verdict };
 }
