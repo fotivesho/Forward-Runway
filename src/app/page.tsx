@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
 import { Logo } from "@/components/logo";
-import { AffordIt } from "@/components/landing/afford-it";
-import { HeroCard } from "@/components/landing/hero-card";
+import { HeroAfford } from "@/components/landing/hero-afford";
 import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
 import { SnapshotTiles } from "@/components/snapshot";
@@ -60,7 +59,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
             </p>
           </div>
           <div className="fade-up lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-center" style={{ animationDelay: "200ms" }}>
-            <HeroCard hero={d.hero} />
+            <HeroAfford hero={d.hero} snapshot={d.snapshot} today={d.today} events={d.afford.events} calendarIncomplete={d.afford.calendarIncomplete} />
           </div>
           <div className="fade-up lg:col-start-1 lg:row-start-2 lg:self-start" style={{ animationDelay: "360ms" }}>
             <div className="flex flex-wrap items-center gap-3">
@@ -78,19 +77,25 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       </div>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {/* ---------------------------------------------- the short why */}
-        <section className="reveal py-14 sm:py-20" aria-label="What your balance doesn't show">
-          <SpokenFor data={d.spokenFor} />
-        </section>
-
-        {/* ---------------------------------------------- the proof */}
-        <section className="scroll-mt-4 pb-16 sm:pb-24" aria-labelledby="afford-title">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Try it right here</p>
-          <h2 id="afford-title" className="font-display mt-1 max-w-3xl scroll-mt-12 sm:scroll-mt-6 text-3xl leading-tight text-ink sm:mt-2 sm:text-5xl">Can I afford it?</h2>
-          <p className="mt-1 hidden max-w-2xl text-sm text-muted sm:mt-3 sm:block sm:text-lg">Pick something and watch today's number, your lowest point, and what to do about it.</p>
-          <div className="mt-3 sm:mt-8">
-            <AffordIt snapshot={d.snapshot} today={d.today} nextPayday={d.hero.nextPayday} events={d.afford.events} calendarIncomplete={d.afford.calendarIncomplete} />
-          </div>
+        {/* ---------------------------------------------- connect once */}
+        <section className="reveal py-14 sm:py-20" aria-labelledby="once-title">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
+          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-ink sm:text-6xl">Connect once. That's it.</h2>
+          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
+          <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
+            {[
+              { g: "bank", t: "Your bank and cards", b: "Balances, purchases and statements flow in. Read-only, through Plaid: your login never reaches us and nothing can move your money." },
+              { g: "plan", t: "Your calendars", b: "Google, iCloud or Outlook, shared ones too. Every plan gets a price and a verdict." },
+              { g: "💸", t: "Then it just runs", b: "Every morning: what's safe today, what's coming, and what your habits say you'll spend. Ask “can I afford it?” anytime." },
+            ].map((x, i) => (
+              <li key={x.t} className="relative rounded-2xl border border-line bg-surface p-5">
+                <span className="absolute right-4 top-4 font-display text-3xl leading-none text-brand/30">{i + 1}</span>
+                <Glyph name={x.g} size="lg" />
+                <span className="mt-3 block text-lg font-bold text-ink">{x.t}</span>
+                <span className="mt-1 block text-sm text-muted">{x.b}</span>
+              </li>
+            ))}
+          </ol>
         </section>
 
         {/* ---------------------------------------------- it learns your life */}
@@ -159,27 +164,6 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               })()}
             </article>
           </div>
-        </section>
-
-        {/* ---------------------------------------------- connect once */}
-        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="once-title">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
-          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-ink sm:text-6xl">Connect once. That's it.</h2>
-          <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
-          <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
-            {[
-              { g: "bank", t: "Your bank and cards", b: "Balances, purchases and statements flow in. Read-only, through Plaid: your login never reaches us and nothing can move your money." },
-              { g: "plan", t: "Your calendars", b: "Google, iCloud or Outlook, shared ones too. Every plan gets a price and a verdict." },
-              { g: "💸", t: "Then it just runs", b: "Every morning: what's safe today, what's coming, and what your habits say you'll spend. Ask “can I afford it?” anytime." },
-            ].map((x, i) => (
-              <li key={x.t} className="relative rounded-2xl border border-line bg-surface p-5">
-                <span className="absolute right-4 top-4 font-display text-3xl leading-none text-brand/30">{i + 1}</span>
-                <Glyph name={x.g} size="lg" />
-                <span className="mt-3 block text-lg font-bold text-ink">{x.t}</span>
-                <span className="mt-1 block text-sm text-muted">{x.b}</span>
-              </li>
-            ))}
-          </ol>
         </section>
 
         {/* ---------------------------------------------- supporting proof, compact */}
@@ -252,6 +236,11 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <li key={t} className="rounded-full border border-line px-3 py-1">{t}</li>
             ))}
           </ul>
+        </section>
+
+        {/* ---------------------------------------------- the short why */}
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-label="What your balance doesn't show">
+          <SpokenFor data={d.spokenFor} />
         </section>
 
         {/* ---------------------------------------------- privacy, slim */}

@@ -46,21 +46,26 @@ export function useInView<T extends Element>(threshold = 0.3) {
   return { ref, inView };
 }
 
-/** Animates a number from 0 to `to` once `start` is true. */
+/** Animates a number from 0 to `to` once `start` is true, then from wherever it is to each new `to`. */
 export function useCountUp(to: number, start: boolean, ms = 1400) {
   const [v, setV] = useState(0);
+  const cur = useRef(0);
   useEffect(() => {
     if (!start) return;
     if (reducedMotion()) {
       setV(to);
+      cur.current = to;
       return;
     }
     let raf = 0;
+    const from = cur.current;
     const t0 = performance.now();
     const tick = (t: number) => {
       const p = Math.min(1, (t - t0) / ms);
       const eased = 1 - Math.pow(1 - p, 3);
-      setV(Math.round(to * eased));
+      const next = Math.round(from + (to - from) * eased);
+      cur.current = next;
+      setV(next);
       if (p < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
