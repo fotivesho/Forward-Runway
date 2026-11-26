@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { formatCents } from "@/lib/money";
 import { addDays, dayOfWeek, formatShort, type ISODate } from "@/lib/dates";
 import { checkAffordability, previewOption, type AffordAction, type AffordCheck, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import type { LandingData } from "@/lib/view/landing";
 import { Glyph } from "@/components/icon";
+import { Info } from "@/components/info";
 import { BillRoom } from "@/components/bill-room";
 import { billNotes, explain } from "../afford-result";
 import { useCountUp } from "./motion";
@@ -51,27 +52,7 @@ function Meter({ label, when, before, after, limit, sub, tone }: { label: string
 
 /** A thin ⓘ that opens a small bubble, colors fixed for the cream card. */
 function InfoDot({ children, label }: { children: React.ReactNode; label: string }) {
-  const [open, setOpen] = useState(false);
-  const [top, setTop] = useState(0);
-  return (
-    <span className="relative inline-flex align-middle">
-      <button
-        type="button"
-        aria-label={label}
-        aria-expanded={open}
-        onClick={(e) => { e.stopPropagation(); setTop((e.currentTarget as HTMLElement).getBoundingClientRect().bottom + 8); setOpen((o) => !o); }}
-        className="ml-1.5 inline-flex h-[15px] w-[15px] items-center justify-center rounded-full border font-serif text-[10px] italic leading-none"
-        style={{ borderColor: "#4f645580", color: C.muted }}
-      >
-        i
-      </button>
-      {open && (
-        <span role="note" onClick={() => setOpen(false)} className="fixed inset-x-6 z-50 mx-auto max-w-sm rounded-xl p-3 text-xs font-normal leading-snug shadow-xl" style={{ top, background: "#1f4531", color: "#f1e9cf" }}>
-          {children}
-        </span>
-      )}
-    </span>
-  );
+  return <Info label={label} color={C.muted} className="ml-0.5">{children}</Info>;
 }
 
 /**
@@ -98,6 +79,13 @@ export function HeroAfford({
   const [date, setDate] = useState<ISODate>(today);
   const [credit, setCredit] = useState(false);
   const [trying, setTrying] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  // After a pick, bring the whole card into view so the answer, numbers and options all fit.
+  useEffect(() => {
+    if (pick == null || !cardRef.current) return;
+    const t = setTimeout(() => cardRef.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" }), 60);
+    return () => clearTimeout(t);
+  }, [pick]);
   const cents = pick == null ? 0 : OPTIONS[pick]!.cents;
   const run = (d: ISODate, cc: boolean) => checkAffordability(ctx, { amountCents: cents, date: d, paymentAccountId: cc && card ? card.id : null });
   const check: AffordCheck | null = useMemo(() => (pick == null ? null : run(date, credit)), [pick, date, credit, ctx]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -146,7 +134,8 @@ export function HeroAfford({
 
   return (
     <div
-      className="glow relative mx-auto w-full max-w-md overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl"
+      ref={cardRef}
+      className="glow relative mx-auto w-full max-w-md scroll-mt-3 overflow-hidden rounded-[2rem] border border-white/10 shadow-2xl"
       style={{ color: C.body, background: "linear-gradient(180deg,#fbf7ec 0%,#f1efe2 55%,#e9efe0 100%)" }}
       role="group"
       aria-label="Try it: can I afford it? Sample data"

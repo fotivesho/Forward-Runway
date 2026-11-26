@@ -281,3 +281,14 @@ select.input {
 @media (prefers-reduced-motion: reduce) {
   .fr-modal[open], .fr-modal[open]::backdrop { animation: none; }
 }
+
+/* ⓘ bubbles: a soft, neutral grey card in light mode, a quiet charcoal in dark. */
+.info-bubble { animation: fr-fade-up 180ms ease both; background: #f0f0ee; color: #2b2f2c; border: 1px solid rgb(0 0 0 / 0.06); }
+.info-bubble-x { color: #5c625e; background: rgb(0 0 0 / 0.05); }
+.info-bubble-x:hover { background: rgb(0 0 0 / 0.1); color: #2b2f2c; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .info-bubble { background: #2c302d; color: #ecebe6; border-color: rgb(255 255 255 / 0.08); }
+  :root:not([data-theme="light"]) .info-bubble-x { color: #c9cbc6; background: rgb(255 255 255 / 0.08); }
+}
+:root[data-theme="dark"] .info-bubble { background: #2c302d; color: #ecebe6; border-color: rgb(255 255 255 / 0.08); }
+:root[data-theme="dark"] .info-bubble-x { color: #c9cbc6; background: rgb(255 255 255 / 0.08); }

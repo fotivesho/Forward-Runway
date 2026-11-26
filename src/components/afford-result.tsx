@@ -252,7 +252,7 @@ export function billNotes(check: AffordCheck): { borrow: string; max: string } {
   const c = check.card;
   return {
     borrow: `Your next pay period's everyday money covers it: ${dollars(r.borrowed || Math.max(0, (c?.withCents ?? 0) - (c?.capCents ?? 0)))} less to spend after ${formatShort(r.end)}, spread over the days.`,
-    max: `Max = your usual bill${c && c.typicalCents > 0 ? ` (with ~${dollars(c.typicalCents)} of everyday card spending, like groceries, until it closes ${formatShort(c.closes)})` : ""} + what's free in your ${span(r.start, r.end)} pay period after bills, savings and plans. Going right up to it uses that free money.`,
+    max: `Max = your usual bill (everyday card spending like groceries already in it${c && c.typicalCents > 0 ? `, ~${dollars(c.typicalCents)} until it closes ${formatShort(c.closes)}` : ""}) + what's free in your ${span(r.start, r.end)} pay period after bills, savings and plans. Anything extra simply lowers that period's daily caps; you'll see it there.`,
   };
 }
 
