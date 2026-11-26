@@ -8,6 +8,7 @@ export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
   const path = usePathname();
   const tabs = [
     { href: `${base}/spend`, label: "Overview" },
+    { href: `${base}/spend/transactions`, label: "Activity" },
     { href: `${base}/spend/budget`, label: "Budget" },
     { href: `${base}/spend/patterns`, label: "Patterns" },
     { href: `${base}/spend/reports`, label: "Reports" },
@@ -21,7 +22,7 @@ export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
             key={t.href}
             href={t.href}
             aria-current={active ? "page" : undefined}
-            className={`flex min-h-10 flex-1 items-center justify-center rounded-lg text-sm font-medium transition ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`}
+            className={`flex min-h-10 flex-1 items-center justify-center rounded-lg px-1 text-[13px] font-medium sm:text-sm transition ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`}
           >
             {t.label}
           </Link>

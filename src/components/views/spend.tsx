@@ -1,7 +1,6 @@
 import { QuickAction } from "@/components/form";
 import { Money } from "@/components/privacy";
 import { AddButton, RecurringTiles, type RuleTile } from "@/components/spend-modals";
-import { CashFlowCard } from "@/components/spend-insights";
 import { TransactionList } from "@/components/transaction-list";
 import { MoneyTabs } from "@/components/money-tabs";
 import { isNotSpending } from "@/lib/categories";
@@ -11,7 +10,7 @@ import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { addDays, formatShort, startOfMonth } from "@/lib/dates";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
-import { cashFlow, categoryHistory, monthBuckets, payPeriodBuckets, weekBuckets } from "@/lib/view/spend";
+import { cashFlow, categoryHistory, monthBuckets, weekBuckets } from "@/lib/view/spend";
 import { deleteTransfer } from "@/app/app/actions";
 
 const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
@@ -21,7 +20,7 @@ const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
 ];
 
 /** Spend: what repeats (tiles), cash flow, then every transaction with its category. Edits open in pop-ups. */
-export function SpendView({ snapshot, today, demo = false }: ViewProps) {
+export function SpendView({ snapshot, today, demo = false, section = "overview" }: ViewProps & { section?: "overview" | "transactions" }) {
   const accountName = (id?: string | null) => snapshot.accounts.find((a) => a.id === id)?.name ?? "—";
   const accounts = snapshot.accounts;
   const hasAccounts = accounts.some((a) => !a.archived);
@@ -49,7 +48,6 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
 
   // Insights, computed on the server from your own data.
   const months = monthBuckets(today);
-  const periods = payPeriodBuckets(snapshot, today);
   const weeks = weekBuckets(today);
   const categories = [...new Set(snapshot.transactions.filter((t) => t.direction === "out").map((t) => t.category ?? "Other"))];
   // Your categories, most used first (for the category picker).
@@ -70,7 +68,12 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
 
   return (
     <>
-      <PageHeader title="Money" subtitle="Your money in and out. At the top: things that repeat, like paychecks, rent and subscriptions. Below: every purchase and payment. Tap any of them to change its category or details." />
+      <PageHeader
+        title="Money"
+        subtitle={section === "overview"
+          ? "This month at a glance, and everything that repeats: paychecks, rent, subscriptions, savings transfers. Tap any of them to change it."
+          : "Every purchase, payment and transfer. Tap one to change its name or category, or to make it repeating."}
+      />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <ul className="grid grid-cols-3 gap-2 sm:gap-3">
@@ -79,6 +82,7 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
           <Summary label="Net this month" value={<Money cents={thisMonth.inCents - thisMonth.outCents} whole sign tone="auto" />} />
         </ul>
 
+        {section === "overview" && (<>
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
           {!hasAccounts && <EmptyState title="Add an account first">Repeating items need an account to come from or go to.</EmptyState>}
           <RecurringSuggestions suggestions={suggestions} accounts={accounts} today={today} />
@@ -96,8 +100,9 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
           </div>
         </Card>
 
-        <CashFlowCard months={flowMonths} periods={periods ? cashFlow(snapshot, today, periods) : null} />
+        </>)}
 
+        {section === "transactions" && (<>
         <Card title="Transactions" action={hasAccounts ? <AddButton what="transaction" accounts={accounts} today={today} /> : undefined}>
           <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} categories={yourCategories} />
         </Card>
@@ -116,6 +121,7 @@ export function SpendView({ snapshot, today, demo = false }: ViewProps) {
             </ul>
           )}
         </Card>
+        </>)}
       </div>
     </>
   );
