@@ -6,8 +6,21 @@ import { isThemePref, THEME_COLOR, THEME_COOKIE } from "@/lib/theme";
 import { APP_NAME, APP_SHORT_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: `%s · ${APP_NAME}` },
-  description: "See what's coming up, what you can safely spend today, and keep bills, cards and savings on track.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://runwaytomorrow.com"),
+  title: { default: `${APP_NAME} · Budgets look back. Runway looks ahead.`, template: `%s · ${APP_NAME}` },
+  description: "Your plans and your habits, turned into a budget for the month ahead. Know what's safe to spend, before you spend it. Free beta.",
+  openGraph: {
+    type: "website",
+    siteName: APP_NAME,
+    title: "Budgets look back. Runway looks ahead.",
+    description: "Your plans and your habits, turned into a budget for the month ahead. Know what's safe to spend, before you spend it. Free beta.",
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Budgets look back. Runway looks ahead.",
+    description: "Your plans and your habits, turned into a budget for the month ahead. Free beta.",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

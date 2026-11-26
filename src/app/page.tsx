@@ -4,6 +4,8 @@ import { Logo } from "@/components/logo";
 import { HeroAfford } from "@/components/landing/hero-afford";
 import { StickyDemo } from "@/components/landing/showcase";
 import { Story } from "@/components/landing/story";
+import { Ask } from "@/components/landing/ask";
+import { UpdatesForm } from "@/components/landing/updates-form";
 import { RevealRoot } from "@/components/landing/motion";
 import { APP_NAME, APP_TAGLINE } from "@/lib/brand";
 import { todayInZone } from "@/lib/dates";
@@ -58,6 +60,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
               <Link href="/login?mode=signup" className={`${SECONDARY} justify-center px-3 sm:px-6`}>Sign up free</Link>
             </div>
             <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[#b9cbb4] sm:text-sm">
+              <span className="rounded-full bg-[#ddefbf]/15 px-2 py-0.5 font-semibold text-[#ddefbf]">Free beta</span>
               <span className="font-semibold text-[#ddefbf]">Connect once. That&apos;s it.</span>
               <span className="flex items-center gap-1"><Glyph name="bank" size="xs" bare /> Bank</span>
               <span className="flex items-center gap-1"><Glyph name="card" size="xs" bare /> Cards</span>
@@ -97,22 +100,11 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </ol>
         </section>
 
-        {/* ---------------------------------------------- privacy, slim */}
-        <section className="reveal border-t border-line py-12 sm:py-16" aria-labelledby="priv-title">
-          <h2 id="priv-title" className="text-sm font-bold uppercase tracking-[0.16em] text-brand">Private by design</h2>
-          <ul className="mt-4 grid grid-cols-[minmax(0,1fr)] gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              ["lock", "Only you see your data", "The database itself enforces it."],
-              ["bank", "Read-only bank access", "Through Plaid. Nothing can move your money."],
-              ["📊", "Every number explained", "Plain math, assumptions listed."],
-              ["⚙", "Export or delete anytime", "Right from Settings."],
-            ].map(([g, t, b]) => (
-              <li key={t} className="flex gap-3">
-                <Glyph name={g} size="md" />
-                <span><span className="block font-bold text-ink">{t}</span><span className="text-muted">{b}</span></span>
-              </li>
-            ))}
-          </ul>
+        {/* ---------------------------------------------- questions, answered like a chat */}
+        <section className="reveal border-t border-line py-12 sm:py-16" aria-labelledby="ask-title">
+          <h2 id="ask-title" className="font-display text-center text-3xl leading-tight text-display sm:text-4xl">Good questions.</h2>
+          <p className="mt-2 text-center text-sm text-muted">Tap one.</p>
+          <div className="mt-6"><Ask /></div>
         </section>
       </div>
 
@@ -120,11 +112,12 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       <section className="brand-band" aria-labelledby="cta-title">
         <div className="reveal mx-auto max-w-6xl px-4 py-16 text-center sm:px-6 sm:py-24">
           <h2 id="cta-title" className="font-display text-5xl leading-tight sm:text-6xl">Clear for takeoff.</h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Connect once, and every morning you'll know what's safe to spend. Or try it first with sample money.</p>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Free while in beta. Connect once, and every morning you&apos;ll know what&apos;s safe to spend.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/login?mode=signup" className={PRIMARY}>Create your runway →</Link>
             <Link href="/demo/calendar?add=1" className={SECONDARY}>See it with sample money</Link>
           </div>
+          <div className="mt-10"><UpdatesForm /></div>
         </div>
         <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-6 text-xs text-[#b9cbb4] sm:px-6">
           <span>© {now.getFullYear()} {APP_NAME}. Examples on this page use made-up sample data.</span>
