@@ -1,79 +1,146 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
-type Place = { top?: number; bottom?: number };
+type Place = { top?: number; bottom?: number; originX: number; maxHeight?: number };
 
-/** Where the bubble goes: just under the ⓘ, or just above it when that's near the bottom of the screen. */
-function placeFor(el: HTMLElement): Place {
+/**
+ * Under the ⓘ if it fits, otherwise above it; if neither fits, the roomier side with its own scroll.
+ * The animation grows from the ⓘ.
+ */
+function placeFor(el: HTMLElement, height = 160): Place {
   const r = el.getBoundingClientRect();
   const h = window.innerHeight;
-  return r.bottom + 220 > h ? { bottom: Math.max(12, h - r.top + 8) } : { top: r.bottom + 8 };
+  const w = Math.min(320, window.innerWidth - 40);
+  const left = (window.innerWidth - w) / 2;
+  const originX = Math.max(12, Math.min(w - 12, r.left + r.width / 2 - left));
+  const below = h - r.bottom - 22;
+  const above = r.top - 22;
+  if (height <= below) return { top: r.bottom + 10, originX };
+  if (height <= above) return { bottom: h - r.top + 10, originX };
+  return below >= above ? { top: r.bottom + 10, originX, maxHeight: below } : { bottom: h - r.top + 10, originX, maxHeight: above };
 }
 
 /**
- * The bubble itself: a soft grey card, on screen, with a title and a small ×. Tap outside, press
- * Escape or tap × to close. The same look on every screen (and on the landing page).
+ * The bubble: frosted glass, rendered on top of the page (a portal), so nothing can clip it or
+ * push it off screen. Grows softly from the ⓘ; fades out on close.
  */
-export function InfoBubble({ id, label, place, onClose, children }: { id?: string; label: string; place: Place; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <span
+export function InfoBubble({ id, label, place, closing, onClose, children, bubbleRef }: {
+  id?: string;
+  label: string;
+  place: Place;
+  closing?: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+  bubbleRef?: React.Ref<HTMLDivElement>;
+}) {
+  return createPortal(
+    <div
+      ref={bubbleRef}
       id={id}
       role="dialog"
       aria-label={label}
-      style={place}
-      onClick={(e) => e.stopPropagation()}
-      className="info-bubble fixed inset-x-5 z-[60] mx-auto block max-w-xs rounded-[20px] px-4 py-3 pr-10 text-left text-[13px] font-normal normal-case leading-relaxed tracking-normal"
+      data-state={closing ? "closed" : "open"}
+      style={{ top: place.top, bottom: place.bottom, maxHeight: place.maxHeight, overflowY: place.maxHeight ? "auto" : undefined, transformOrigin: `${place.originX}px ${place.top != null ? "0%" : "100%"}`, ["--info-dy" as string]: place.top != null ? "-6px" : "6px" }}
+      className="info-bubble fixed inset-x-0 z-[70] mx-auto w-[min(320px,calc(100vw-40px))] rounded-[22px] px-4 py-3 pr-10 text-left text-[13px] font-normal normal-case leading-relaxed tracking-normal"
     >
-      <span className="info-bubble-title mb-1 block text-[10px] font-semibold">{label}</span>
-      {children}
+      <span className="info-bubble-title mb-0.5 block text-[10px] font-semibold">{label}</span>
+      <span className="block">{children}</span>
       <button type="button" onClick={onClose} aria-label="Close" className="info-bubble-x absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full transition">
         <X size={12} strokeWidth={2.2} aria-hidden />
       </button>
-    </span>
+    </div>,
+    document.body,
   );
 }
 
-/** A thin ⓘ that opens the bubble. `color` overrides the ring/letter color (e.g. on the always-cream landing card). */
+/**
+ * A thin ⓘ that opens the bubble. It's a span with role="button", not a <button>: it works inside
+ * labels and read-only (disabled) forms without toggling or submitting anything.
+ * `color` sets the ⓘ color where the theme doesn't apply (the always-cream landing card).
+ */
 export function Info({ children, label = "More info", className = "", color }: { children: React.ReactNode; label?: string; className?: string; color?: string }) {
   const [place, setPlace] = useState<Place | null>(null);
+  const [closing, setClosing] = useState(false);
   const id = useId();
-  const ref = useRef<HTMLSpanElement>(null);
+  const trigger = useRef<HTMLSpanElement>(null);
+  const bubble = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => {
+    setClosing(true);
+    window.setTimeout(() => {
+      setPlace(null);
+      setClosing(false);
+    }, 140);
+  }, []);
+  const toggle = () => {
+    if (place && !closing) return close();
+    if (trigger.current) {
+      setClosing(false);
+      setPlace(placeFor(trigger.current));
+    }
+  };
+
   useEffect(() => {
-    if (!place) return;
-    const close = (e: MouseEvent | KeyboardEvent) => {
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !ref.current?.contains(e.target as Node)) setPlace(null);
+    if (!place || closing) return;
+    const outside = (e: PointerEvent) => {
+      const t = e.target as Node;
+      if (!bubble.current?.contains(t) && !trigger.current?.contains(t)) close();
     };
-    const away = () => setPlace(null);
-    document.addEventListener("mousedown", close);
-    document.addEventListener("keydown", close);
-    window.addEventListener("scroll", away, { passive: true });
+    const key = (e: KeyboardEvent) => e.key === "Escape" && close();
+    // Only a real scroll closes it (phones nudge the page a few pixels on tap).
+    const y0 = window.scrollY;
+    const scroll = () => Math.abs(window.scrollY - y0) > 80 && close();
+    document.addEventListener("pointerdown", outside, true);
+    document.addEventListener("keydown", key);
+    window.addEventListener("scroll", scroll, { passive: true });
     return () => {
-      document.removeEventListener("mousedown", close);
-      document.removeEventListener("keydown", close);
-      window.removeEventListener("scroll", away);
+      document.removeEventListener("pointerdown", outside, true);
+      document.removeEventListener("keydown", key);
+      window.removeEventListener("scroll", scroll);
     };
-  }, [place]);
+  }, [place, closing, close]);
+
+  // Once it's on screen, measure it and settle on the side where it fits (before the first paint).
+  useLayoutEffect(() => {
+    if (place && !closing && trigger.current && bubble.current) {
+      const p = placeFor(trigger.current, bubble.current.scrollHeight);
+      if (p.top !== place.top || p.bottom !== place.bottom || p.maxHeight !== place.maxHeight) setPlace(p);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [place != null]);
+
   return (
-    <span ref={ref} className={`relative inline-flex align-middle ${className}`}>
-      <button
-        type="button"
+    <span className={`relative inline-flex align-middle ${className}`}>
+      <span
+        ref={trigger}
+        role="button"
+        tabIndex={0}
         aria-label={label}
-        aria-expanded={!!place}
-        aria-controls={id}
+        aria-expanded={!!place && !closing}
+        aria-controls={place ? id : undefined}
         onClick={(e) => {
+          // Don't let a surrounding label, link or card act on this tap.
           e.preventDefault();
           e.stopPropagation();
-          setPlace((p) => (p ? null : placeFor(e.currentTarget as HTMLElement)));
+          toggle();
         }}
-        className={`info-dot relative ml-1 inline-flex h-[14px] w-[14px] items-center justify-center rounded-full font-serif text-[9px] italic leading-none transition hover:opacity-100 before:absolute before:-inset-2 before:content-[''] ${color ? "opacity-80" : "text-faint opacity-80"}`}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            e.stopPropagation();
+            toggle();
+          }
+        }}
+        className={`info-dot relative ml-1 inline-flex h-[14px] w-[14px] cursor-pointer select-none items-center justify-center rounded-full font-serif text-[9px] italic leading-none transition-[transform,opacity] duration-150 active:scale-90 before:absolute before:-inset-2.5 before:content-[''] ${place && !closing ? "opacity-100" : "opacity-75 hover:opacity-100"} ${color ? "" : "text-faint"}`}
         style={color ? { color } : undefined}
       >
         i
-      </button>
+      </span>
       {place && (
-        <InfoBubble id={id} label={label} place={place} onClose={() => setPlace(null)}>
+        <InfoBubble bubbleRef={bubble} id={id} label={label} place={place} closing={closing} onClose={close}>
           {children}
         </InfoBubble>
       )}

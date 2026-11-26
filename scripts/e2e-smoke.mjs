@@ -115,6 +115,21 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/patterns", "/d
   check(res.status >= 300 && res.status < 400 && /\/login\?mode=reset/.test(res.headers.get("location") ?? ""), "/auth/confirm handles a bad reset link");
 }
 
+// ⓘ bubbles open on screen, even inside read-only demo forms, and close with ×
+{
+  const { page, errors } = await visit("/demo/settings", 390);
+  const dot = page.locator(".info-dot").first();
+  await dot.scrollIntoViewIfNeeded();
+  await dot.click();
+  await page.waitForTimeout(350);
+  const box = await page.locator(".info-bubble").first().boundingBox();
+  check(!!box && box.y >= 0 && box.y + box.height <= 900, "an ⓘ opens a bubble on screen inside a read-only form");
+  await page.getByRole("button", { name: "Close" }).click();
+  await page.waitForTimeout(300);
+  check((await page.locator(".info-bubble").count()) === 0 && errors.length === 0, "the bubble closes with ×");
+  await page.close();
+}
+
 // From the landing page: the demo opens on Plans with "Add a plan" ready to try
 {
   const { page, errors } = await visit("/demo/calendar?add=1", 390);
