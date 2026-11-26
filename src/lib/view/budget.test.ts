@@ -65,3 +65,18 @@ describe("spending report", () => {
     }
   });
 });
+
+describe("category items", () => {
+  it("add up to the report's monthly totals", async () => {
+    const { categoryItems } = await import("./budget");
+    const report = spendingReport(demo, today, 3);
+    const items = categoryItems(demo, today, report[0]!.month);
+    for (const m of report) {
+      const end = m.month.slice(0, 7);
+      for (const [cat, cents] of Object.entries(m.categories)) {
+        const sum = (items[cat] ?? []).filter((i) => i.date.slice(0, 7) === end).reduce((t, i) => t + i.cents, 0);
+        expect(sum, `${cat} ${end}`).toBe(cents);
+      }
+    }
+  });
+});

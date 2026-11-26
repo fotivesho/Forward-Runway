@@ -215,3 +215,42 @@ export function spendingReport(s: Snapshot, today: ISODate, count = 6) {
   }));
 }
 export type SpendingReport = ReturnType<typeof spendingReport>;
+
+export interface CategoryItem {
+  date: ISODate;
+  label: string;
+  /** Positive = spent; negative = a refund. */
+  cents: Cents;
+  account: string;
+  /** From a repeating bill rather than a logged transaction. */
+  repeating: boolean;
+  pending?: boolean;
+}
+
+/**
+ * Everything counted in each category, newest first, from `from` to today: the same items the
+ * budget and reports add up (logged spending, card refunds, and repeating bills on accounts no bank updates).
+ */
+export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Record<string, CategoryItem[]> {
+  const out: Record<string, CategoryItem[]> = {};
+  const add = (c: string, it: CategoryItem) => (out[c] ??= []).push(it);
+  const acct = new Map(s.accounts.map((a) => [a.id, a]));
+  for (const t of s.transactions) {
+    if (t.status !== "posted" || t.date < from || t.date > today || isNotSpending(t.category)) continue;
+    const a = acct.get(t.accountId);
+    if (!a || a.kind === "loan") continue;
+    const cat = t.category?.trim() || "Uncategorized";
+    if (t.direction === "out") add(cat, { date: t.date, label: t.description, cents: t.amountCents, account: a.name, repeating: false, pending: t.pending });
+    else if (a.kind === "credit_card") add(cat, { date: t.date, label: `${t.description} (refund)`, cents: -t.amountCents, account: a.name, repeating: false });
+  }
+  for (const r of s.rules) {
+    if (r.active === false || (r.toAccountId && r.kind !== "loan_payment")) continue;
+    if (!["bill", "subscription", "expense", "loan_payment"].includes(r.kind)) continue;
+    const a = acct.get(r.accountId);
+    if (!a || a.balanceSource === "bank") continue;
+    const cat = r.kind === "loan_payment" ? "Debt" : (r.category ?? r.name);
+    for (const o of ruleOccurrences(r, s.overrides, from, today)) add(cat, { date: o.date, label: r.name, cents: o.amountCents, account: a.name, repeating: true });
+  }
+  for (const list of Object.values(out)) list.sort((x, y) => (x.date < y.date ? 1 : x.date > y.date ? -1 : 0));
+  return out;
+}

@@ -4,7 +4,7 @@ import { ReportsView } from "@/components/reports-view";
 import { PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { buildDashboard } from "@/lib/view/dashboard";
-import { buildBudget, groupOf, spendingReport } from "@/lib/view/budget";
+import { buildBudget, categoryItems, groupOf, spendingReport } from "@/lib/view/budget";
 
 export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps) {
   const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
@@ -13,7 +13,10 @@ export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps)
     <>
       <PageHeader title="Money" subtitle="A plan for this month: needs, wants and savings, built from your income and your usual month." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
-      <BudgetView plan={buildBudget(snapshot, today, plans)} demo={demo} />
+      {(() => {
+        const history = spendingReport(snapshot, today, 6);
+        return <BudgetView plan={buildBudget(snapshot, today, plans)} demo={demo} history={history} items={categoryItems(snapshot, today, history[0]!.month)} />;
+      })()}
     </>
   );
 }
