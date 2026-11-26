@@ -32,7 +32,7 @@ export function OccurrenceControls({ ruleId, originalDate, date, amountCents, ov
         <ActionForm key={a} action={setOverride} aria-label={a === "posted" ? "Mark as already in balance" : "Skip this date"}>
           {hidden}
           <input type="hidden" name="action" value={a} />
-          <Submit variant="secondary" className="btn-sm" pendingLabel="…">{a === "posted" ? "Already happened" : "Skip"}</Submit>
+          <Submit variant="secondary" className="btn-sm" pendingLabel="…">{a === "posted" ? "Happened" : "Skip"}</Submit>
         </ActionForm>
       ))}
       <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Change</button>

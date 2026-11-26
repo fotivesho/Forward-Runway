@@ -11,7 +11,10 @@ import { Modal } from "./modal";
 import { CategoryTrend } from "./spend-insights";
 import type { CategoryBucket } from "@/lib/view/spend";
 import { Money } from "./privacy";
-import { Badge, EmptyState } from "./ui";
+import { Badge, Disclosure, EmptyState } from "./ui";
+import { HistoryChart } from "./history-chart";
+import { Info } from "./info";
+import { txnHistory } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
 import { isNotSpending } from "@/lib/categories";
@@ -152,19 +155,72 @@ export function TransactionList({
               />
             </>
           ) : (
-            <>
+            <TxnBody key={current.id} txn={current} txns={txns} today={today} onRepeat={() => setRepeat(true)}>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
-              {!isNotSpending(current.category) && (
-                <button type="button" className="btn btn-secondary btn-sm mt-3" onClick={() => setRepeat(true)}><Glyph name="🔁" size="xs" /> This repeats: add it as repeating</button>
-              )}
-            </>
+              <div className="mt-4 flex justify-end border-t border-line pt-4">
+                <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
+              </div>
+            </TxnBody>
           )}
-          <div className="mt-4 flex justify-end border-t border-line pt-4">
-            <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
-          </div>
         </Modal>
       )}
     </div>
+  );
+}
+
+/** Inside a transaction: every time it showed up and what's likely next, then the edit form folded away. */
+function TxnBody({ txn, txns, today, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; onRepeat: () => void; children: React.ReactNode }) {
+  const h = txnHistory(txn, txns, today);
+  const [sel, setSel] = useState<string | null>(h ? (h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null) : null);
+  const canRepeat = !isNotSpending(txn.category);
+  return (
+    <div className="space-y-4">
+      {h ? (
+        <section aria-label="This over time">
+          <ul className="mb-3 grid grid-cols-3 gap-2 text-center">
+            <Stat label="Usually" value={<Money cents={h.usualCents} whole={h.usualCents >= 10_000} />} />
+            {h.unit === "month" ? (
+              <>
+                <Stat label="Last 90 days" value={`${h.count}×`} />
+                <Stat label="A month" value={<>~<Money cents={h.perMonthCents ?? 0} whole /></>} />
+              </>
+            ) : (
+              <>
+                <Stat label="Times seen" value={`${h.count}`} />
+                <Stat label="Comes" value={h.everyDays ? `~${h.everyDays}d` : "Now & then"} />
+              </>
+            )}
+          </ul>
+          <HistoryChart bars={h.bars} tone={txn.direction === "in" ? "in" : "out"} selected={sel} onSelect={setSel} />
+          <p className="mt-2 text-xs text-faint">
+            {h.unit === "month" ? "By month, with the rest of this month and next month predicted." : h.everyDays ? "Each time, with the next ones expected." : "Each time it showed up."}
+            <Info label="Reading the chart">Every transaction with this name. Solid bars already happened. Dashed, shaded bars are what we expect next, from how often and how much it usually is. Your budget and safe-to-spend use the same prediction.</Info>
+          </p>
+        </section>
+      ) : (
+        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see a history and what to expect next.</p>
+      )}
+      {canRepeat && !h?.perMonthCents && (
+        <button type="button" onClick={onRepeat} className="flex w-full items-center gap-3 rounded-2xl border border-line px-3 py-2.5 text-left transition hover:border-brand/60">
+          <Glyph name="🔁" size="sm" />
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">{h?.everyDays ? "Looks like it repeats" : "Does this repeat?"}</span>
+            <span className="block text-xs text-muted">Add it as repeating so it&apos;s counted ahead</span>
+          </span>
+          <span aria-hidden className="text-faint">›</span>
+        </button>
+      )}
+      <Disclosure summary="Edit category, name or amount">{children}</Disclosure>
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <li className="rounded-xl bg-surface-2/60 px-1 py-2">
+      <span className="block text-[11px] text-faint">{label}</span>
+      <span className="block font-num text-lg leading-tight text-display">{value}</span>
+    </li>
   );
 }
 

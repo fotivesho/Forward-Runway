@@ -28,10 +28,15 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
-    if (open && !d.open) d.showModal();
+    if (open && !d.open) {
+      d.showModal();
+      // Focus the sheet itself, not the close button (which would show a focus ring on open).
+      panel.current?.focus({ preventScroll: true });
+    }
     if (!open && d.open) d.close();
   }, [open]);
   const head = { neutral: "from-surface-3/70", in: "from-brand/15", out: "from-warn/12" }[tone];
@@ -50,7 +55,7 @@ export function Modal({
       className="fr-modal m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:max-w-lg sm:rounded-3xl"
     >
       {open && (
-        <div className="flex max-h-[92dvh] flex-col">
+        <div ref={panel} tabIndex={-1} className="flex max-h-[92dvh] flex-col outline-none">
           <div className={`relative bg-gradient-to-b ${head} to-transparent px-5 pb-3 pt-3 sm:pt-5`}>
             <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line sm:hidden" />
             <div className="flex items-start gap-3">

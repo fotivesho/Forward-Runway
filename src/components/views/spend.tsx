@@ -5,6 +5,7 @@ import { TransactionList } from "@/components/transaction-list";
 import { MoneyTabs } from "@/components/money-tabs";
 import { isNotSpending } from "@/lib/categories";
 import { findRecurring } from "@/lib/view/recurring";
+import { ruleHistory } from "@/lib/view/history";
 import { RecurringSuggestions } from "@/components/recurring-suggestions";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
@@ -30,7 +31,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
     // Card payments and transfers between your own accounts aren't spending: the purchases already counted.
     .filter((t) => t.direction === "out" && t.status === "posted" && t.date >= monthStart && t.date <= today && !isNotSpending(t.category))
     .reduce((s, t) => s + t.amountCents, 0);
-  const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 300);
+  const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 2000);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
 
   const tile = (r: RecurringRule): RuleTile => {
@@ -38,6 +39,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
     return {
       rule: r,
       occurrences,
+      history: ruleHistory(r, snapshot.transactions, snapshot.overrides, today, occurrences),
       next: occurrences.find((o) => o.date >= today)?.date ?? null,
       onCard: accounts.find((a) => a.id === r.accountId)?.kind === "credit_card" && !r.toAccountId,
       from: accountName(r.accountId),

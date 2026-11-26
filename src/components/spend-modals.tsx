@@ -9,8 +9,11 @@ import { QuickAction } from "./form";
 import { Modal } from "./modal";
 import { OccurrenceControls } from "./occurrence-controls";
 import { Money } from "./privacy";
+import { Info } from "./info";
 import { Glyph } from "@/components/icon";
-import { Badge } from "./ui";
+import { Badge, Disclosure } from "./ui";
+import { HistoryChart } from "./history-chart";
+import type { HistoryView } from "@/lib/view/history";
 
 const KIND_ICON: Partial<Record<RecurringRule["kind"], string>> = { income: "💰", loan_payment: "🏦", card_payment: "💳", savings_transfer: "🐷", transfer: "↔️", subscription: "🔁" };
 export const ruleIcon = (r: RecurringRule) => KIND_ICON[r.kind] ?? r.category ?? "bill";
@@ -24,6 +27,8 @@ export interface RuleTile {
   to: string | null;
   /** Its account is archived, so it isn't in the forecast. */
   orphaned?: boolean;
+  /** Its last few dates and the next few, for the chart. */
+  history?: HistoryView;
 }
 
 /** Repeating items as tiles; tapping one opens it in a pop-up to edit, skip a date, pause or delete. */
@@ -79,37 +84,58 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
             </>
           }
         >
-          {open.occurrences.length > 0 && (
-            <section aria-label="Upcoming dates" className="mb-4">
-              <h3 className="mb-1 text-sm font-bold text-ink">Upcoming</h3>
-              <ul className="divide-y divide-line rounded-xl border border-line">
-                {open.occurrences.slice(0, 4).map((o) => (
-                  <li key={o.originalDate} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
-                    <span>
-                      <span className="font-medium text-ink">{formatShort(o.date)}</span> · <Money cents={o.amountCents} />
-                      {o.posted && <> <Badge tone="good">In balance</Badge></>}
-                      {o.movedFrom && <> <Badge tone="info">moved from {formatShort(o.movedFrom)}</Badge></>}
-                      {o.overridden && !o.posted && !o.movedFrom && <> <Badge tone="info">changed</Badge></>}
-                    </span>
-                    <OccurrenceControls ruleId={open.rule.id} originalDate={o.originalDate} date={o.date} amountCents={o.amountCents} overridden={o.overridden} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-          <h3 className="mb-2 text-sm font-bold text-ink">Details</h3>
-          <RuleForm rule={open.rule} accounts={accounts} today={today} onDone={() => setOpenId(null)} />
-          <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
-            <QuickAction action={toggleRule} fields={{ id: open.rule.id, active: open.rule.active === false ? "true" : "false" }} variant="secondary">
-              {open.rule.active === false ? "Resume" : "Pause"}
-            </QuickAction>
-            <QuickAction action={deleteRule} fields={{ id: open.rule.id }} variant="danger" confirm={`Delete “${open.rule.name}” and all its date changes?`}>
-              Delete
-            </QuickAction>
-          </div>
+          <RuleBody tile={open} accounts={accounts} today={today} onDone={() => setOpenId(null)} />
         </Modal>
       )}
     </>
+  );
+}
+
+/** Inside a repeating item: the chart (past solid, ahead dashed), the picked date's actions, details folded away. */
+function RuleBody({ tile, accounts, today, onDone }: { tile: RuleTile; accounts: Account[]; today: ISODate; onDone: () => void }) {
+  const { rule, history } = tile;
+  const bars = history?.bars ?? [];
+  const [sel, setSel] = useState<string | null>(bars.find((b) => b.kind === "ahead")?.key ?? bars[bars.length - 1]?.key ?? null);
+  const picked = bars.find((b) => b.key === sel);
+  const o = picked?.occurrence;
+  const ahead = bars.filter((b) => b.kind === "ahead");
+  const aheadTotal = ahead.reduce((s, b) => s + b.cents, 0);
+  return (
+    <div className="space-y-4">
+      {bars.length > 0 && (
+        <section aria-label="Past and upcoming">
+          <HistoryChart bars={bars} tone={rule.kind === "income" ? "in" : "out"} selected={sel} onSelect={setSel} />
+          {o && (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface-2/60 px-3 py-2">
+              <span className="flex flex-wrap items-center gap-1 text-xs text-muted">
+                Just this date
+                {o.posted && <Badge tone="good">In balance</Badge>}
+                {o.movedFrom && <Badge tone="info">moved from {formatShort(o.movedFrom)}</Badge>}
+                {o.overridden && !o.posted && !o.movedFrom && <Badge tone="info">changed</Badge>}
+              </span>
+              <OccurrenceControls ruleId={rule.id} originalDate={o.originalDate} date={o.date} amountCents={o.amountCents} overridden={o.overridden} />
+            </div>
+          )}
+          {ahead.length > 0 && (
+            <p className="mt-2 text-xs text-faint">
+              Next {ahead.length}: <Money cents={rule.kind === "income" ? aheadTotal : -aheadTotal} sign tone="auto" whole className="font-semibold" />
+              <Info label="Reading the chart">Solid bars already happened. Dashed bars are coming up, at the amount we expect. Tap a coming one to mark it as already happened, skip just that date, or change its date or amount.</Info>
+            </p>
+          )}
+        </section>
+      )}
+      <Disclosure summary="Edit details">
+        <RuleForm rule={rule} accounts={accounts} today={today} onDone={onDone} />
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
+          <QuickAction action={toggleRule} fields={{ id: rule.id, active: rule.active === false ? "true" : "false" }} variant="secondary">
+            {rule.active === false ? "Resume" : "Pause"}
+          </QuickAction>
+          <QuickAction action={deleteRule} fields={{ id: rule.id }} variant="danger" confirm={`Delete “${rule.name}” and all its date changes?`}>
+            Delete
+          </QuickAction>
+        </div>
+      </Disclosure>
+    </div>
   );
 }
 

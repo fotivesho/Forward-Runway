@@ -333,3 +333,14 @@ select.input {
 @media (prefers-reduced-motion: reduce) {
   .info-bubble, .info-bubble[data-state="closed"] { animation-duration: 1ms; }
 }
+
+/* iOS Safari gives date inputs an intrinsic width that overflows grid cells; keep them in their box. */
+input[type="date"] {
+  min-width: 0;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+}
