@@ -67,7 +67,7 @@ export function ForecastChart({
         </span>
         {allowanceByDay && (
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: SERIES_ALLOWANCE }} /> If you spend your full daily allowance
+            <span className="inline-block w-4 border-t-2 border-dashed" style={{ borderColor: SERIES_ALLOWANCE }} /> If you spend your caps
           </span>
         )}
         <span className="inline-flex items-center gap-1.5">
@@ -114,7 +114,7 @@ export function ForecastChart({
                     </p>
                     {p.afterAllowance != null && (
                       <p className="text-ink">
-                        <strong className="tabular">{money(Math.round(p.afterAllowance * 100))}</strong> <span className="text-muted">after full allowance</span>
+                        <strong className="tabular">{money(Math.round(p.afterAllowance * 100))}</strong> <span className="text-muted">if caps spent</span>
                       </p>
                     )}
                     {(p.inflows > 0 || p.outflows > 0) && (

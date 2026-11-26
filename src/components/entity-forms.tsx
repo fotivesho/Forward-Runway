@@ -181,7 +181,7 @@ export function RuleForm({
   const toOptions =
     kind === "card_payment" ? all.filter((a) => a.kind === "credit_card") : kind === "loan_payment" ? all.filter((a) => a.kind === "loan") : kind === "savings_transfer" ? all.filter((a) => a.kind === "savings") : all;
   return (
-    <ActionForm action={saveRule} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!rule} aria-label={rule ? `Edit ${rule.name}` : "Add recurring item"}>
+    <ActionForm demoPreview action={saveRule} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!rule} aria-label={rule ? `Edit ${rule.name}` : "Add recurring item"}>
       {rule && <input type="hidden" name="id" value={rule.id} />}
       <SelectField name="kind" label="What is it?" value={kind} onChange={(e) => setKind(e.target.value as RecurringRule["kind"])} options={RULE_KINDS} />
       <Field name="name" label="Name" defaultValue={base?.name} placeholder={kind === "income" ? "Paycheck" : "Rent"} required maxLength={80} />
@@ -240,7 +240,7 @@ export function RuleForm({
         ]}
       />
       <div className="col-span-2">
-        <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={base?.isEstimate} hint="Shown as an estimate so confirmed facts and guesses stay separate." />
+        <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={base?.isEstimate} />
       </div>
       <div className="col-span-2">
         <Submit>{rule ? "Save changes" : "Add"}</Submit>
@@ -300,13 +300,13 @@ export function TransactionForm({
   // From your bank: amount, date, account and status are the bank's facts. You can rename, recategorize, and say if it's day-to-day.
   if (txn?.externalId) {
     return (
-      <ActionForm action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" aria-label="Edit transaction">
+      <ActionForm demoPreview action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" aria-label="Edit transaction">
         <input type="hidden" name="id" value={txn.id} />
         <Field name="description" label="Name" defaultValue={txn.description} required maxLength={120} wrapperClassName="col-span-2" />
         <CategoryField defaultValue={txn.category} yours={categories} wrapperClassName="col-span-2" />
         {txn.direction === "out" && (
           <div className="col-span-2">
-            <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn.flexible !== false} hint="Counts toward your daily caps and spending patterns. Untick for one-offs like a deposit or a big annual bill." />
+            <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn.flexible !== false} />
           </div>
         )}
         <p className="col-span-2 text-xs text-faint">Amount, date, account and {txn.pending ? "pending" : "posted"} status come from your bank.</p>
@@ -315,17 +315,17 @@ export function TransactionForm({
     );
   }
   return (
-    <ActionForm action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!txn} aria-label={txn ? "Edit transaction" : "Add transaction"}>
+    <ActionForm demoPreview action={saveTransaction} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!txn} aria-label={txn ? "Edit transaction" : "Add transaction"}>
       {txn && <input type="hidden" name="id" value={txn.id} />}
       <SelectField name="direction" label="Type" value={direction} onChange={(e) => setDirection(e.target.value as "in" | "out")} options={[{ value: "out", label: "Money out" }, { value: "in", label: "Money in" }]} />
       <MoneyField name="amount" label="Amount" defaultValue={centsToInput(txn?.amountCents)} required />
       <Field name="description" label="Description" defaultValue={txn?.description} required maxLength={120} wrapperClassName="col-span-2" />
-      <SelectField name="accountId" label="Account" defaultValue={txn?.accountId ?? usable[0]?.id} options={opt(usable)} hint="A purchase on a credit card is paid later with the statement." wrapperClassName="col-span-2" />
+      <SelectField name="accountId" label="Account" defaultValue={txn?.accountId ?? usable[0]?.id} options={opt(usable)} wrapperClassName="col-span-2" />
       <CategoryField defaultValue={txn?.category} yours={categories} />
-      <Field name="date" type="date" label="Date" defaultValue={txn?.date ?? today} required hint="A future date makes it planned." />
+      <Field name="date" type="date" label="Date" defaultValue={txn?.date ?? today} required hint="Future = planned" />
       <div className="col-span-2 flex flex-col gap-2">
-        {direction === "out" && <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn ? txn.flexible !== false : true} hint="Counts against your daily caps and teaches your spending pattern." />}
-        <CheckboxField name="cleared" label="Already included in the balance I entered" defaultChecked={txn?.cleared} hint="Tick this if your account balance already reflects it, so it isn't subtracted twice." />
+        {direction === "out" && <CheckboxField name="flexible" label="Day-to-day spending" defaultChecked={txn ? txn.flexible !== false : true} />}
+        <CheckboxField name="cleared" label="Already in my balance" defaultChecked={txn?.cleared} />
         <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={txn?.isEstimate} />
       </div>
       <div className="col-span-2">
@@ -339,7 +339,7 @@ export function TransferForm({ accounts, today, onDone }: { accounts: Account[];
   const all = live(accounts);
   const from = all.filter((a) => !isLiability(a));
   return (
-    <ActionForm action={saveTransfer} onSuccess={onDone} className="grid gap-3 sm:grid-cols-2" resetOnSuccess aria-label="Add transfer or card payment">
+    <ActionForm demoPreview action={saveTransfer} onSuccess={onDone} className="grid gap-3 sm:grid-cols-2" resetOnSuccess aria-label="Add transfer or card payment">
       <SelectField name="fromAccountId" label="From" defaultValue={from[0]?.id} options={opt(from)} />
       <SelectField name="toAccountId" label="To" defaultValue={all.find((a) => a.id !== from[0]?.id)?.id} options={opt(all)} hint="Choose a card here to record a card payment." />
       <MoneyField name="amount" label="Amount" required />

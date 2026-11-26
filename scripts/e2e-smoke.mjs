@@ -68,7 +68,7 @@ for (const width of [390, 1280]) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check(!overflow, `no horizontal scroll at ${width}px`);
   check((await unlabeled(page)) === 0, `every demo input has a label at ${width}px`);
-  check((await page.locator("form fieldset:enabled").count()) === 0, "demo forms are read-only");
+  check((await page.locator("form button[type=submit]:enabled").count()) === 0, "demo forms can't save");
   await page.getByRole("button", { name: "60d" }).click();
   check(await page.getByText("In 60 days").isVisible(), "horizon toggle switches to 60 days");
   await page.close();
@@ -80,7 +80,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/calendar", "/demo/wh
   check(res.status() === 200 && errors.length === 0, `${path} loads without errors ${errors.join(" | ")}`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), `${path} has no horizontal scroll at 390px`);
   check((await unlabeled(page)) === 0, `${path} inputs are labelled`);
-  check((await page.locator("form fieldset:enabled").count()) === 0, `${path} forms are read-only`);
+  check((await page.locator("form button[type=submit]:enabled").count()) === 0, `${path} forms can't save`);
   await page.close();
 }
 

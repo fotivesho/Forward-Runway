@@ -181,7 +181,7 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
   const sliderMax = Math.max(1000, Math.ceil(top / 500) * 500);
   const line = (cents: number) => `calc(1.25rem + ${(Math.min(cents, top) / top) * 7}rem)`;
   return (
-    <ActionForm action={saveCategorySetting} onSuccess={onDone} className="grid gap-3" aria-label={`Budget for ${c.category}`}>
+    <ActionForm demoPreview action={saveCategorySetting} onSuccess={onDone} className="grid gap-3" aria-label={`Budget for ${c.category}`}>
       <input type="hidden" name="name" value={c.category} />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <label className="flex flex-col gap-1 text-sm font-medium text-ink">

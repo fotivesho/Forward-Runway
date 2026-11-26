@@ -62,6 +62,7 @@ export function ActionForm({
         <fieldset disabled={disabled} className="contents">
           {children}
         </fieldset>
+        {demo && demoPreview && <p className="mt-2 text-xs text-muted">Demo: try it freely. Changes aren't saved.</p>}
         <FormMessage />
       </form>
     </FormCtx.Provider>

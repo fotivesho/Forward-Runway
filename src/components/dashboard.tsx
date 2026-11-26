@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
+import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import type { Snapshot } from "@/lib/data/snapshot";
-import { buildDashboard, type AccountView } from "@/lib/view/dashboard";
-import { avgDailyCardSpend } from "@/lib/engine";
-import { toEngineInput } from "@/lib/data/snapshot";
+import { buildDashboard } from "@/lib/view/dashboard";
+import { buildBudget } from "@/lib/view/budget";
+import { iconFor } from "@/lib/categories";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { ForecastChart } from "./forecast-chart";
 import { Money } from "./privacy";
@@ -14,8 +14,6 @@ import { ItemRow } from "./timeline";
 import { Badge, Card, Disclosure, EmptyState } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { AddPlanButton, PlanProvider } from "./calendar-forms";
-
-const SOURCE: Record<string, string> = { manual: "Entered by you", statement: "From a statement", import: "Imported", onboarding: "From setup", bank: "From your bank" };
 
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
   const [horizon, setHorizon] = useState<number>(snapshot.settings.defaultHorizonDays);
@@ -57,112 +55,42 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         </div>
         <SnapshotTiles m={m} today={today} nowMs={now.getTime()} />
         <div className="mt-3">
-          <Disclosure summary="Every account, balance and when it was updated">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-faint">Spendable cash</h3>
-              <AccountList views={m.cash.accounts} nowMs={now.getTime()} />
-              <p className="mt-1 flex justify-between border-t border-line pt-2 text-sm">
-                <span className="text-muted">Total cash</span>
-                <Money cents={m.cash.totalCents} className="font-semibold" />
-              </p>
-              {m.goals.length > 0 && (
-                <>
-                  <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-faint">Goals (kept separate from spendable cash)</h3>
-                  <ul className="mt-2 space-y-3">
-                    {m.goals.map((g) => (
-                      <li key={g.goal.id}>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-ink">
-                            {g.goal.name} {g.goal.protected && <Badge title="Never suggested as a funding source unless you allow it">Protected</Badge>}
-                          </span>
-                          <span>
-                            <Money cents={g.balanceCents} /> <span className="text-faint">/ <Money cents={g.goal.targetCents} /></span>
-                          </span>
-                        </div>
-                        <div className="mt-1 h-2 rounded-full bg-surface-3" role="progressbar" aria-valuenow={g.pct} aria-valuemin={0} aria-valuemax={100} aria-label={`${g.goal.name} progress`}>
-                          <div className="h-2 rounded-full bg-brand" style={{ width: `${g.pct}%` }} />
-                        </div>
-                        <p className="mt-1 text-xs text-muted">
-                          {g.pct}% · saving <Money cents={g.monthlyPlannedCents} />/mo
-                          {g.monthlyNeededCents != null && (
-                            <>
-                              {" "}· needs <Money cents={g.monthlyNeededCents} />/mo by {formatShort(g.goal.targetDate!)}{" "}
-                              {g.onTrack ? <Badge tone="good">On track</Badge> : <Badge tone="warn">Behind</Badge>}
-                            </>
-                          )}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
-              {m.savings.length > 0 && (
-                <>
-                  <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-faint">Savings</h3>
-                  <AccountList views={m.savings} nowMs={now.getTime()} />
-                </>
-              )}
-              {m.cards.length > 0 && (
-                <>
-                  <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-faint">Credit cards</h3>
-                  <ul className="mt-2 space-y-3">
-                    {m.cards.map(({ view, projection }) => {
-                      const next = projection?.statements.find((s) => s.dueDate >= today);
-                      return (
-                        <li key={view.account.id} className="text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-ink">{view.account.name}</span>
-                            <span>
-                              <Money cents={view.owedCents} /> <span className="text-faint">owed</span>
-                            </span>
-                          </div>
-                          {next ? (
-                            <p className="text-xs text-muted">
-                              {next.isProjected ? "Next statement (projected)" : "Statement"} <Money cents={next.balanceCents} />
-                              {next.isProjected && (() => {
-                                // Typical everyday card spending still to come this cycle (display only; already in your daily caps).
-                                const typical = avgDailyCardSpend(toEngineInput(snapshot, today), view.account.id) * Math.max(0, diffDays(today, next.closingDate));
-                                return typical > 0 ? <> + ~<Money cents={typical} /> typical spending</> : null;
-                              })()}{" "}
-                              · closes {formatShort(next.closingDate)} · due {formatShort(next.dueDate)}{" "}
-                              {next.status === "projected" ? (
-                                <Badge>Projected</Badge>
-                              ) : next.paidOrScheduledCents >= next.balanceCents ? (
-                                <Badge tone="good">Payment scheduled</Badge>
-                              ) : next.autoPaymentCents > 0 ? (
-                                <Badge tone="info">Pay in full on due date</Badge>
-                              ) : (
-                                <Badge tone="warn">Unpaid</Badge>
-                              )}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-muted">No statement due in the next 90 days.</p>
-                          )}
-                          <p className="text-xs text-faint">
-                            {SOURCE[view.account.balanceSource]} · updated {ago(view.account.balanceUpdatedAt, now.getTime())}
-                            {view.stale && " · out of date"}
-                          </p>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
-              )}
-              {m.loans.length > 0 && (
-                <>
-                  <h3 className="mt-4 text-xs font-semibold uppercase tracking-wide text-faint">Loans</h3>
-                  <ul className="mt-2 space-y-1 text-sm">
-                    {m.loans.map((l) => (
-                      <li key={l.account.id} className="flex justify-between">
-                        <span className="text-ink">
-                          {l.account.name}
-                          {l.account.aprBps != null && <span className="text-faint"> · {(l.account.aprBps / 100).toFixed(2)}% APR</span>}
-                        </span>
-                        <Money cents={l.owedCents} />
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              )}
+          <Disclosure summary="All accounts">
+            <ul className="space-y-1 text-sm">
+              {[...m.cash.accounts, ...m.savings].map((v) => (
+                <AcctRow key={v.account.id} name={v.account.name} cents={v.valueCents} fresh={ago(v.account.balanceUpdatedAt, now.getTime())} stale={v.stale} />
+              ))}
+              {m.goals.map((g) => (
+                <li key={g.goal.id} className="py-1">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="truncate text-ink">{g.goal.protected ? "🔒 " : ""}{g.goal.name}</span>
+                    <span className="tabular"><Money cents={g.balanceCents} whole /> <span className="text-faint">/ <Money cents={g.goal.targetCents} whole /></span></span>
+                  </span>
+                  <span className="mt-1 block h-1.5 rounded-full bg-surface-3"><span className={`block h-1.5 rounded-full ${g.onTrack === false ? "bg-warn" : "bg-brand"}`} style={{ width: `${g.pct}%` }} /></span>
+                  {g.monthlyNeededCents != null && (
+                    <span className={`text-[11px] ${g.onTrack ? "text-muted" : "text-warn"}`}>
+                      <Money cents={g.monthlyPlannedCents} whole />/mo of <Money cents={g.monthlyNeededCents} whole /> needed
+                    </span>
+                  )}
+                </li>
+              ))}
+              {m.cards.map(({ view, projection }) => {
+                const next = projection?.statements.find((st) => st.dueDate >= today);
+                return (
+                  <AcctRow
+                    key={view.account.id}
+                    name={view.account.name}
+                    cents={-view.owedCents}
+                    fresh={ago(view.account.balanceUpdatedAt, now.getTime())}
+                    stale={view.stale}
+                    sub={next ? <>bill <Money cents={next.balanceCents} whole />{next.isProjected ? " est." : ""} · {formatShort(next.dueDate)}</> : undefined}
+                  />
+                );
+              })}
+              {m.loans.map((l) => (
+                <AcctRow key={l.account.id} name={l.account.name} cents={-l.owedCents} fresh={ago(l.account.balanceUpdatedAt, now.getTime())} stale={l.stale} />
+              ))}
+            </ul>
           </Disclosure>
         </div>
       </section>
@@ -263,33 +191,8 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
             <Stat label="Your floor" value={<Money cents={forecast.floorCents} />} sub={forecast.firstBelowFloor ? `Breached ${formatShort(forecast.firstBelowFloor)}` : "Never breached"} />
           </dl>
           <ForecastChart days={forecast.days} floorCents={forecast.floorCents} lowest={forecast.lowest} allowanceByDay={allowanceByDay} />
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {incomplete ? <Badge tone="warn">Incomplete — see below</Badge> : <Badge tone="good">Inputs complete and fresh</Badge>}
-            <Link href={base + "/forecast"} className="btn btn-ghost btn-sm">
-              Daily timeline →
-            </Link>
-          </div>
-          <div className="mt-3">
-            <Disclosure summary="Assumptions & data freshness">
-              {m.issues.length > 0 && (
-                <ul className="mb-3 space-y-1 text-sm">
-                  {m.issues.map((i, k) => (
-                    <li key={k} className="flex gap-2">
-                      <Badge tone={i.severity === "critical" ? "bad" : i.severity === "warning" ? "warn" : "info"}>{i.severity}</Badge>
-                      <span className="text-muted">{i.message}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
-                {m.forecast90.assumptions.map((a) => (
-                  <li key={a}>{a}</li>
-                ))}
-                {m.coverage.notes.map((n) => (
-                  <li key={n}>{n}</li>
-                ))}
-              </ul>
-            </Disclosure>
+          <div className="mt-2 flex justify-end">
+            <Link href={base + "/forecast"} className="btn btn-ghost btn-sm">Daily timeline →</Link>
           </div>
         </Card>
 
@@ -341,12 +244,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
         </Card>
 
         {/* Spending */}
-        <Card title="Spending by category">
-          <SpendingBars title={`This pay period (since ${formatShort(m.spending.periodStart)})`} totals={m.spending.period} total={m.spending.periodTotal} />
-          <div className="mt-4">
-            <SpendingBars title={`This month`} totals={m.spending.month} total={m.spending.monthTotal} />
-          </div>
-        </Card>
+        <SpendingVsBudget m={m} snapshot={snapshot} today={today} base={base} />
       </div>
     </div>
     </PlanProvider>
@@ -363,51 +261,7 @@ function Stat({ label, value, sub }: { label: string; value: React.ReactNode; su
   );
 }
 
-function AccountList({ views, nowMs }: { views: AccountView[]; nowMs: number }) {
-  return (
-    <ul className="mt-2 space-y-2">
-      {views.map((v) => (
-        <li key={v.account.id} className="text-sm">
-          <div className="flex justify-between gap-2">
-            <span className="text-ink">{v.account.name}</span>
-            {v.account.balanceCents == null ? <Badge tone="bad">No balance</Badge> : <Money cents={v.valueCents} />}
-          </div>
-          <p className="text-xs text-faint">
-            {SOURCE[v.account.balanceSource]} · {v.account.balanceAsOf ? `as of ${formatShort(v.account.balanceAsOf)}` : "no date"} · updated {ago(v.account.balanceUpdatedAt, nowMs)}
-            {v.stale && <span className="text-warn"> · out of date</span>}
-          </p>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
-function SpendingBars({ title, totals, total }: { title: string; totals: { category: string; cents: number; onCardCents: number }[]; total: number }) {
-  const max = Math.max(1, ...totals.map((t) => t.cents));
-  return (
-    <div>
-      <div className="mb-2 flex justify-between text-sm">
-        <h3 className="font-medium text-ink">{title}</h3>
-        <Money cents={total} className="font-semibold" />
-      </div>
-      {totals.length === 0 ? (
-        <p className="text-sm text-muted">No spending recorded yet.</p>
-      ) : (
-        <ul className="space-y-1.5">
-          {totals.slice(0, 8).map((t) => (
-            <li key={t.category} className="grid grid-cols-[6.5rem_1fr_auto] items-center gap-2 text-xs">
-              <span className="truncate text-muted">{t.category}</span>
-              <span className="h-2 rounded-full bg-surface-3" aria-hidden>
-                <span className="block h-2 rounded-full bg-brand" style={{ width: `${(t.cents / max) * 100}%` }} />
-              </span>
-              <Money cents={t.cents} className="text-ink" />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 
 /** Daily caps until payday. Tap a day to see what makes up its cap and what else happens that day. */
@@ -456,7 +310,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
             <span>{sel.spentCents > 0 ? "left " : "cap "}<Money cents={sel.capCents} /></span>
           </p>
           <ul className="mt-1.5 space-y-1 text-muted">
-            <li className="flex justify-between gap-2"><span>Everyday spending</span><Money cents={sel.baseCents} /></li>
+            <li className="flex justify-between gap-2"><span>Everyday</span><Money cents={sel.baseCents} /></li>
             {sel.eventIds.map((id) => {
               const v = planById.get(id);
               return (
@@ -467,12 +321,12 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
               );
             })}
             {sel.spentCents > 0 && (
-              <li className="flex justify-between gap-2"><span>Already spent (taken out above)</span><Money cents={-sel.spentCents} sign /></li>
+              <li className="flex justify-between gap-2"><span>Spent</span><Money cents={-sel.spentCents} sign /></li>
             )}
           </ul>
           {fday && fday.items.length > 0 && (
             <>
-              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">Also that day</p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-faint">{sel.date === today ? "Today" : sel.date === addDays(today, 1) ? "Tomorrow" : formatShort(sel.date)}</p>
               <ul className="mt-1 space-y-1">
                 {fday.items.map((it) => (
                   <li key={it.id} className="flex justify-between gap-2">
@@ -485,12 +339,86 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
           )}
           {fday && (
             <p className="mt-2 border-t border-line pt-1.5 text-xs text-muted">
-              Cash at the end of the day, before everyday spending: <Money cents={fday.closingCents} className="font-semibold text-ink" />
+              End of day <Money cents={fday.closingCents} whole className="font-semibold text-ink" />
               {fday.belowFloor && <span className="text-warn"> · below your floor</span>}
             </p>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+/** One account on one line: name, amount, and how fresh it is. */
+function AcctRow({ name, cents, fresh, stale, sub }: { name: string; cents: number; fresh: string; stale: boolean; sub?: React.ReactNode }) {
+  return (
+    <li className="flex items-baseline justify-between gap-2 py-1">
+      <span className="min-w-0">
+        <span className="block truncate text-ink">{name}</span>
+        {sub && <span className="block text-[11px] text-muted">{sub}</span>}
+      </span>
+      <span className="shrink-0 text-right">
+        <Money cents={cents} whole sign={cents < 0} className="font-semibold tabular" />
+        <span className={`block text-[10px] ${stale ? "text-warn" : "text-faint"}`}>{stale ? "⚠ " : ""}{fresh.replace(" ago", "")}</span>
+      </span>
+    </li>
+  );
+}
+
+/** This month's spending by category against its budget, with a tick for an even pace; or the pay period so far. */
+function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof buildDashboard>; snapshot: Snapshot; today: ISODate; base: string }) {
+  const [view, setView] = useState<"month" | "period">("month");
+  const budget = useMemo(
+    () => buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0 }))),
+    [snapshot, today, m.allEvents],
+  );
+  const rows =
+    view === "month"
+      ? budget.categories.filter((c) => c.spentCents > 0 || c.budgetCents > 0).sort((a, b) => b.spentCents - a.spentCents).slice(0, 8)
+      : m.spending.period.slice(0, 8).map((t) => ({ category: t.category, spentCents: t.cents, budgetCents: 0 }));
+  const max = Math.max(1, ...rows.map((r) => Math.max(r.spentCents, r.budgetCents)));
+  const total = view === "month" ? budget.groups.needs.budgetCents + budget.groups.wants.budgetCents : 0;
+  const seg = (on: boolean) => `min-h-8 rounded-md px-2.5 text-xs font-medium ${on ? "bg-brand text-brand-ink" : "text-muted"}`;
+  return (
+    <Card
+      title="Spending"
+      action={
+        <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Period">
+          <button type="button" className={seg(view === "month")} aria-pressed={view === "month"} onClick={() => setView("month")}>Month</button>
+          <button type="button" className={seg(view === "period")} aria-pressed={view === "period"} onClick={() => setView("period")}>Pay period</button>
+        </div>
+      }
+    >
+      <p className="mb-2 text-sm">
+        <Money cents={view === "month" ? budget.categories.reduce((t, c) => t + c.spentCents, 0) : m.spending.periodTotal} whole className="font-semibold text-ink" />
+        {view === "month" ? <span className="text-muted"> of <Money cents={total} whole /> budget</span> : <span className="text-muted"> since {formatShort(m.spending.periodStart)}</span>}
+      </p>
+      {rows.length === 0 ? (
+        <p className="text-sm text-muted">No spending yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {rows.map((r) => {
+            const over = r.budgetCents > 0 && r.spentCents > r.budgetCents;
+            return (
+              <li key={r.category} className="text-xs">
+                <span className="flex justify-between gap-2">
+                  <span className="truncate text-ink">{iconFor(r.category)} {r.category}</span>
+                  <span className="tabular">
+                    <Money cents={r.spentCents} whole className={over ? "font-semibold text-danger" : "text-ink"} />
+                    {r.budgetCents > 0 && <span className="text-faint"> / <Money cents={r.budgetCents} whole /></span>}
+                  </span>
+                </span>
+                <span className="relative mt-1 block h-1.5 rounded-full bg-surface-3" aria-hidden>
+                  {r.budgetCents > 0 && <span className="absolute inset-y-0 left-0 rounded-full bg-surface-3 ring-1 ring-line" style={{ width: `${(r.budgetCents / max) * 100}%` }} />}
+                  <span className={`absolute inset-y-0 left-0 rounded-full ${over ? "bg-danger" : "bg-brand"}`} style={{ width: `${(r.spentCents / max) * 100}%` }} />
+                  {r.budgetCents > 0 && <span className="absolute -inset-y-0.5 w-0.5 rounded bg-ink/60" style={{ left: `${(r.budgetCents / max) * 100}%` }} />}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <Link href={base + "/spend/budget"} className="btn btn-ghost btn-sm mt-2">Budget →</Link>
+    </Card>
   );
 }

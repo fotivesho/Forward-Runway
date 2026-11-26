@@ -136,7 +136,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
   ) : null;
   return (
     <li className="list-none">
-      <details className="group rounded-xl border border-line bg-surface-2/40">
+      <details className={`group rounded-xl border border-l-4 border-line bg-surface-2/40 ${needs ? "border-l-info" : check ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[check.verdict] : "border-l-line"}`}>
         <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
             <span className="block truncate font-medium text-ink">{event.title}</span>
@@ -160,9 +160,16 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             </>
           ) : (
             <>
-              <p className="text-xs text-muted">
-                {needs ? "No cost yet." : <>Estimate <Money cents={estimate.cents} whole /> · cap <Money cents={advice?.capCents ?? 0} whole /> · {SOURCE_LABEL[estimate.source] ?? estimate.basis}</>}
-                {advice?.suggestedDate && <> · try after {formatShort(advice.suggestedDate)}</>}
+              <p className="flex flex-wrap gap-1.5 text-[11px]">
+                {needs ? (
+                  <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">No cost yet</span>
+                ) : (
+                  <>
+                    <span className="rounded-full bg-surface-3 px-2 py-0.5 text-ink">Cap <Money cents={advice?.capCents ?? 0} whole /></span>
+                    <span className="rounded-full bg-surface-3 px-2 py-0.5 text-muted" title={estimate.basis}>{SOURCE_LABEL[estimate.source] ?? "Estimate"}</span>
+                  </>
+                )}
+                {advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
               </p>
               {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
               <div className="mt-2 flex justify-end">

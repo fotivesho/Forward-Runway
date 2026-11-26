@@ -182,26 +182,75 @@ export function AffordTiles({
 }
 
 /** A calendar plan's answer, in the same shape as "Can I afford it?": verdict, tiles, and the suggested move. */
+/** A small labelled meter: value, a bar with the limit line, and a one-word status. */
+function Meter({ label, value, pos, tone, status }: { label: string; value: string; pos: number; tone: "good" | "warn" | "bad"; status: string }) {
+  const bar = { good: "bg-brand", warn: "bg-warn", bad: "bg-danger" }[tone];
+  const text = { good: "text-brand", warn: "text-warn", bad: "text-danger" }[tone];
+  return (
+    <div className="min-w-0 flex-1">
+      <p className="text-[11px] text-faint">{label}</p>
+      <p className="text-lg font-bold leading-tight tabular text-ink">{value}</p>
+      <div className="relative mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
+        <span className={`absolute inset-y-0 left-0 rounded-full ${bar}`} style={{ width: `${Math.max(0, Math.min(100, pos))}%` }} />
+        <LimitLine />
+      </div>
+      <p className={`mt-0.5 truncate text-[11px] ${text}`}>{status}</p>
+    </div>
+  );
+}
+
+/**
+ * A plan's answer at a glance: what to do (bold, in the verdict's colour), then two meters:
+ * this pay period's free money (or the card statement) and your lowest balance against the floor.
+ */
 export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; reservedCents?: number }) {
   const look = LOOK[check.verdict];
+  const card = check.card && !check.cash.beyondHorizon ? check.card : null;
+  const r = { ...check.room, before: check.room.before + reservedCents };
+  const used = r.before - r.after + r.shortfall + r.borrowed;
+  const floor = check.floorCents;
+  const after = check.lowest.after.cents;
+  const cushionBefore = check.lowest.before.cents - floor;
   return (
-    <div className={`mt-2 rounded-xl border p-2.5 ${look.panel}`}>
-      <p className={`flex items-center gap-1.5 text-sm font-semibold ${look.word}`}>
+    <div className={`mt-2 rounded-xl border p-3 ${look.panel}`}>
+      <p className={`flex items-center gap-1.5 text-base font-bold leading-tight ${look.word}`}>
         <span aria-hidden>{look.icon}</span>
-        {check.headline}
-        {check.cash.viaCard && !check.cash.beyondHorizon && <span className="font-normal text-muted">· on {check.cash.viaCard.split(" ")[0]}, cash leaves {formatShort(check.cash.date)}</span>}
+        {check.action.title}
       </p>
-      <div className="mt-1.5">
-        <AffordTiles result={check} reservedCents={reservedCents} compact />
+      <p className="mt-0.5 text-xs text-muted">{check.action.detail}</p>
+      <div className="mt-2.5 flex gap-3">
+        {card ? (
+          <Meter
+            label={`${card.name.split(" ")[0]} bill · ${formatShort(card.due)}`}
+            value={dollars(card.withCents)}
+            pos={gauge(card.withCents, card.capCents, card.capCents)}
+            tone={card.withCents > card.capCents ? (check.verdict === "yes" ? "warn" : "bad") : "good"}
+            status={card.withCents > card.capCents ? `${dollars(card.withCents - card.capCents)} over max` : `${dollars(card.capCents - card.withCents)} under max`}
+          />
+        ) : (
+          <Meter
+            label={`Free · ${span(r.start, r.end)}`}
+            value={`${dollars(r.after)} left`}
+            pos={gauge(used, r.before, r.before)}
+            tone={r.shortfall > 0 ? "warn" : "good"}
+            status={r.shortfall > 0 ? `${dollars(r.shortfall)} short` : `of ${dollars(r.before)}`}
+          />
+        )}
+        <Meter
+          label={`Lowest · ${formatShort(check.lowest.after.date)}`}
+          value={dollars(after)}
+          pos={gauge(after, floor, cushionBefore > 0 ? cushionBefore : floor)}
+          tone={after < floor ? "bad" : "good"}
+          status={after < floor ? `${dollars(floor - after)} below floor` : `✓ ${dollars(after - floor)} above floor`}
+        />
       </div>
-      <p className="mt-2 text-sm font-medium text-ink">{check.action.title}</p>
-      <p className="text-xs text-muted">{check.action.detail}</p>
+      {check.cash.viaCard && !check.cash.beyondHorizon && <p className="mt-1.5 text-[11px] text-muted">On {check.cash.viaCard.split(" ")[0]}: cash leaves {formatShort(check.cash.date)}</p>}
       {check.alternatives.length > 0 && (
-        <details className="mt-1 text-xs">
+        <details className="mt-2 text-xs">
           <summary className="cursor-pointer list-none font-medium text-brand [&::-webkit-details-marker]:hidden">▸ {check.alternatives.length} other option{check.alternatives.length === 1 ? "" : "s"}</summary>
           <ul className="mt-1 space-y-1 text-muted">
             {check.alternatives.map((a) => (
-              <li key={a.title}><span className="font-medium text-ink">Or:</span> {a.title}. {a.detail}</li>
+              <li key={a.title}><span className="font-medium text-ink">{a.title}.</span> {a.detail}</li>
             ))}
           </ul>
         </details>
