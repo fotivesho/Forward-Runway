@@ -41,6 +41,7 @@ export function SpendView({ snapshot, today }: ViewProps) {
       onCard: accounts.find((a) => a.id === r.accountId)?.kind === "credit_card" && !r.toAccountId,
       from: accountName(r.accountId),
       to: r.toAccountId ? accountName(r.toAccountId) : null,
+      orphaned: [r.accountId, r.toAccountId].some((id) => id && accounts.find((a) => a.id === id)?.archived),
     };
   };
 

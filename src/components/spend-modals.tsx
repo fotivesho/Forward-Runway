@@ -22,6 +22,8 @@ export interface RuleTile {
   onCard: boolean;
   from: string;
   to: string | null;
+  /** Its account is archived, so it isn't in the forecast. */
+  orphaned?: boolean;
 }
 
 /** Repeating items as tiles; tapping one opens it in a pop-up to edit, skip a date, pause or delete. */
@@ -31,7 +33,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
   return (
     <>
       <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-        {tiles.map(({ rule: r, next, onCard }) => {
+        {tiles.map(({ rule: r, next, onCard, orphaned }) => {
           const isIncome = r.kind === "income";
           return (
             <li key={r.id}>
@@ -47,6 +49,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
                 <span className="truncate text-sm font-medium text-ink">{r.name}</span>
                 <Money cents={isIncome ? r.amountCents : -r.amountCents} sign tone="auto" className="text-lg font-bold" />
                 <span className="truncate text-[11px] text-muted">{describeSchedule(r.schedule)}</span>
+                {orphaned && <span className="mt-0.5 text-[11px] font-semibold text-warn">⚠ Its account is archived, so it isn't counted. Tap to choose another.</span>}
                 {(r.isEstimate || onCard) && (
                   <span className="mt-0.5 flex flex-wrap gap-1">
                     {r.isEstimate && <Badge tone="warn">Estimate</Badge>}
