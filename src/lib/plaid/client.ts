@@ -1,6 +1,6 @@
 import "server-only";
 import { APP_NAME } from "../brand";
-import { plaidMode } from "./config";
+import { plaidEnv, plaidMode } from "./config";
 import { mockBank } from "./mock";
 import { PlaidError, type BankApi, type PlaidAccount, type PlaidCreditLiability, type SyncPage } from "./types";
 
@@ -32,7 +32,7 @@ function plaidHttp(env: "sandbox" | "production", clientId: string, secret: stri
           : { products: ["transactions"], optional_products: ["liabilities"], transactions: { days_requested: 180 } }),
         country_codes: ["US"],
         language: "en",
-        ...(process.env.PLAID_REDIRECT_URI ? { redirect_uri: process.env.PLAID_REDIRECT_URI } : {}),
+        ...(plaidEnv("PLAID_REDIRECT_URI") ? { redirect_uri: plaidEnv("PLAID_REDIRECT_URI") } : {}),
       });
       return r.link_token;
     },
@@ -68,5 +68,5 @@ export function bankApi(): BankApi | null {
   const mode = plaidMode();
   if (mode === "off") return null;
   if (mode === "mock") return mockBank;
-  return plaidHttp(mode, process.env.PLAID_CLIENT_ID!, process.env.PLAID_SECRET!);
+  return plaidHttp(mode, plaidEnv("PLAID_CLIENT_ID")!, plaidEnv("PLAID_SECRET")!);
 }

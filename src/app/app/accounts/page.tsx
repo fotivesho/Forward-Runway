@@ -2,14 +2,15 @@ import type { Metadata } from "next";
 import { AccountsView } from "@/components/views/accounts";
 import type { BankConnectionView } from "@/components/bank-connect";
 import { getAppSession } from "@/lib/data/session";
-import { plaidMode } from "@/lib/plaid/config";
+import { plaidSetup } from "@/lib/plaid/config";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Accounts" };
 
 export default async function Page() {
   const session = await getAppSession();
-  const mode = plaidMode();
+  const setup = plaidSetup();
+  const mode = setup.mode;
   let bank: { mode: Exclude<typeof mode, "off">; connections: BankConnectionView[] } | undefined;
   if (mode !== "off") {
     const supabase = await createClient();
@@ -27,5 +28,7 @@ export default async function Page() {
       })),
     };
   }
-  return <AccountsView {...session} bank={bank} />;
+  // Bank connections were asked for (PLAID_ENV is set) but a setting is missing: say which, by name only.
+  const bankSetupMissing = mode === "off" && setup.requested ? setup.missing : undefined;
+  return <AccountsView {...session} bank={bank} bankSetupMissing={bankSetupMissing} />;
 }

@@ -3,7 +3,7 @@ import { createClient as createSupabase } from "@supabase/supabase-js";
 import { DB_SCHEMA, SUPABASE_URL } from "../supabase/config";
 import type { AppSupabaseClient } from "../supabase/server";
 import { bankApi } from "./client";
-import { plaidMode } from "./config";
+import { plaidEnv, plaidMode } from "./config";
 import { decryptToken, encryptToken, tokenKey } from "./crypto";
 import { accountBalanceCents, accountKind, accountName, cardFields, statementRow, transactionRow } from "./map";
 import { PlaidError, type BankApi, type PlaidTransaction } from "./types";
@@ -19,7 +19,7 @@ function admin() {
   return createSupabase(SUPABASE_URL, key, { db: { schema: DB_SCHEMA }, auth: { persistSession: false, autoRefreshToken: false } });
 }
 
-const key = () => tokenKey(process.env.PLAID_TOKEN_KEY, plaidMode() === "mock");
+const key = () => tokenKey(plaidEnv("PLAID_TOKEN_KEY"), plaidMode() === "mock");
 
 function api(): BankApi {
   const b = bankApi();

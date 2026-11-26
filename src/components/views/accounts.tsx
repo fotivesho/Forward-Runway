@@ -15,7 +15,8 @@ export function AccountsView({
   today,
   demo = false,
   bank,
-}: ViewProps & { bank?: { mode: "mock" | "sandbox" | "production"; connections: BankConnectionView[] } }) {
+  bankSetupMissing,
+}: ViewProps & { bank?: { mode: "mock" | "sandbox" | "production"; connections: BankConnectionView[] }; bankSetupMissing?: string[] }) {
   const accounts = snapshot.accounts;
   const active = accounts.filter((a) => !a.archived);
   const archived = accounts.filter((a) => a.archived);
@@ -24,6 +25,13 @@ export function AccountsView({
       <PageHeader title="Accounts & goals" subtitle="Balances are the opening balance on their “as of” date. Keep spendable balances fresh for an accurate forecast." />
       <div className="grid gap-4">
         {bank && !demo && <BankConnections mode={bank.mode} connections={bank.connections} />}
+        {!bank && !demo && bankSetupMissing && (
+          <section className="card border-warn/50 p-4 text-sm sm:p-5">
+            <h2 className="text-base font-semibold text-ink">Bank connections are almost set up</h2>
+            <p className="mt-1 text-muted">These settings are missing or not quite right on the server (Vercel → Settings → Environment Variables, Production), then redeploy:</p>
+            <ul className="mt-2 list-disc pl-5 font-mono text-xs text-ink">{bankSetupMissing.map((m) => <li key={m}>{m}</li>)}</ul>
+          </section>
+        )}
         {active.length === 0 && <EmptyState title="No accounts yet">{bank ? "Connect your bank above, or add your checking account by hand." : "Add your checking account first."}</EmptyState>}
         {active.map((a) => {
           const age = a.balanceAsOf ? diffDays(a.balanceAsOf, today) : null;

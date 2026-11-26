@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { plaidMode } from "./config";
+import { plaidMode, plaidSetup } from "./config";
 import { decryptToken, encryptToken, tokenKey } from "./crypto";
 import { accountBalanceCents, accountKind, accountName, categorize, statementRow, transactionRow } from "./map";
 import { mockBank, mockLiabilities, mockTransactions } from "./mock";
@@ -9,13 +9,22 @@ const acct = (over: Partial<PlaidAccount>): PlaidAccount => ({ account_id: "a", 
 const txn = (over: Partial<PlaidTransaction>): PlaidTransaction => ({ transaction_id: "t", account_id: "a", amount: 10, date: "2026-11-20", name: "Thing", pending: false, ...over });
 
 describe("bank connection switch", () => {
-  const keys = { SUPABASE_SERVICE_ROLE_KEY: "s", PLAID_CLIENT_ID: "id", PLAID_SECRET: "secret", PLAID_TOKEN_KEY: "k" };
+  const keys = { SUPABASE_SERVICE_ROLE_KEY: "s", PLAID_CLIENT_ID: "id", PLAID_SECRET: "secret", PLAID_TOKEN_KEY: "k".repeat(24) };
   it("is off until every key is set", () => {
     expect(plaidMode({})).toBe("off");
     expect(plaidMode({ ...keys, PLAID_ENV: "sandbox", PLAID_SECRET: undefined })).toBe("off");
     expect(plaidMode({ ...keys, PLAID_ENV: "sandbox", SUPABASE_SERVICE_ROLE_KEY: undefined })).toBe("off");
     expect(plaidMode({ ...keys, PLAID_ENV: "sandbox" })).toBe("sandbox");
     expect(plaidMode({ ...keys, PLAID_ENV: "production" })).toBe("production");
+  });
+  it("forgives stray spaces, quotes and capitals", () => {
+    expect(plaidMode({ ...keys, PLAID_ENV: " Sandbox " })).toBe("sandbox");
+    expect(plaidMode({ ...keys, PLAID_ENV: '"sandbox"' })).toBe("sandbox");
+  });
+  it("names what's missing (never values), once any Plaid setting is present", () => {
+    expect(plaidSetup({})).toMatchObject({ requested: false });
+    expect(plaidSetup({ PLAID_ENV: "sandbox", PLAID_CLIENT_ID: "id", PLAID_SECRET: "s", PLAID_TOKEN_KEY: "x".repeat(24) }).missing).toEqual(["SUPABASE_SERVICE_ROLE_KEY"]);
+    expect(plaidSetup({ SUPABASE_SERVICE_ROLE_KEY: "s", PLAID_CLIENT_ID: "id", PLAID_SECRET: "s", PLAID_TOKEN_KEY: "short" }).missing).toEqual(["PLAID_ENV", "PLAID_TOKEN_KEY (needs 20+ characters)"]);
   });
   it("never runs the fake bank on the live site", () => {
     expect(plaidMode({ SUPABASE_SERVICE_ROLE_KEY: "s", PLAID_ENV: "mock" })).toBe("mock");
