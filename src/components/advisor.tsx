@@ -171,7 +171,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
                 )}
                 {!check && advice?.suggestedDate && <span className="rounded-full bg-info/15 px-2 py-0.5 text-info">Try after {formatShort(advice.suggestedDate)}</span>}
               </p>
-              {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
+              {check ? <PlanImpact check={check} reservedCents={advice?.capCents ?? 0} eventId={event.id} /> : advice && <p className="mt-2 text-sm text-muted">{advice.reason}</p>}
               <div className="mt-2 flex justify-end">
                 <EditPlanButton view={view} />
               </div>

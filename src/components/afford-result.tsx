@@ -1,6 +1,8 @@
 "use client";
 
 import { formatShort, type ISODate } from "@/lib/dates";
+import { applyPlanOption } from "@/app/app/actions";
+import { QuickAction } from "./form";
 import { formatCents } from "@/lib/money";
 import type { AffordCheck } from "@/lib/engine";
 
@@ -200,6 +202,18 @@ function Meter({ label, when, value, pos, tone, status }: { label: string; when?
   );
 }
 
+/** What tapping "Do this" will do, said plainly before it happens. */
+function confirmText(a: AffordCheck["action"]): string {
+  const parts: string[] = [];
+  const total = (a.apply?.moves ?? []).reduce((t, m) => t + m.cents, 0);
+  if (total) parts.push(`plan a ${dollars(total)} transfer from savings${a.apply?.date ? ` on ${formatShort(a.apply.date)}` : ""}`);
+  if (a.apply?.skipEventIds?.length) parts.push(`skip ${a.apply.skipEventIds.length === 1 ? "the other plan" : "those plans"}`);
+  if (a.apply?.capCents) parts.push(`cap it at ${dollars(a.apply.capCents)}`);
+  if (a.apply?.newDate) parts.push(`move it to ${formatShort(a.apply.newDate)}`);
+  if (!parts.length) parts.push("keep it and spend lighter until then");
+  return `This will ${parts.join(", ")}. Go ahead?`;
+}
+
 /** Option titles short enough for one line: "Move $410 from savings", "Skip Lake trip + $150 savings". */
 function shortTitle(t: string): string {
   return t
@@ -262,7 +276,7 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
  * A plan's answer at a glance: a plain headline in the verdict's colour, one sentence of why,
  * and two numbers anyone can read: spending money left, and the lowest your balance gets.
  */
-export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; reservedCents?: number }) {
+export function PlanImpact({ check, reservedCents = 0, eventId }: { check: AffordCheck; reservedCents?: number; /** A saved plan: options get a "Do this" button. */ eventId?: string }) {
   const look = LOOK[check.verdict];
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
   const r = { ...check.room, before: check.room.before + reservedCents };
@@ -336,14 +350,35 @@ export function PlanImpact({ check, reservedCents = 0 }: { check: AffordCheck; r
               {opts.map((x, i) => (
                 <li key={x.title} className={`min-w-0 overflow-hidden rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
                   <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
-                    <span aria-hidden>{icon[x.kind] ?? "•"}</span>
-                    <span className="min-w-0 flex-1 truncate" title={x.title}>{shortTitle(x.title)}</span>
-                    {i === 0 && <span className="shrink-0 rounded-full bg-surface px-1.5 py-0.5 text-[10px] font-medium text-muted">best</span>}
+                    <span aria-hidden className="text-[13px]">{icon[x.kind] ?? "•"}</span>
+                    <span className="min-w-0 flex-1 truncate" title={x.title}>
+                      {i === 0 && <span className="mr-1 text-warn" title="Best option">★</span>}
+                      {shortTitle(x.title)}
+                    </span>
                   </p>
-                  <p className="pl-6 text-[10px] leading-snug text-faint">{x.detail}</p>
+                  <div className="flex items-end gap-2 pl-6">
+                    <p className="min-w-0 flex-1 text-[10px] leading-snug text-faint">{x.detail}</p>
+                    {eventId && (x.apply || x.kind === "lean") && (
+                      <QuickAction
+                        action={applyPlanOption}
+                        fields={{ eventId, kind: x.kind, apply: JSON.stringify(x.apply ?? {}) }}
+                        variant={i === 0 ? "primary" : "secondary"}
+                        confirm={confirmText(x)}
+                      >
+                        Do this
+                      </QuickAction>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>
+            {eventId && (
+              <div className="mt-2 flex justify-end">
+                <QuickAction action={applyPlanOption} fields={{ eventId, kind: "decline" }} variant="ghost" confirm="Skip this plan? Its money goes back to everyday spending.">
+                  Skip this plan
+                </QuickAction>
+              </div>
+            )}
           </div>
         );
       })()}

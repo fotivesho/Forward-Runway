@@ -29,6 +29,18 @@ export interface AffordAction {
   title: string;
   /** The trade-off, in plain words. */
   detail: string;
+  /** What doing it changes, so the app can do it for you in one tap. */
+  apply?: {
+    /** Savings to move into cash, by this date. */
+    moves?: Array<{ fromAccountId: string; cents: Cents }>;
+    date?: ISODate;
+    /** Other plans to skip. */
+    skipEventIds?: string[];
+    /** Spend at most this on it. */
+    capCents?: Cents;
+    /** Move it to this date. */
+    newDate?: ISODate;
+  };
 }
 
 export interface AffordCheck {
@@ -228,6 +240,18 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     }
     return parts.join(" and ");
   };
+  /** The savings moves behind a "Move $X from …" option. */
+  const movesFor = (cents: Cents) => {
+    const out: Array<{ fromAccountId: string; cents: Cents }> = [];
+    let left = cents;
+    for (const s of unprotected) {
+      if (left <= 0) break;
+      const take = Math.min(left, s.availableCents);
+      out.push({ fromAccountId: s.accountId, cents: take });
+      left -= take;
+    }
+    return out;
+  };
   const rebuildText = (cents: Cents) => {
     const m = rebuildMonths(cents);
     return `rebuild it with ${money(Math.ceil(cents / m / 100) * 100)}/month for ${m} months`;
@@ -243,6 +267,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       rank: 3,
       title: `Move ${savingsTitle(needFromSavings)} by ${formatShort(cash.date)}`,
       detail: `${rebuildText(needFromSavings).replace(/^r/, "R")}.`,
+      apply: { moves: movesFor(needFromSavings), date: cash.date },
     });
   }
 
@@ -263,10 +288,10 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     const single = cuttable.find((x) => x.a.capCents >= shortfall);
     const pair = !single && cuttable.length >= 2 ? cuttable.slice(-2) : null;
     if (single) {
-      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.` });
+      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.`, apply: { skipEventIds: [single.e.id] } });
     } else if (pair && pair[0]!.a.capCents + pair[1]!.a.capCents >= shortfall) {
       const freed = pair[0]!.a.capCents + pair[1]!.a.capCents;
-      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.` });
+      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.`, apply: { skipEventIds: [pair[0]!.e.id, pair[1]!.e.id] } });
     } else if (cuttable.length && savingsCovers) {
       // Not enough on its own: skip the biggest plan and cover the rest from savings (a smaller move).
       const biggest = cuttable[cuttable.length - 1]!;
@@ -276,13 +301,14 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
         rank: 3.5,
         title: `Skip ${biggest.e.title} and move ${money(rest)}`,
         detail: `Skipping it frees ${money(biggest.a.capCents)}, so less comes from savings: ${rebuildText(rest)}.`,
+        apply: { skipEventIds: [biggest.e.id], moves: movesFor(rest), date: cash.date },
       });
     }
 
     // 4. Wait for the next pay period (debit only; a card's cash already leaves later).
     const following = pots[potIndex + 1];
     if (!cash.viaCard && following && amt <= following.free) {
-      options.push({ kind: "wait", rank: 6, title: `Wait until ${formatShort(following.start)}`, detail: "It fits in that pay period's money." });
+      options.push({ kind: "wait", rank: 6, title: `Wait until ${formatShort(following.start)}`, detail: "It fits in that pay period's money.", apply: { newDate: following.start } });
     }
   }
 
@@ -302,7 +328,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   // 6. Cut it down to what fits as is.
   const cheaper = friendlyRoundDown(reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor)));
   if (cheaper >= 500 && cheaper < req.amountCents) {
-    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `That fits ${range(pot.start, pot.end)} with nothing else changing.` });
+    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `That fits ${range(pot.start, pot.end)} with nothing else changing.`, apply: { capCents: cheaper } });
   }
 
   options.sort((a, b) => a.rank - b.rank);

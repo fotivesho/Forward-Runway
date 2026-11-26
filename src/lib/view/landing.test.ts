@@ -168,3 +168,23 @@ describe("skip a plan and save up", () => {
     expect([r.action, ...r.alternatives].some((a) => a.kind === "goal")).toBe(false);
   });
 });
+
+describe("plan options can be done in one tap", () => {
+  it("each option carries what it changes", async () => {
+    const { buildDashboard } = await import("./dashboard");
+    const { demoSnapshot } = await import("../data/demo");
+    const t = "2026-11-25";
+    const m = buildDashboard(demoSnapshot(t, `${t}T15:00:00Z`), t, 30, new Date(`${t}T15:00:00Z`));
+    const mia = m.allEvents.find((v) => v.event.title.startsWith("Flights"))!;
+    expect(mia.check!.verdict).toBe("yes_with_plan");
+    const opts = [mia.check!.action, ...mia.check!.alternatives];
+    const move = opts.find((o) => o.kind === "move")!;
+    expect(move.apply!.moves!.reduce((a, x) => a + x.cents, 0)).toBeGreaterThanOrEqual(40_000);
+    expect(move.apply!.date).toBe(mia.event.date);
+    const skip = opts.find((o) => o.kind === "skip_plan");
+    if (skip) expect(skip.apply!.skipEventIds!.length).toBeGreaterThan(0);
+    // Never moves money out of the protected wedding fund.
+    const wedding = "00000000-0000-4000-8000-000000000003";
+    for (const o of opts) expect((o.apply?.moves ?? []).some((x) => x.fromAccountId === wedding)).toBe(false);
+  });
+});

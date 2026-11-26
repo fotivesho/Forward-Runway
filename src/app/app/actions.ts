@@ -548,6 +548,75 @@ export async function correctEvent(_: ActionState, form: FormData): Promise<Acti
   return ok(v.rememberForSimilar ? "Saved, and remembered for similar events." : "Saved.");
 }
 
+/**
+ * One tap on a plan: do an option ("Do this") or skip the plan. Doing an option carries it out
+ * (planned transfer from savings, other plans skipped, a lower cap, or a new date) and marks the
+ * plan as going ahead.
+ */
+export async function applyPlanOption(form: FormData) {
+  const { supabase } = await session();
+  const eventId = String(form.get("eventId") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return;
+  const { data: ev } = await supabase.from("calendar_events").select("id, title, date, payment_account_id").eq("id", eventId).maybeSingle();
+  if (!ev) return;
+  const kind = String(form.get("kind") ?? "");
+
+  if (kind === "decline") {
+    await supabase.from("calendar_events").update({ decision: "skip", user_corrected: true }).eq("id", eventId);
+    await logDecision(supabase, "event", eventId, "skip", { title: ev.title, via: "plan card" });
+    revalidatePath("/app", "layout");
+    return;
+  }
+
+  let apply: { moves?: Array<{ fromAccountId: string; cents: number }>; date?: string; skipEventIds?: string[]; capCents?: number; newDate?: string } = {};
+  try {
+    apply = JSON.parse(String(form.get("apply") ?? "{}"));
+  } catch {
+    return;
+  }
+  const isId = (x: unknown): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x);
+  const isDate = (x: unknown): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x);
+
+  // Savings moves land in the account that pays for it: the card's payment account, or your main cash account.
+  if (apply.moves?.length) {
+    const { data: accts } = await supabase.from("accounts").select("id, kind, is_spendable, payment_account_id, archived");
+    const pay = accts?.find((a) => a.id === ev.payment_account_id);
+    const target =
+      (pay?.kind === "credit_card" ? accts?.find((a) => a.id === pay.payment_account_id) : pay?.is_spendable ? pay : null) ??
+      accts?.find((a) => a.is_spendable && a.kind === "checking" && !a.archived) ??
+      accts?.find((a) => a.is_spendable && !a.archived);
+    if (!target) return;
+    const { today } = await userToday(supabase);
+    const date = isDate(apply.date) && apply.date >= today ? apply.date : today;
+    for (const m of apply.moves) {
+      if (!isId(m.fromAccountId) || m.fromAccountId === target.id || !Number.isInteger(m.cents) || m.cents <= 0 || m.cents > 100_000_000) continue;
+      const from = accts?.find((a) => a.id === m.fromAccountId);
+      if (!from || from.kind !== "savings") continue;
+      await supabase.from("transfers").insert({
+        from_account_id: m.fromAccountId,
+        to_account_id: target.id,
+        date,
+        amount_cents: m.cents,
+        status: "planned",
+        note: `For ${String(ev.title).slice(0, 100)}`,
+      });
+    }
+  }
+  for (const id of (apply.skipEventIds ?? []).filter(isId).slice(0, 5)) {
+    if (id === eventId) continue;
+    await supabase.from("calendar_events").update({ decision: "skip", user_corrected: true }).eq("id", id);
+  }
+  const patch: Record<string, unknown> = { decision: "proceed", user_corrected: true };
+  if (Number.isInteger(apply.capCents) && apply.capCents! > 0) {
+    patch.decision = "cheaper";
+    patch.cap_cents = apply.capCents;
+  }
+  if (isDate(apply.newDate)) patch.date = apply.newDate;
+  await supabase.from("calendar_events").update(patch).eq("id", eventId);
+  await logDecision(supabase, "event", eventId, String(patch.decision), { title: ev.title, option: kind, via: "plan card" });
+  revalidatePath("/app", "layout");
+}
+
 export async function setEventDuplicate(form: FormData) {
   const { supabase } = await session();
   const id = idFrom(form);
