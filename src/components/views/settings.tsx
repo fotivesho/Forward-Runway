@@ -21,11 +21,11 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
       <PageHeader title="Settings" subtitle={user.email ? `Signed in as ${user.email}` : undefined} />
       <div className="grid gap-4">
         <Card title="Profile"><ProfileForm snapshot={snapshot} /></Card>
-        <Card title={<>Appearance <Info label="Appearance">Auto follows your phone or computer's light/dark setting. Your choice is saved to your account and used on every device.</Info></>}>
+        <Card title={<>Appearance <Info label="Appearance">&ldquo;Auto&rdquo; matches your phone or computer&apos;s light or dark setting. Whatever you pick is saved to your account and used on every device.</Info></>}>
           <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
-        <Card title={<>What {APP_NAME} remembers <Info label="What we remember">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</Info></>} id="memory">
+        <Card title={<>What {APP_NAME} remembers <Info label="What we remember">When you correct a cost or make a decision, we remember it so you don&apos;t have to repeat yourself next time. Remove anything you&apos;d rather we forget.</Info></>} id="memory">
           <h3 className="text-sm font-bold text-ink">Event cost corrections</h3>
           {corrections.length === 0 ? (
             <p className="text-sm text-faint">None yet. Correct an event's cost and tick “Remember this for similar events”.</p>
@@ -66,18 +66,18 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
         <Card title="Privacy" id="privacy">
           <div className="space-y-5">
             <div>
-              <h3 className="mb-2 text-sm font-bold text-ink">Hide amounts on screen <Info label="Hide amounts on screen">Masks every dollar amount until you turn it off. Handy in public.</Info></h3>
+              <h3 className="mb-2 text-sm font-bold text-ink">Hide amounts on screen <Info label="Hide amounts on screen">Hides every dollar amount on screen until you turn it back on. Handy when someone&apos;s looking over your shoulder.</Info></h3>
               <form action={setHideAmounts} aria-disabled={demo}>
                 <input type="hidden" name="hide" value={snapshot.profile.hideAmounts ? "false" : "true"} />
                 <button className="btn btn-secondary" disabled={demo} aria-pressed={snapshot.profile.hideAmounts}>{snapshot.profile.hideAmounts ? "Show amounts" : "Hide amounts"}</button>
               </form>
             </div>
             <div>
-              <h3 className="mb-2 text-sm font-bold text-ink">Export your data <Info label="Export your data">Everything as JSON (amounts in cents). Calendar addresses are left out because they're secrets.</Info></h3>
+              <h3 className="mb-2 text-sm font-bold text-ink">Export your data <Info label="Export your data">Downloads all your data as one file (JSON format, amounts in cents). Your private calendar links are left out, because anyone with them could read your calendar.</Info></h3>
               {demo ? <button className="btn btn-secondary" disabled>Download JSON</button> : <a href="/app/export" className="btn btn-secondary" download>Download JSON</a>}
             </div>
             <div>
-              <h3 className="mb-2 text-sm font-bold text-ink">Import <Info label="Import">Restore from an export. The file is checked first; nothing changes if it's invalid.</Info></h3>
+              <h3 className="mb-2 text-sm font-bold text-ink">Import <Info label="Import">Brings back data from a file you exported earlier. The file is checked first; if anything is wrong with it, nothing changes.</Info></h3>
               <ImportForm />
             </div>
             <div>
@@ -85,11 +85,11 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
               <PasswordForm />
             </div>
             <div className="rounded-xl border border-danger/40 p-3">
-              <h3 className="mb-2 text-sm font-bold text-danger">Delete all data <Info label="Delete all data">Erases your financial data and memory but keeps your login.</Info></h3>
+              <h3 className="mb-2 text-sm font-bold text-danger">Delete all data <Info label="Delete all data">Erases your accounts, bills, plans and everything the app remembers, but keeps your login so you can start fresh.</Info></h3>
               <DeleteDataForm />
             </div>
             <div className="rounded-xl border border-danger/40 p-3">
-              <h3 className="mb-2 text-sm font-bold text-danger">Delete account <Info label="Delete account">Permanently removes your login and every row of your data.</Info></h3>
+              <h3 className="mb-2 text-sm font-bold text-danger">Delete account <Info label="Delete account">Permanently deletes your login and all of your data. This can&apos;t be undone.</Info></h3>
               <DeleteAccountForm />
             </div>
           </div>

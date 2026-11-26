@@ -85,7 +85,7 @@ export function AccountsView({
           <div className="rounded-xl border border-warn/50 bg-warn/5 p-3 text-sm">
             <p className="font-medium text-ink">
               Same as a bank account?
-              <Info>Replace it: paydays, bills, card payments, goals and plans move to the bank account, and this one is archived so nothing is counted twice.</Info>
+              <Info label="Replace with a bank account">Swap this hand-entered account for the matching one from your bank. Your paydays, bills, card payments, goals and plans move over to the bank account, and this one is archived, so nothing gets counted twice.</Info>
             </p>
             <div className="mt-2"><ReplaceWithBankForm from={a.id} options={options.map((b) => ({ id: b.id, name: b.name }))} /></div>
           </div>
@@ -183,7 +183,7 @@ export function AccountsView({
         {/* The whole picture: what you have vs what you owe */}
         <section className="card overflow-hidden" aria-label="Net worth">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
-          <h2 className="text-base font-bold text-ink">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></h2>
+          <h2 className="text-base font-bold text-ink">Net worth <Info label="Net worth">Everything you own minus everything you owe. Add up your cash and savings, then subtract what&apos;s on your credit cards and loans. Watching it grow over time is one of the simplest signs of progress.</Info></h2>
           <p className={`mt-1 font-num text-6xl leading-none tracking-tight tabular ${assets - owed < 0 ? "text-danger" : "text-display"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
           <p className="mt-1 text-sm text-muted">
             Have <Money cents={assets} whole className="font-semibold text-ink" /> · Owe <Money cents={owed} whole className="font-semibold text-ink" />
@@ -216,7 +216,7 @@ export function AccountsView({
             <div className="border-t border-line p-4 sm:p-5">
               <p className="flex items-center justify-between text-sm font-bold text-ink">
                 <span>Cash ahead</span>
-                <Info label="Where your cash is headed">Scheduled: paychecks, bills and plans only. Real life: plus your usual everyday spending, learned from your patterns. Dashed: your cash floor.</Info>
+                <Info label="Cash ahead">Two pictures of your checking balance over the next two months. <strong className="font-semibold">Scheduled</strong> (faint line) only counts what&apos;s on the calendar: paychecks, bills and plans. <strong className="font-semibold">Real life</strong> also subtracts your usual everyday spending, so it&apos;s closer to what will really happen. The dashed line is your cushion, the amount you never want to go below.</Info>
               </p>
               <div className="mt-2">
                 <CashPath
@@ -240,7 +240,7 @@ export function AccountsView({
 
         <section aria-labelledby="goals-h">
           <div className="mb-2 flex items-center justify-between">
-            <h2 id="goals-h" className="text-sm font-bold text-ink">Goals <Info>Money set aside for something. Protected goals (<Glyph name="🔒" size="xs" />) are never suggested to pay for anything else.</Info></h2>
+            <h2 id="goals-h" className="text-sm font-bold text-ink">Goals <Info label="Goals">Money you&apos;re setting aside for something specific, like a trip or an emergency fund. Goals with a lock (<Glyph name="🔒" size="xs" />) are protected: the app will never suggest using them to pay for something else.</Info></h2>
             <AddInModal label="+ Goal" title="Add a goal" icon="🎯"><GoalForm accounts={accounts} /></AddInModal>
           </div>
           {goalTiles.length > 0 ? <AccountGrid tiles={goalTiles} /> : <p className="text-sm text-muted">No goals yet.</p>}

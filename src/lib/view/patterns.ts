@@ -224,7 +224,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
       out.push({
         id: "payday", icon: "💸", stat: times(m.payday), tone: "warn", score: m.payday * 2,
         title: "Payday splurge",
-        detail: `The 3 days after payday cost about ${usd(pd)}, vs ${usd(usual)} for 3 usual days. Plan one payday treat and the rest of the period stays easy.`,
+        detail: `In the 3 days after you get paid, you usually spend about ${usd(pd)}, compared with ${usd(usual)} over 3 normal days. It's very common. Planning one payday treat ahead of time keeps the rest of the pay period comfortable.`,
       });
     }
     // Busiest weekday.
@@ -234,7 +234,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
       out.push({
         id: "weekday", icon: "📆", stat: `~${usd(day.cents)}`, tone: "info", score: m.weekday[top]! * 1.5,
         title: `${DOW[top]} are your big day`,
-        detail: `${DOW[top]} run ${times(m.weekday[top]!)} an average day. Budgets and the calendar already expect it.`,
+        detail: `On ${DOW[top]} you usually spend ${times(m.weekday[top]!)} what you spend on an average day. That's fine: your budget and calendar already expect it, so it won't catch you off guard.`,
       });
     }
     // Big rare costs.
@@ -243,7 +243,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
       out.push({
         id: `lumpy-${l.category}`, icon: "🧰", stat: `~${usd(l.avgCents)}`, tone: soon ? "warn" : "info", score: soon ? 3 : 1.2,
         title: `${l.category} every ~${Math.round(l.everyDays / 30.4)} mo`,
-        detail: `About ${usd(l.avgCents)} every ${l.everyDays} days, next around ${formatShort(l.nextAround)}. Setting aside ${usd(l.monthlyCents)} a month covers it.`,
+        detail: `This cost shows up about every ${l.everyDays} days and is usually around ${usd(l.avgCents)}. The next one is likely around ${formatShort(l.nextAround)}. Setting aside ${usd(l.monthlyCents)} a month means it's already covered when it comes.`,
       });
     }
   }
@@ -268,7 +268,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
     out.push({
       id: `creep-${k.cat}`, icon: "📈", stat: `+${Math.round(k.pct * 100)}%`, tone: "warn", score: 2 + k.pct,
       title: `${k.cat} is creeping up`,
-      detail: `${usd(k.a)} three months ago, ${usd(k.c)} last month. Worth a look before it becomes the new normal.`,
+      detail: `You spent ${usd(k.a)} on this three months ago and ${usd(k.c)} last month. Small increases add up quietly, so it's worth a look before it becomes the new normal.`,
     });
   }
 
@@ -292,7 +292,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
       out.push({
         id: `price-${cleanName(last.description)}`, icon: "🔺", stat: `+$${((last.amountCents - first.amountCents) / 100).toFixed(2)}`, tone: "warn", score: 2.5,
         title: `${last.description} went up`,
-        detail: `Was $${(first.amountCents / 100).toFixed(2)}, now $${(last.amountCents / 100).toFixed(2)} a month. Still using it?`,
+        detail: `This charge used to be $${(first.amountCents / 100).toFixed(2)} and is now $${(last.amountCents / 100).toFixed(2)} a month. Subscription prices often rise without notice. If you don't use it much anymore, cancelling saves that every month.`,
       });
     }
   }
@@ -303,7 +303,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
     out.push({
       id: "subs", icon: "🔁", stat: `${usd(subMonthly * 12)}/yr`, tone: "info", score: 1.4,
       title: `${subCount} subscriptions`,
-      detail: `${usd(subMonthly)} a month all together. Cancel one you don't use and it shows up in your spending money right away.`,
+      detail: `Your subscriptions add up to ${usd(subMonthly)} a month. If there's one you don't use, cancelling it adds that money straight back to what you can spend.`,
     });
   }
 

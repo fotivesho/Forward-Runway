@@ -34,7 +34,7 @@ export function ProfileForm({ snapshot, detectTimezone = false }: { snapshot: Sn
   return (
     <ActionForm action={saveProfile} className="grid gap-3 sm:grid-cols-2" aria-label="Profile">
       <Field name="displayName" label="Your first name (optional)" defaultValue={snapshot.profile.displayName ?? ""} maxLength={80} autoComplete="given-name" />
-      <SelectField name="timezone" label="Time zone" value={tz} onChange={(e) => setTz(e.target.value)} options={zones(tz).map((z) => ({ value: z, label: z.replace(/_/g, " ") }))} hint="Decides what “today” is for your forecast." />
+      <SelectField name="timezone" label="Time zone" value={tz} onChange={(e) => setTz(e.target.value)} options={zones(tz).map((z) => ({ value: z, label: z.replace(/_/g, " ") }))} hint="Sets when your day starts and ends, so “today” in the app matches your real day." />
       <div className="sm:col-span-2"><Submit>Save</Submit></div>
     </ActionForm>
   );
@@ -44,12 +44,12 @@ export function SettingsForm({ snapshot }: { snapshot: Snapshot }) {
   const s = snapshot.settings;
   return (
     <ActionForm action={saveSettings} className="grid gap-3 sm:grid-cols-2" aria-label="Forecast settings">
-      <MoneyField name="cashFloor" label="Cash floor" defaultValue={centsToInput(s.cashFloorCents)} hint="The least you want in checking at any point. Daily caps keep you above it." required />
+      <MoneyField name="cashFloor" label="Cash floor" defaultValue={centsToInput(s.cashFloorCents)} hint="Your cushion: the least you ever want in checking. Daily spending limits are set so your balance never drops below it, even on the tightest day." required />
       <SelectField name="defaultHorizonDays" label="Default forecast length" defaultValue={String(s.defaultHorizonDays)} options={[{ value: "30", label: "30 days" }, { value: "60", label: "60 days" }, { value: "90", label: "90 days" }]} />
       <Field name="staleAfterDays" type="number" min={1} max={60} label="Treat cash balances as out of date after (days)" defaultValue={s.staleAfterDays} required />
-      <Field name="unseenPlansBufferPct" type="number" min={0} max={50} label="Buffer for plans I can't see (%)" defaultValue={s.unseenPlansBufferPct} hint="Held back from daily caps while calendars are missing or failing." required />
+      <Field name="unseenPlansBufferPct" type="number" min={0} max={50} label="Buffer for plans I can't see (%)" defaultValue={s.unseenPlansBufferPct} hint="If a calendar isn’t connected or stops syncing, there may be plans we can’t see. This keeps a small share of your spending money aside, just in case." required />
       <div className="sm:col-span-2">
-        <CheckboxField name="autoPayStatements" label="Schedule card statement payments automatically" defaultChecked={s.autoPayStatements} hint="Pays each statement on its due date unless you've scheduled a payment yourself. Turn off only if you schedule every card payment manually." />
+        <CheckboxField name="autoPayStatements" label="Schedule card statement payments automatically" defaultChecked={s.autoPayStatements} hint="Assumes you pay each card bill in full on its due date, unless you’ve planned a payment yourself. Turn off only if you plan every card payment by hand." />
       </div>
       <div className="sm:col-span-2"><Submit>Save settings</Submit></div>
     </ActionForm>

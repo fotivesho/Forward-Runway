@@ -38,7 +38,7 @@ export function QuestionCard({ question, accounts, today }: { question: Question
       <p className="text-xs font-semibold uppercase tracking-wide text-warn">One question</p>
       <h2 id="question-title" className="mt-1 text-lg font-bold text-ink">
         {question.text}
-        <Info label="Why we ask">{question.why} Until then, the forecast is marked incomplete and uses the assumptions listed below it.</Info>
+        <Info label="Why we ask">{question.why} Until you answer, we fill the gap with a careful guess, and the forecast shows as incomplete.</Info>
       </h2>
       <div className="mt-3">
         {question.kind === "balance" && account && (
@@ -106,7 +106,7 @@ export function QuickLog({ accounts, today }: { accounts: Account[]; today: ISOD
         <SelectField
           name="accountId"
           label="Paid with"
-          hint="Card purchases are paid later with the statement — never counted twice."
+          hint="Paying by card? The money leaves checking later, when you pay the card bill. We count it once, on that day."
           options={payWith.map((a) => ({ value: a.id, label: a.name }))}
         />
         <Field name="date" type="date" label="Date" defaultValue={today} required />

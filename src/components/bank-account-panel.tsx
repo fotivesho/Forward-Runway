@@ -109,7 +109,7 @@ export function BankAccountPanel({
               {latest.status !== "paid" && <Row label="Left to pay"><span className="text-warn"><Money cents={leftOnStatement} /></span></Row>}
             </dl>
           ) : (
-            <p className="mt-1 text-sm text-muted">Estimated <Info label="No statement details">Your bank hasn't shared statement details for this card. The forecast estimates it from the balance and the closing day.</Info></p>
+            <p className="mt-1 text-sm text-muted">Estimated <Info label="Estimated">Your bank hasn&apos;t shared this card&apos;s statement details (the bill amount and due date). Until it does, we estimate the bill from the card&apos;s current balance and its usual closing day.</Info></p>
           )}
         </section>
 

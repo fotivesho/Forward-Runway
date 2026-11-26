@@ -51,9 +51,13 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
             <div className="flex items-center justify-between gap-2">
               <h2 id="safe-title" className="text-sm font-bold text-muted">
                 Safe to spend today
-                {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
-                  <Info label="Notes">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</Info>
-                )}
+                <Info label="Safe to spend today">
+                  How much you can spend today on everyday things (food, coffee, rides, shopping) and still have every bill, card payment, savings transfer and plan covered until payday.
+                  <span className="mt-1.5 block">We take what&apos;s left of this paycheck after all of those, and spread it over the days until you&apos;re paid again. Spend less today and tomorrow&apos;s number goes up; spend more and it goes down.</span>
+                  {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
+                    <span className="mt-1.5 block">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</span>
+                  )}
+                </Info>
               </h2>
               <StatusPill tone={allowance.status === "shortfall" ? "bad" : allowance.status === "tight" ? "warn" : "good"}>
                 {allowance.status === "shortfall" ? "Shortfall" : allowance.status === "tight" ? "Tight" : "On track"}
@@ -197,7 +201,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="caps-title">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="caps-title" className="text-base font-bold text-ink">Daily caps</h2>
+        <h2 id="caps-title" className="text-base font-bold text-ink">Daily caps<Info label="Daily caps">How much you can spend on each day until payday. Days with a plan (blue dot) get extra room for it. If you spend less one day, the leftover rolls into the next days.</Info></h2>
         {days.length > 7 && (
           <button type="button" className="text-xs font-medium text-faint hover:text-ink" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
             {showAll ? "Next 7 days" : `All ${days.length} days`}
@@ -283,7 +287,7 @@ function TodayForecast({ m, snapshot, today, base }: { m: ReturnType<typeof buil
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="tf-title">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 id="tf-title" className="text-base font-bold text-ink">Next 30 days</h2>
+        <h2 id="tf-title" className="text-base font-bold text-ink">Next 30 days<Info label="Next 30 days">Your checking balance over the next month, after paychecks, bills, plans and your usual everyday spending. The dashed line is your cushion: the least you ever want in your account. Staying above it means you&apos;re safe.</Info></h2>
         <Link href={base + "/forecast"} className="text-xs font-medium text-faint hover:text-ink">Forecast →</Link>
       </div>
       <p className={`mt-1 text-sm font-semibold ${low < floor ? "text-warn" : "text-brand"}`}>
@@ -355,7 +359,7 @@ function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof b
           <p className="flex items-center justify-between text-xs font-bold text-muted">
             <span>
               Expected this week
-              <Info label="Expected this week">Everyday spending that's never on a calendar (lunch, rides, coffee), predicted from how often you buy each and what it usually costs.</Info>
+              <Info label="Expected this week">Everyday spending that never shows up on a calendar: lunch, rides, coffee. We estimate the next 7 days from how often you usually buy each thing and what it usually costs. It&apos;s already counted in your safe-to-spend number.</Info>
             </span>
             <span className="tabular text-ink">~<Money cents={habits.reduce((a, h) => a + h.expectedCents, 0)} whole /></span>
           </p>

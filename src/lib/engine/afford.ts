@@ -183,7 +183,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     return result("yes", "Yes, it's already planned.", {
       kind: "go",
       title: "Go ahead",
-      detail: `Its ${formatCents(reserved)} is already set aside, so nothing else changes.`,
+      detail: `The ${formatCents(reserved)} for this is already set aside in your daily spending limits, so nothing else changes.`,
     }, []);
   }
 
@@ -195,13 +195,13 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       return result("yes", "Yes, it fits.", {
         kind: "go",
         title: "Go ahead",
-        detail: `Up to about ${money(Math.round(card.capCents / 100) * 100)} can be paid in full on ${formatShort(card.due)} without savings${card.typicalCents > 0 ? `, counting ~${money(Math.round(card.typicalCents / 100) * 100)} of expected ${card.name.split(" ")[0]} spending before ${formatShort(card.closes)}` : ""}.`,
+        detail: `Your card bill on ${formatShort(card.due)} can be up to about ${money(Math.round(card.capCents / 100) * 100)} and still be paid off in full from that paycheck, without touching savings.${card.typicalCents > 0 ? ` That already counts about ${money(Math.round(card.typicalCents / 100) * 100)} of your normal card spending (groceries, gas, lunch) before the statement closes ${formatShort(card.closes)}.` : ""}`,
       }, []);
     }
     return result("yes", "Yes, it fits.", {
       kind: "go",
       title: "Go ahead",
-      detail: `Leaves ${formatCents(left)} for everyday spending ${range(pot.start, pot.end)}${daysLeft > 1 ? `, about ${formatCents(Math.floor(left / daysLeft))} a day` : ""}.`,
+      detail: `After this you'll still have ${formatCents(left)} for everyday spending from ${range(pot.start, pot.end)}${daysLeft > 1 ? `, about ${formatCents(Math.floor(left / daysLeft))} a day` : ""}. Bills and savings stay covered.`,
     }, []);
   }
 
@@ -218,7 +218,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     return result("yes", "Yes, it fits.", {
       kind: "go",
       title: "Go ahead",
-      detail: `Borrows ${money(Math.ceil(shortfall / 100) * 100)} from next pay period: about ${formatCents(Math.max(1, perDayCost))} a day less until ${formatShort(next[next.length - 1]!.end)}.`,
+      detail: `This is a little more than this pay period's spending money. The extra ${money(Math.ceil(shortfall / 100) * 100)} comes out of your next paycheck: about ${formatCents(Math.max(1, perDayCost))} a day less to spend until ${formatShort(next[next.length - 1]!.end)}. Bills and savings aren't touched.`,
     }, []);
   }
 
@@ -270,7 +270,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       kind: "move",
       rank: 3,
       title: `Move ${savingsTitle(needFromSavings)} by ${formatShort(cash.date)}`,
-      detail: `${rebuildText(needFromSavings).replace(/^r/, "R")}.`,
+      detail: `Move ${savingsTitle(needFromSavings)} into checking by ${formatShort(cash.date)}, so this is paid without squeezing your everyday spending. Afterwards, ${rebuildText(needFromSavings)} to refill your savings.`,
       apply: { moves: movesFor(needFromSavings), date: cash.date },
     });
   }
@@ -283,7 +283,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
         kind: "lean",
         rank: shortfall <= nextFree * 0.25 ? 1 : 4,
         title: `Run lean until ${formatShort(next[next.length - 1]!.end)}`,
-        detail: `Nothing extra until ${formatShort(pot.end)}, then about ${formatCents(leanPerDay)} a day instead of ${formatCents(normalPerDay)}.`,
+        detail: `Spend nothing extra until ${formatShort(pot.end)}. After that, keep everyday spending to about ${formatCents(leanPerDay)} a day instead of your usual ${formatCents(normalPerDay)} until ${formatShort(next[next.length - 1]!.end)}. That small trim pays for it, and savings stay untouched.`,
       });
     }
 
@@ -292,10 +292,10 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     const single = cuttable.find((x) => x.a.capCents >= shortfall);
     const pair = !single && cuttable.length >= 2 ? cuttable.slice(-2) : null;
     if (single) {
-      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Frees its ${money(single.a.capCents)} on ${formatShort(single.e.date)}. Nothing else changes.`, apply: { skipEventIds: [single.e.id], freesCents: single.a.capCents } });
+      options.push({ kind: "skip_plan", rank: 2, title: `Skip ${single.e.title}`, detail: `Cancel or move ${single.e.title} (${formatShort(single.e.date)}). The ${money(single.a.capCents)} set aside for it pays for this instead. Nothing else changes.`, apply: { skipEventIds: [single.e.id], freesCents: single.a.capCents } });
     } else if (pair && pair[0]!.a.capCents + pair[1]!.a.capCents >= shortfall) {
       const freed = pair[0]!.a.capCents + pair[1]!.a.capCents;
-      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Frees ${money(freed)} that pay period. Nothing else changes.`, apply: { skipEventIds: [pair[0]!.e.id, pair[1]!.e.id], freesCents: freed } });
+      options.push({ kind: "skip_plan", rank: 5, title: `Skip ${pair[0]!.e.title} and ${pair[1]!.e.title}`, detail: `Cancel or move both. The ${money(freed)} set aside for them that pay period pays for this instead. Nothing else changes.`, apply: { skipEventIds: [pair[0]!.e.id, pair[1]!.e.id], freesCents: freed } });
     } else if (cuttable.length && savingsCovers) {
       // Not enough on its own: skip the biggest plan and cover the rest from savings (a smaller move).
       const biggest = cuttable[cuttable.length - 1]!;
@@ -304,7 +304,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
         kind: "skip_plan",
         rank: 3.5,
         title: `Skip ${biggest.e.title} and move ${money(rest)}`,
-        detail: `Skipping it frees ${money(biggest.a.capCents)}, so less comes from savings: ${rebuildText(rest)}.`,
+        detail: `Cancel or move ${biggest.e.title}: its ${money(biggest.a.capCents)} goes toward this. The other ${money(rest)} comes from savings. Afterwards, ${rebuildText(rest)} to refill them.`,
         apply: { skipEventIds: [biggest.e.id], freesCents: biggest.a.capCents, moves: movesFor(rest), date: cash.date },
       });
     }
@@ -312,7 +312,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     // 4. Wait for the next pay period (debit only; a card's cash already leaves later).
     const following = pots[potIndex + 1];
     if (!cash.viaCard && following && amt <= following.free) {
-      options.push({ kind: "wait", rank: 6, title: `Wait until ${formatShort(following.start)}`, detail: "It fits in that pay period's money.", apply: { newDate: following.start } });
+      options.push({ kind: "wait", rank: 6, title: `Wait until ${formatShort(following.start)}`, detail: `Buy it on or after ${formatShort(following.start)}, when your next paycheck lands. That pay period's spending money covers it, with nothing else changing.`, apply: { newDate: following.start } });
     }
   }
 
@@ -325,14 +325,14 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
       kind: "goal",
       rank: 0,
       title: `Save up: ${money(monthly)}/month`,
-      detail: `Ready by ${formatMonthYear(ready)} without touching savings. That's about ${formatCents(Math.ceil(monthly / 30))} a day less flexible spending.`,
+      detail: `Instead of buying it now, set aside ${money(monthly)} a month and you'll have it by ${formatMonthYear(ready)}. That's about ${formatCents(Math.ceil(monthly / 30))} a day less to spend, and your savings stay untouched.`,
     });
   }
 
   // 6. Cut it down to what fits as is.
   const cheaper = friendlyRoundDown(reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor)));
   if (cheaper >= 500 && cheaper < req.amountCents) {
-    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `That fits ${range(pot.start, pot.end)} with nothing else changing.`, apply: { capCents: cheaper } });
+    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `Spend at most ${money(cheaper)} on it. That fits in your spending money for ${range(pot.start, pot.end)} without moving anything.`, apply: { capCents: cheaper } });
   }
 
   options.sort((a, b) => a.rank - b.rank);
@@ -348,7 +348,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   return result(
     "not_yet",
     "Not yet.",
-    first ? strip(first) : { kind: "none", title: "Hold off for now", detail: "It doesn't fit, even with your unprotected savings." },
+    first ? strip(first) : { kind: "none", title: "Hold off for now", detail: "It doesn't fit yet, even using the savings you're free to use. Protected goals are never touched." },
     rest.map(strip),
   );
 }

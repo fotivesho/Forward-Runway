@@ -52,11 +52,11 @@ export function BillRoom({
   palette?: BillRoomPalette;
   label?: string;
   /** Where "borrowed" comes from, behind ⓘ. */
-  borrowNote?: string;
+  borrowNote?: React.ReactNode;
   /** What "max" means, behind ⓘ. */
-  maxNote?: string;
+  maxNote?: React.ReactNode;
   /** Renders an ⓘ bubble (the app and the landing page each have their own). */
-  info?: (label: string, text: string) => React.ReactNode;
+  info?: (label: string, text: React.ReactNode) => React.ReactNode;
 }) {
   const p = palette;
   const add = Math.max(0, withCents - usualCents);

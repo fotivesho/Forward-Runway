@@ -8,7 +8,7 @@ export default function Page() {
   const s = getDemoSession();
   return (
     <>
-      <PageHeader title="What if…" subtitle="Before you buy, see if it fits, when, and how." />
+      <PageHeader title="What if…" subtitle="Thinking about buying something? Enter it here before you buy. You'll see if it fits, what it does to your money, the best day to buy it, and whether debit or credit works better." />
       <WhatIf snapshot={s.snapshot} today={s.today} nowIso={s.nowIso} demo />
     </>
   );

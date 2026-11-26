@@ -128,7 +128,7 @@ describe("card statement cap", () => {
     const r = checkAffordability(ctx, { amountCents: 100, date: "2026-11-29", paymentAccountId: visa });
     expect(r.card!.capCents).toBe(r.card!.usualCents + r.room.before);
     expect(r.verdict).toBe("yes");
-    expect(r.action.detail).toMatch(/can be paid in full/);
+    expect(r.action.detail).toMatch(/paid off in full/);
   });
 
   it("staying under the cap needs no savings; going over it is short by exactly the overage", () => {
@@ -160,7 +160,7 @@ describe("skip a plan and save up", () => {
     expect(r.verdict).toBe("not_yet");
     expect(r.action.kind).toBe("goal");
     expect(r.headline).toBe("Not yet.");
-    expect(r.action.detail).toMatch(/Ready by [A-Z][a-z]+ \d{4}/);
+    expect(r.action.detail).toMatch(/have it by [A-Z][a-z]+ \d{4}/);
   });
 
   it("never offers saving up when savings could cover it today", () => {

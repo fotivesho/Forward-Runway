@@ -53,7 +53,7 @@ function LifeSplit({ life, plans }: { life: BudgetPlan["life"]; plans: string[] 
         <span>
           Built from{" "}
           <Info label="Organized and predicted">
-            Organized: bills and calendar plans{plans.length ? ` (${plans.join(", ")})` : ""}. Predicted: everyday spending from your patterns, and set-asides for big costs that come every few months.
+            This month&apos;s spending, in four parts. <strong className="font-semibold">Bills</strong> you pay every month. <strong className="font-semibold">Plans</strong> on your calendar{plans.length ? ` (${plans.join(", ")})` : ""}. <strong className="font-semibold">Everyday</strong>: groceries, coffee, gas, predicted from your habits. <strong className="font-semibold">Set aside</strong>: a little each month for costs that come every few months, like car repairs, so they never catch you off guard.
           </Info>
         </span>
         <Money cents={total} whole className="text-ink" />
@@ -93,7 +93,7 @@ export function BudgetView({
           <h2 id="split-title" className="text-base font-bold text-ink">
             {monthName}'s plan
             <Info label="How smart budgets work">
-              Not a copy of last month. Bills and calendar plans (organized life) are counted as scheduled. Everyday categories are predicted from your patterns: this month's weekends and paydays included. Big rare costs get a monthly set-aside. If it doesn't fit, needs stay and wants shrink. Budgets you set always win. The tick on a bar is an even pace.
+              Your budget is built for this specific month, not copied from last month. Bills and calendar plans are counted as they&apos;re scheduled. Everyday spending is predicted from your habits, including how many weekends and paydays this month has. Costs that come every few months get a small monthly set-aside. If it all doesn&apos;t fit your income, needs (rent, groceries) keep their amount and wants (eating out, shopping) shrink. A budget you set yourself always wins. The small tick on each bar shows where you&apos;d be if you spent evenly through the month.
               {plan.notes.length > 0 && <span className="mt-2 block text-warn">{plan.notes.join(" ")}</span>}
             </Info>
           </h2>
@@ -125,7 +125,7 @@ export function BudgetView({
             <LifeSplit life={plan.life} plans={plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`)} />
           </>
         ) : (
-          <p className="mt-1 text-sm text-muted">No income yet <Info label="No income">Add your paycheck as repeating (Money → Overview) so budgets can start from your income.</Info></p>
+          <p className="mt-1 text-sm text-muted">No income yet <Info label="No income">Budgets start from what you earn. Add your paycheck as a repeating item (Money → Overview) and your budget will be built from it.</Info></p>
         )}
 
       </section>

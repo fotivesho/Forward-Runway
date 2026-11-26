@@ -201,7 +201,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
               <p className="flex items-center justify-between text-sm font-bold text-ink">
                 <span>Next 60 days</span>
                 <Info label="The ripple">
-                  Cash after bills, paychecks and your usual everyday spending (learned from your patterns), with and without this. Dashed: your cash floor.
+                  Your checking balance over the next 60 days, with and without this purchase. Both lines include paychecks, bills and your usual everyday spending. The gap between them is the purchase. The dashed line is your cushion: if the colored line dips below it, money gets tight that day.
                 </Info>
               </p>
               <div className="mt-2">
@@ -282,7 +282,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             >
               {added ? "✓ Added" : "Add to my plans"}
             </button>
-            {added ? <span className="text-xs text-muted">{added}</span> : <Info label="Add to my plans">It joins your forecast and calendar, where you can do an option in one tap.</Info>}
+            {added ? <span className="text-xs text-muted">{added}</span> : <Info label="Add to my plans">Saves this purchase as a plan on its date. From then on it&apos;s counted in your daily spending limits, your forecast and your calendar, and you can pick one of the options above with one tap.</Info>}
           </div>
         </section>
       )}
@@ -362,7 +362,7 @@ function ScenarioBuilder({ snapshot, input, today }: { snapshot: Snapshot; input
   }
 
   return (
-    <Card title={<>What-if scenarios <Info label="What-if scenarios">Try changes without touching your real plan: a raise, a cancelled subscription, a skipped bill, a bigger cash floor.</Info></>} id="scenarios">
+    <Card title={<>What-if scenarios <Info label="What-if scenarios">Try a change and see its effect, without changing anything real. For example: a raise, cancelling a subscription, skipping a bill once, or a bigger cushion. Nothing is saved unless you save the scenario.</Info></>} id="scenarios">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="s-type" className="text-sm font-medium">Change</label>

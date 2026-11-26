@@ -144,7 +144,7 @@ export function PlanCalendar({
           <span><span className="mr-1 rounded bg-brand px-1 text-[9px] font-bold uppercase text-brand-ink">Pay</span>Payday</span>
           <span><span className="mr-1 rounded bg-out px-1 text-[9px] font-bold uppercase text-surface">Bill</span>Bill due</span>
           <span><span className="mr-1 rounded bg-warn px-1 text-[9px] font-bold uppercase text-surface">Save</span>From savings</span>
-          <Info label="Calendar key">The amount under a date is what's safe to spend that day.</Info>
+          <Info label="Calendar key">The small amount under each date is how much you can spend that day on everyday things and still cover every bill, savings transfer and plan. Dots are plans: green fits, amber needs a small change, red doesn&apos;t fit yet.</Info>
         </p>
       </div>
 
@@ -187,7 +187,7 @@ export function PlanCalendar({
               return (
                 <p className="mt-0.5 text-xs text-muted">
                   {formatShort(p.start)}–{formatShort(p.end)} · <Money cents={p.freeCents} whole /> free · ~<Money cents={p.perDayCents} whole />/day
-                  <Info label="Pay period">Free money for the pay period after bills, savings and plans{selected === p.start && selected !== today ? ". Payday starts a new period" : ""}.</Info>
+                  <Info label="Pay period">A pay period runs from one payday to the day before the next. &ldquo;Free&rdquo; is what&apos;s left from that paycheck after bills, savings and plans; &ldquo;a day&rdquo; spreads it evenly over the days.{selected === p.start && selected !== today ? " This date is a payday, so a new period starts." : ""}</Info>
                 </p>
               );
             })()}

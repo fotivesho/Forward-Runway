@@ -72,7 +72,7 @@ export function PatternsView({
               <h2 id="pace-title" className="text-base font-bold text-ink">
                 Usual spend to {formatShort(periodEnd)}
                 <Info label="How this is predicted">
-                  Learned from your last {learnedDays} days: your daily rate, which weekdays run high, and how much more you spend right after payday. Bills and plans aren't in it: the forecast already has those.
+                  This is our best guess at the everyday spending you'll do before your next payday: groceries, coffee, takeout, rides. We learn it from your last {learnedDays} days: how much you usually spend a day, which weekdays cost more, and whether you spend more right after payday. Bills and calendar plans aren&apos;t included here, because the app already counts them separately.
                 </Info>
               </h2>
               {short ? <Badge tone="warn">Tight</Badge> : <Badge tone="good">Covered</Badge>}
@@ -104,7 +104,7 @@ export function PatternsView({
       {/* Your week */}
       <section className="card p-4" aria-labelledby="week-title">
         <h2 id="week-title" className="text-base font-bold text-ink">
-          Your week <Info label="Your week">A typical day of everyday spending for each weekday, and right after payday.</Info>
+          Your week <Info label="Your week">Each bar is what you usually spend on everyday things on that day of the week. The &ldquo;Pay&rdquo; bar is a typical day right after payday. Taller bars are the days your money goes fastest.</Info>
         </h2>
         <div className="mt-3 grid grid-cols-8 items-end gap-1.5" aria-hidden>
           {[...week.weekday.map((c, i) => ({ c, l: WD[i]!, pay: false })), { c: week.payday, l: "Pay", pay: true }].map((d, i) => (
@@ -121,7 +121,7 @@ export function PatternsView({
       <section className="card p-4" aria-labelledby="ahead-title">
         <div className="flex items-baseline justify-between gap-2">
           <h2 id="ahead-title" className="text-base font-bold text-ink">
-            Next 30 days <Info label="Next 30 days">Organized life is what's scheduled: bills and calendar plans. Predicted life is everyday spending from your patterns, plus any big cost that usually comes around now. Budgets use both.</Info>
+            Next 30 days <Info label="Next 30 days">Everything you&apos;re likely to spend in the next month, in two kinds. <strong className="font-semibold">Scheduled:</strong> bills and plans on your calendar, things we know about. <strong className="font-semibold">Predicted:</strong> everyday spending nobody puts on a calendar (groceries, gas, coffee), estimated from your habits, plus big costs that tend to come around now. Your budget is built from both.</Info>
           </h2>
           <Money cents={ahead.totalCents} whole className="text-lg font-extrabold text-ink" />
         </div>

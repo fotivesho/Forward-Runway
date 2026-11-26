@@ -88,8 +88,8 @@ export function computeAllowance(forecast: Forecast): Allowance {
       ? ` Mainly ${outs.map((it) => `${it.label} (${formatCents(-it.cashEffectCents)} on ${formatShort(it.date)})`).join(" and ")}${nextIncome ? `, before your next income on ${formatShort(nextIncome.date)}` : ""}.`
       : "";
     explanation.push(
-      `Before any flexible spending, cash is projected to fall ${formatCents(-minSlack)} below your ${formatCents(floor)} floor on ${formatShort(days[minIdx]!.date)}.${cause}`,
-      "Flexible spending is paused until that gap is closed: move money from savings, pay less on a card this month, delay a bill, or add income.",
+      `Even if you spend nothing extra, your account is on track to drop ${formatCents(-minSlack)} below your ${formatCents(floor)} cushion on ${formatShort(days[minIdx]!.date)}.${cause}`,
+      "So everyday spending is set to $0 for now, to protect your bills. To fix it: move money from savings, pay less on a card this month, push back a bill, or add income. What if shows the options.",
     );
     return {
       status: "shortfall",
@@ -239,7 +239,7 @@ export function planDailySpending(
   const bufferCents = allowance.current.budgetCents - periodPools[0]!;
   if (pct > 0 && bufferCents > 0) {
     notes.push(
-      `${formatCents(bufferCents)} is held back this period for plans we can't see (some calendars are missing, failed to sync, or are out of date).`,
+      `${formatCents(bufferCents)} is kept aside this pay period, just in case. Some of your calendars aren't connected or didn't sync, so there may be plans we can't see yet.`,
     );
   }
   // Keep at least half of normal daily spending for non-event days.
@@ -405,7 +405,7 @@ export function planDailySpending(
   // Spending logged today is already out of the balance (and the pool), so
   // today's cap is what's still available today — no double subtraction.
   if (dayCaps[0] && dayCaps[0].spentCents > 0) {
-    notes.push(`${formatCents(dayCaps[0].spentCents)} logged today is already reflected; today's cap is what's left.`);
+    notes.push(`You've already spent ${formatCents(dayCaps[0].spentCents)} today. The number shown is what's left for the rest of today.`);
   }
   if (allowance.status === "shortfall") {
     notes.unshift(allowance.explanation[0]!);

@@ -246,13 +246,37 @@ function doableTitle(a: AffordCheck["action"]): string {
   }
 }
 
-/** The two ⓘ notes on a card bill: where "borrowed" comes from, and what "max" means. */
-export function billNotes(check: AffordCheck): { borrow: string; max: string } {
+/** The two ⓘ notes on a card bill, written to teach: where "from next pay" comes from, and what "max" is made of. */
+export function billNotes(check: AffordCheck): { borrow: React.ReactNode; max: React.ReactNode } {
   const r = check.room;
   const c = check.card;
+  const extra = r.borrowed || Math.max(0, (c?.withCents ?? 0) - (c?.capCents ?? 0));
+  const perDay = check.action.detail.match(/about (\$[\d,.]+) a day less to spend until ([A-Z][a-z]{2} \d+)/);
+  const free = c ? Math.max(0, c.capCents - c.usualCents) : 0;
+  const B = ({ children }: { children: React.ReactNode }) => <strong className="font-semibold">{children}</strong>;
   return {
-    borrow: `Your next pay period's everyday money covers it: ${dollars(r.borrowed || Math.max(0, (c?.withCents ?? 0) - (c?.capCents ?? 0)))} less to spend after ${formatShort(r.end)}, spread over the days.`,
-    max: `Max = your usual bill (everyday card spending like groceries already in it${c && c.typicalCents > 0 ? `, ~${dollars(c.typicalCents)} until it closes ${formatShort(c.closes)}` : ""}) + what's free in your ${span(r.start, r.end)} pay period after bills, savings and plans. Anything extra simply lowers that period's daily caps; you'll see it there.`,
+    borrow: (
+      <>
+        This purchase is a little bigger than what this paycheck can cover on its own.
+        <span className="mt-1.5 block">
+          The extra <B>{dollars(extra)}</B> comes out of your <B>next paycheck&apos;s everyday money</B>
+          {perDay ? <>: about <B>{perDay[1]} a day less</B> to spend until {perDay[2]}</> : null}.
+        </span>
+        <span className="mt-1.5 block">Your bills and savings aren&apos;t touched, and the card is still paid off in full.</span>
+      </>
+    ),
+    max: c ? (
+      <>
+        The most you can pay off in full on <B>{formatShort(c.due)}</B> without dipping into savings. It&apos;s two things added together:
+        <span className="mt-1.5 block">
+          <B>1. Your usual bill, {dollars(c.usualCents)}.</B> What&apos;s already on the card{c.typicalCents > 0 ? <>, plus about {dollars(c.typicalCents)} of your normal card spending (groceries, gas, lunch) until the statement closes {formatShort(c.closes)}</> : null}.
+        </span>
+        <span className="mt-1 block">
+          <B>2. Your free money, {dollars(free)}.</B> What&apos;s left from the {span(r.start, r.end)} paycheck after bills, savings and plans.
+        </span>
+        <span className="mt-1.5 block">Stay under max and the card is paid in full, so you pay no interest. Anything you add uses that free money, so your daily spending limits for {span(r.start, r.end)} get smaller.</span>
+      </>
+    ) : null,
   };
 }
 
@@ -331,7 +355,9 @@ export function PlanImpact({
           {why}
           {check.cash.viaCard && !check.cash.beyondHorizon && <> On {check.cash.viaCard.split(" ")[0]}, cash leaves {formatShort(check.cash.date)}.</>}
           <span className="mt-2 block text-muted">
-            <strong className="text-ink">Spending money</strong>: what's left this pay period after bills, savings and other plans. <strong className="text-ink">Lowest balance</strong>: the tightest your account gets in 90 days. <strong className="text-ink">Cushion</strong> ({dollars(floor)}): what you never want to go below.
+            <strong className="font-semibold">Spending money</strong> is what&apos;s truly free this pay period: your paycheck minus bills, savings and other plans.
+            <span className="mt-1 block"><strong className="font-semibold">Lowest balance</strong> is the lowest your bank account will dip in the next 90 days, once everything scheduled has happened.</span>
+            <span className="mt-1 block"><strong className="font-semibold">Cushion</strong> ({dollars(floor)}) is a safety amount you never want your account to drop below.</span>
           </span>
         </Info>
       </p>

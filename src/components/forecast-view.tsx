@@ -58,7 +58,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
               <h2 id="fc-title" className="text-sm font-bold text-muted">
                 Lowest ahead
                 <Info label="How this is worked out">
-                  Your spendable cash, with paychecks, bills, card payments and plans{life.hasModel ? ", plus your usual everyday spending learned from your patterns" : ""}. The faint line is scheduled items only.
+                  The lowest your checking balance will get, looking ahead. We start from today&apos;s balance, add each paycheck, subtract each bill, card payment and plan{life.hasModel ? ", and also subtract your usual everyday spending (learned from your habits)" : ""}. The lowest point is when money is tightest. If it stays above your cushion, you&apos;re safe. The faint line shows scheduled items only.
                 </Info>
               </h2>
               <div role="group" aria-label="Forecast horizon" className="flex rounded-full bg-surface-3 p-1">
@@ -206,7 +206,7 @@ function CardBillForecast({ card, snapshot, today, realOn }: { card: ReturnType<
       <div className="flex items-baseline justify-between gap-2">
         <h2 id={`bill-${card.accountId}`} className="text-base font-bold text-ink">
           {name} next bill
-          <Info label="How this is projected">On the card so far this cycle, plus your usual card spending (about {"$"}{Math.round(data.perDay / 100)} a day) and anything scheduled, until it closes {formatShort(next.closingDate)}. Paid in full on {formatShort(next.dueDate)}.</Info>
+          <Info label="How this is projected">Your card collects purchases for about a month, then &ldquo;closes&rdquo; and sends a bill. This estimates that bill: what&apos;s on the card so far, plus your usual card spending (about {"$"}{Math.round(data.perDay / 100)} a day) and anything scheduled, until it closes {formatShort(next.closingDate)}. You pay it from checking on {formatShort(next.dueDate)}. That&apos;s when the money actually leaves your account. The dotted line is your last bill, so you can see if this one is running higher or lower.</Info>
         </h2>
         <span className="text-xs text-faint">closes {formatShort(next.closingDate)}</span>
       </div>
