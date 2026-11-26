@@ -159,6 +159,15 @@ export async function replaceWithBankAccount(_: ActionState, form: FormData): Pr
   return ok("Done. Everything now uses the bank account, and the old one is archived (you can unarchive it any time).");
 }
 
+/** How a card is paid (the one thing a bank can't tell us): the statement in full, or the minimum. */
+export async function setCardPayInFull(form: FormData) {
+  const { supabase } = await session();
+  const id = idFrom(form);
+  if (!id) return;
+  await supabase.from("accounts").update({ pay_in_full: form.get("payInFull") !== "false" }).eq("id", id).eq("kind", "credit_card");
+  revalidatePath("/app", "layout");
+}
+
 export async function deleteAccount(form: FormData) {
   const { supabase } = await session();
   const id = idFrom(form);

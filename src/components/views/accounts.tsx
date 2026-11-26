@@ -7,6 +7,9 @@ import { BankConnections, type BankConnectionView } from "@/components/bank-conn
 import { diffDays, formatShort } from "@/lib/dates";
 import { archiveAccount, deleteAccount, deleteGoal, deleteStatement, markStatementPaid } from "@/app/app/actions";
 import { ReplaceWithBankForm } from "@/components/replace-with-bank";
+import { BankAccountPanel } from "@/components/bank-account-panel";
+import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
+import { toEngineInput } from "@/lib/data/snapshot";
 
 const KIND = { checking: "Checking", savings: "Savings", cash: "Cash", credit_card: "Credit card", loan: "Loan" } as const;
 const SOURCE = { manual: "entered by you", statement: "from a statement", import: "imported", onboarding: "from setup", bank: "from your bank" } as const;
@@ -21,6 +24,10 @@ export function AccountsView({
   const accounts = snapshot.accounts;
   const active = accounts.filter((a) => !a.archived);
   const archived = accounts.filter((a) => a.archived);
+  // For bank-connected cards: the forecast's view of upcoming statements, and usual spending until they close.
+  const input = toEngineInput(snapshot, today);
+  const cardProjections = active.some((a) => a.bankConnectionId && a.kind === "credit_card") ? buildForecast(input, 90).cards : [];
+  const nowMs = Date.now();
   return (
     <>
       <PageHeader title="Accounts & goals" subtitle="Balances are the opening balance on their “as of” date. Keep spendable balances fresh for an accurate forecast." />
@@ -41,6 +48,20 @@ export function AccountsView({
           const liability = a.kind === "credit_card" || a.kind === "loan";
           return (
             <Card key={a.id} title={<>{a.name} <span className="ml-1 align-middle"><Badge>{KIND[a.kind]}</Badge></span> {a.isSpendable && <Badge tone="good">Spendable</Badge>} {a.bankConnectionId && <Badge tone="info" title="Kept up to date by your bank">🏦 Bank</Badge>}</>}>
+              {a.bankConnectionId ? (
+                (() => {
+                  const projection = cardProjections.find((c) => c.accountId === a.id);
+                  const next = projection?.statements.find((s) => s.isProjected);
+                  const usual = a.kind === "credit_card" && next ? avgDailyCardSpend(input, a.id) * Math.max(0, diffDays(today, next.closingDate)) : 0;
+                  return (
+                    <>
+                      <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />
+                      <p className="mt-3 text-xs text-faint">Kept up to date by your bank. To stop updates or remove it, use Bank connections above.</p>
+                    </>
+                  );
+                })()
+              ) : (
+              <>
               <p className="text-2xl font-semibold">
                 {a.balanceCents == null ? <span className="text-danger text-base">No balance yet</span> : <Money cents={a.balanceCents} />}
                 {liability && a.balanceCents != null && <span className="ml-1 text-sm text-muted">owed</span>}
@@ -99,6 +120,8 @@ export function AccountsView({
                 <QuickAction action={archiveAccount} fields={{ id: a.id, archived: "true" }} variant="secondary">Archive</QuickAction>
                 <QuickAction action={deleteAccount} fields={{ id: a.id }} variant="danger" confirm={`Delete ${a.name} and everything linked to it (recurring items, transactions, statements)? This can't be undone.`}>Delete</QuickAction>
               </div>
+              </>
+              )}
             </Card>
           );
         })}

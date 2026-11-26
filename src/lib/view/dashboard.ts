@@ -222,6 +222,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
   }
 
   const accounts = s.accounts.filter((a) => !a.archived);
+  const bankLinked = new Set(accounts.filter((a) => a.bankConnectionId).map((a) => a.id));
   const view = (a: Account): AccountView => {
     const ageDays = a.balanceAsOf ? diffDays(a.balanceAsOf, today) : null;
     const value = forecast90.openingByAccount[a.id] ?? 0;
@@ -312,7 +313,14 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     events: events.filter((v) => !v.duplicate && v.event.date <= addDays(today, 30)),
     allEvents: events.filter((v) => !v.duplicate),
     duplicates: events.filter((v) => v.duplicate),
-    question: pickQuestion(forecast90.issues, events, today),
+    // A connected bank answers balance and statement questions itself: never ask about those accounts.
+    question: pickQuestion(
+      forecast90.issues.filter(
+        (i) => !(i.accountId && bankLinked.has(i.accountId) && ["missing_balance", "stale_balance", "card_stale_balance", "card_no_statement", "card_missing_dates"].includes(i.code)),
+      ),
+      events,
+      today,
+    ),
     issues: forecast90.issues,
     cash: { totalCents: forecast90.startingCashCents, accounts: cashAccounts },
     savings,
