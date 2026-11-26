@@ -27,6 +27,12 @@ export interface HistoryView {
   everyDays?: number;
   /** Months: usual spend a month. */
   perMonthCents?: number;
+  /** In plain words: "Weekly", "Twice a week", "Monthly". */
+  often?: string;
+  /** Charges: when the next one is likely. */
+  nextDate?: ISODate;
+  /** Total of every time it showed up. */
+  totalCents: number;
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -38,6 +44,19 @@ const median = (xs: number[]) => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m]! : Math.round((s[m - 1]! + s[m]!) / 2);
 };
+
+/** A gap in days, the way a person would say it. */
+export function howOften(days: number): string {
+  if (days <= 1.5) return "Daily";
+  if (days <= 2.6) return "Every other day";
+  if (days <= 4.5) return "Twice a week";
+  if (days <= 8.5) return days >= 6 ? "Weekly" : `Every ~${Math.round(days)} days`;
+  if (days >= 12 && days <= 17) return "Every 2 weeks";
+  if (days >= 26 && days <= 35) return "Monthly";
+  if (days >= 80 && days <= 100) return "Every 3 months";
+  if (days >= 340 && days <= 390) return "Yearly";
+  return `Every ~${Math.round(days)} days`;
+}
 
 /** Two transactions are "the same thing" when their cleaned names match (or, with no usable name, the exact text). */
 export function sameThing(a: string, b: string): boolean {
@@ -79,7 +98,7 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
     const next = addMonths(thisMonth, 1);
     const perMonthCents = Math.round(perDay * 30);
     bars.push({ key: next, label: MONTHS[parts(next).m - 1]!, title: MONTHS_LONG[parts(next).m - 1]!, cents: perMonthCents, kind: "ahead" });
-    return { bars, unit: "month", count: recent.length, usualCents, perMonthCents };
+    return { bars, unit: "month", count: recent.length, usualCents, perMonthCents, often: howOften(90 / recent.length), totalCents: same.reduce((s, t) => s + t.amountCents, 0) };
   }
 
   const last = same.slice(-6);
@@ -89,13 +108,24 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
   const regular = same.length >= 3 && gap >= 5 && gaps.every((g) => Math.abs(g - gap) <= Math.max(3, gap * 0.35));
   if (regular) {
     let d = same[same.length - 1]!.date;
+    // Monthly things land on the same day of the month, not every 30 or 31 days.
+    const step = (x: ISODate) => (gap >= 26 && gap <= 35 ? addMonths(x, 1) : addDays(x, gap));
     for (let i = 0; i < 2; i++) {
-      d = addDays(d, gap);
-      while (d <= today) d = addDays(d, gap);
+      d = step(d);
+      while (d <= today) d = step(d);
       bars.push({ key: `ahead-${d}`, label: short(d), title: `${short(d)}, expected`, cents: usualCents, kind: "ahead" });
     }
   }
-  return { bars: compact(bars), unit: "charge", count: same.length, usualCents, everyDays: regular ? gap : undefined };
+  return {
+    bars: compact(bars),
+    unit: "charge",
+    count: same.length,
+    usualCents,
+    everyDays: regular ? gap : undefined,
+    often: regular ? howOften(gap) : undefined,
+    nextDate: regular ? bars.find((b) => b.kind === "ahead")?.key.slice(6) : undefined,
+    totalCents: same.reduce((s, t) => s + t.amountCents, 0),
+  };
 }
 
 /** Under the bars, a month name only where the month changes: "Sep 7, 21, Oct 5, 19". */
@@ -130,5 +160,5 @@ export function ruleHistory(rule: RecurringRule, txns: OneTimeTransaction[], ove
     bars.push({ key: `a-${o.originalDate}`, label: short(o.date), title: short(o.date), cents: o.amountCents, kind: "ahead", occurrence: o });
   }
   const amounts = bars.map((b) => b.cents);
-  return { bars: compact(bars), unit: "charge", count: pastOcc.length, usualCents: median(amounts) };
+  return { bars: compact(bars), unit: "charge", count: pastOcc.length, usualCents: median(amounts), totalCents: amounts.reduce((s, c) => s + c, 0) };
 }

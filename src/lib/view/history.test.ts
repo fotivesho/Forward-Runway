@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
 import type { OneTimeTransaction, RecurringRule } from "@/lib/engine";
 import { ruleOccurrences } from "@/lib/engine";
-import { ruleHistory, sameThing, txnHistory } from "./history";
+import { howOften, ruleHistory, sameThing, txnHistory } from "./history";
 
 const today = "2026-11-26";
 let n = 0;
@@ -33,6 +33,8 @@ describe("history", () => {
     expect(h.everyDays).toBeGreaterThanOrEqual(30);
     expect(h.bars.filter((b) => b.kind === "ahead")).toHaveLength(2);
     expect(h.bars.find((b) => b.kind === "ahead")!.title).toContain("Dec");
+    expect(h.often).toBe("Monthly");
+    expect(h.nextDate).toBe("2026-12-03");
     expect(txnHistory(tx("2026-11-01", 5000, "Concert"), [tx("2026-11-01", 5000, "Concert")], today)).toBeNull();
   });
 
@@ -43,5 +45,14 @@ describe("history", () => {
     expect(h.bars.filter((b) => b.kind === "past").length).toBeGreaterThanOrEqual(5);
     expect(h.bars.filter((b) => b.kind === "ahead")).toHaveLength(4);
     expect(h.bars.find((b) => b.kind === "ahead")!.occurrence).toBeDefined();
+  });
+
+  it("says how often in plain words", () => {
+    expect(howOften(1)).toBe("Daily");
+    expect(howOften(3.5)).toBe("Twice a week");
+    expect(howOften(7)).toBe("Weekly");
+    expect(howOften(14)).toBe("Every 2 weeks");
+    expect(howOften(30)).toBe("Monthly");
+    expect(howOften(21)).toBe("Every ~21 days");
   });
 });

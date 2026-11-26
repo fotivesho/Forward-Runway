@@ -172,23 +172,24 @@ function TxnBody({ txn, txns, today, categories, onRepeat, children }: { txn: On
   const h = txnHistory(txn, txns, today);
   const [sel, setSel] = useState<string | null>(h ? (h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null) : null);
   const canRepeat = !isNotSpending(txn.category);
+  const now = h?.bars.find((b) => b.kind === "now");
+  // This month against a usual month: well under reads green, well over reads warm.
+  const ratio = now && h?.perMonthCents ? now.cents / h.perMonthCents : 1;
+  const pace = ratio > 1.15 ? "over" : ratio < 0.85 ? "under" : undefined;
   return (
     <div className="space-y-4">
       {txn.direction === "out" && <QuickCategory txn={txn} categories={categories} />}
       {h ? (
         <section aria-label="This over time">
           <ul className="mb-3 grid grid-cols-3 gap-2 text-center">
-            <Stat label="Usually" value={<Money cents={h.usualCents} whole={h.usualCents >= 10_000} />} />
+            <Stat label="Each time" value={<Money cents={h.usualCents} whole={h.usualCents >= 10_000} />} sub="usually" />
+            <Stat label="How often" value={h.often ?? "Now & then"} sub={h.unit === "charge" ? `${h.count} times so far` : undefined} small />
             {h.unit === "month" ? (
-              <>
-                <Stat label="Last 90 days" value={`${h.count}×`} />
-                <Stat label="A month" value={<>~<Money cents={h.perMonthCents ?? 0} whole /></>} />
-              </>
+              <Stat label="This month" value={<>~<Money cents={now?.cents ?? 0} whole /></>} sub={<>usually <Money cents={h.perMonthCents ?? 0} whole /></>} tone={pace} />
+            ) : h.nextDate ? (
+              <Stat label="Next" value={formatShort(h.nextDate)} sub="likely" small />
             ) : (
-              <>
-                <Stat label="Times seen" value={`${h.count}`} />
-                <Stat label="Comes" value={h.everyDays ? `~${h.everyDays}d` : "Now & then"} />
-              </>
+              <Stat label="All together" value={<Money cents={h.totalCents} whole />} sub={`${h.count} times`} />
             )}
           </ul>
           <HistoryChart bars={h.bars} tone={txn.direction === "in" ? "in" : "out"} selected={sel} onSelect={setSel} />
@@ -262,11 +263,13 @@ function QuickCategory({ txn, categories }: { txn: OneTimeTransaction; categorie
   );
 }
 
-function Stat({ label, value }: { label: string; value: React.ReactNode }) {
+function Stat({ label, value, sub, small, tone }: { label: string; value: React.ReactNode; sub?: React.ReactNode; small?: boolean; tone?: "over" | "under" }) {
+  const color = tone === "over" ? "text-warn" : tone === "under" ? "text-brand" : "text-display";
   return (
-    <li className="rounded-xl bg-surface-2/60 px-1 py-2">
+    <li className="flex flex-col justify-center rounded-xl bg-surface-2/60 px-1 py-2">
       <span className="block text-[11px] text-faint">{label}</span>
-      <span className="block font-num text-lg leading-tight text-display">{value}</span>
+      <span className={`block leading-tight ${small ? "text-sm font-bold text-ink" : `font-num text-lg ${color}`}`}>{value}</span>
+      {sub && <span className="block text-[10px] text-faint">{sub}</span>}
     </li>
   );
 }
