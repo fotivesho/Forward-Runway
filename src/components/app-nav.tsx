@@ -11,7 +11,7 @@ const LINKS = [
   { href: "/app/accounts", label: "Accounts", icon: "▭" },
   { href: "/app/settings", label: "Settings", icon: "⚙" },
 ];
-const MOBILE = ["/app", "/app/forecast", "/app/spend", "/app/calendar", "/app/what-if"];
+const MOBILE = ["/app", "/app/forecast", "/app/spend", "/app/calendar", "/app/accounts", "/app/what-if"];
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();
@@ -36,13 +36,13 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
         </ul>
       </nav>
       <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        <ul className="grid grid-cols-5">
+        <ul className="grid grid-cols-6">
           {LINKS.filter((l) => MOBILE.includes(l.href)).map((l) => (
             <li key={l.href}>
               <Link
                 href={to(l.href)}
                 aria-current={active(l.href) ? "page" : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[11px] font-medium ${active(l.href) ? "text-brand" : "text-muted"}`}
+                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-[10.5px] font-medium sm:text-[11px] ${active(l.href) ? "text-brand" : "text-muted"}`}
               >
                 <span aria-hidden className="text-base">{l.icon}</span>
                 {l.label}

@@ -30,6 +30,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 {hide ? "Show amounts" : "Hide amounts"}
               </button>
             </form>
+            <Link href="/app/settings" className="btn btn-ghost btn-sm lg:hidden" aria-label="Settings" title="Settings">⚙</Link>
             <form action={signOut}>
               <button className="btn btn-ghost btn-sm" title={user.email ?? undefined}>Sign out</button>
             </form>
