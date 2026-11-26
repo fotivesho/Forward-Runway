@@ -305,11 +305,17 @@ export function PlanImpact({
   const days = Math.max(1, Math.round((Date.parse(r.end) - Date.parse(r.start)) / 86_400_000) + 1);
   return (
     <div className={`mt-2 rounded-xl border p-3 ${look.panel}`}>
-      <p className={`flex items-center gap-1.5 truncate whitespace-nowrap text-base font-bold leading-tight ${look.word}`}>
+      <p className={`flex items-center gap-1.5 whitespace-nowrap text-base font-bold leading-tight ${look.word}`}>
         <span aria-hidden>{look.icon}</span>
         <span className="truncate">{title}</span>
+        <Info label="Why">
+          {why}
+          {check.cash.viaCard && !check.cash.beyondHorizon && <> On {check.cash.viaCard.split(" ")[0]}, cash leaves {formatShort(check.cash.date)}.</>}
+          <span className="mt-2 block text-muted">
+            <strong className="text-ink">Spending money</strong>: what's left this pay period after bills, savings and other plans. <strong className="text-ink">Lowest balance</strong>: the tightest your account gets in 90 days. <strong className="text-ink">Cushion</strong> ({dollars(floor)}): what you never want to go below.
+          </span>
+        </Info>
       </p>
-      <p className="mt-0.5 truncate text-[11px] text-muted" title={why}>{why}</p>
       <div className="mt-3 flex gap-3">
         {card ? (
           <Meter
@@ -339,13 +345,6 @@ export function PlanImpact({
           status={after < floor ? `${dollars(floor - after)} below cushion` : `${dollars(after - floor)} above cushion`}
         />
       </div>
-      <p className="mt-1.5 text-[11px] text-faint">
-        What these mean
-        <Info label="What these mean">
-          <strong>Spending money</strong>: what's left this pay period after bills, savings and other plans. <strong>Lowest balance</strong>: the tightest your account gets in 90 days. <strong>Cushion</strong> ({dollars(floor)}): what you never want to go below.
-        </Info>
-      </p>
-      {check.cash.viaCard && !check.cash.beyondHorizon && <p className="mt-1.5 text-[11px] text-muted">On {check.cash.viaCard.split(" ")[0]}: cash leaves {formatShort(check.cash.date)}</p>}
       {check.verdict !== "yes" && (() => {
         const opts = [check.action, ...check.alternatives].filter((x) => x.kind !== "none");
         if (!opts.length) return null;
@@ -363,16 +362,15 @@ export function PlanImpact({
             <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-faint">{check.verdict === "not_yet" ? "Ways to make it work" : "Options"}</p>
             <ul className="grid grid-cols-[minmax(0,1fr)] gap-1.5">
               {opts.map((x, i) => (
-                <li key={x.title} className={`min-w-0 overflow-hidden rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
-                  <p className="flex items-center gap-1.5 text-[12px] font-semibold text-ink">
+                <li key={x.title} className={`flex min-w-0 items-center gap-2 rounded-lg border px-2.5 py-1.5 ${tint[x.kind] ?? "border-line bg-surface-2"}`}>
+                  <p className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] font-semibold leading-snug text-ink">
                     <span aria-hidden className="text-[13px]">{icon[x.kind] ?? "•"}</span>
-                    <span className="min-w-0 flex-1" title={x.title}>
+                    <span className="min-w-0" title={x.title}>
                       {i === 0 && <span className="mr-1 text-warn" title="Best option">★</span>}
                       {shortTitle(x.title)}
+                      {x.detail && <Info label={`About: ${x.title}`}>{x.detail}</Info>}
                     </span>
                   </p>
-                  <div className="flex items-end gap-2 pl-6">
-                    <p className="min-w-0 flex-1 text-[10px] leading-snug text-faint">{x.detail}</p>
                     {eventId && (x.apply || x.kind === "lean") && (
                       <DoThis
                         eventId={eventId}
@@ -382,7 +380,6 @@ export function PlanImpact({
                         onDone={() => setChosen({ option: x, payWith })}
                       />
                     )}
-                  </div>
                 </li>
               ))}
             </ul>

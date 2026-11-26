@@ -10,6 +10,7 @@ import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submi
 import { Money } from "./privacy";
 import { Badge, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
+import { Info } from "./info";
 import { EditPlanButton, PlanCtx } from "./calendar-forms";
 
 export const SPEND_CATEGORIES = ["Dining", "Groceries", "Coffee", "Shopping", "Transport", "Entertainment", "Gifts", "Personal care", "Health", "Travel", "Celebrations", "Home", "Other"];
@@ -35,8 +36,8 @@ export function QuestionCard({ question, accounts, today }: { question: Question
       <p className="text-xs font-semibold uppercase tracking-wide text-warn">One question</p>
       <h2 id="question-title" className="mt-1 text-lg font-semibold text-ink">
         {question.text}
+        <Info label="Why we ask">{question.why} Until then, the forecast is marked incomplete and uses the assumptions listed below it.</Info>
       </h2>
-      <p className="mt-1 text-sm text-muted">{question.why} Until then, the forecast is marked incomplete and uses the assumptions listed below it.</p>
       <div className="mt-3">
         {question.kind === "balance" && account && (
           <ActionForm action={updateBalance} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" aria-label={`Update ${account.name} balance`}>
@@ -146,7 +147,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
       <details className={`group rounded-xl border border-l-4 border-line bg-surface-2/40 ${needs ? "border-l-info" : saved ? { yes: "border-l-brand", yes_with_plan: "border-l-warn", not_yet: "border-l-danger" }[saved.verdict] : "border-l-line"}`}>
         <summary className="flex cursor-pointer list-none items-center gap-3 px-3 py-2.5 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
-            <span className="block truncate font-medium text-ink">{event.title}</span>
+            <span className="block font-medium leading-snug text-ink [overflow-wrap:anywhere]">{event.title}</span>
             <span className="block text-sm font-semibold text-ink/80">
               {formatShort(event.date)}
               {!needs && cents > 0 && <> · <Money cents={cents} whole className="text-ink" /></>}

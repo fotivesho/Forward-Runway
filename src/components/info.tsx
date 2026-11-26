@@ -33,7 +33,7 @@ export function Info({ children, label = "More info", className = "" }: { childr
           setTop((e.currentTarget as HTMLElement).getBoundingClientRect().bottom + 6);
           setOpen((o) => !o);
         }}
-        className="ml-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-line text-[11px] font-semibold leading-none text-faint hover:border-brand hover:text-brand"
+        className="relative ml-1 inline-flex h-[15px] w-[15px] items-center justify-center rounded-full border border-faint/50 font-serif text-[10px] italic leading-none text-faint transition before:absolute before:-inset-2 before:content-[''] hover:border-brand hover:text-brand"
       >
         i
       </button>

@@ -125,7 +125,6 @@ export function TransactionList({
         >
           {repeat ? (
             <>
-              <p className="mb-2 text-sm text-muted">Add it as repeating, starting from its next date. Check how often it happens.</p>
               <RuleForm
                 prefill={{
                   id: "",

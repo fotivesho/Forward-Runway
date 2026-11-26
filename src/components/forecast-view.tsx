@@ -64,7 +64,6 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           ) : (
             <FlowChart days={f.days} height={280} onSelect={jump} />
           )}
-          <p className="mt-2 text-xs text-faint">Tap the chart to jump to that day.</p>
         </Card>
         <Disclosure summary="Assumptions, data freshness and open questions">
           <ul className="space-y-1 text-sm">

@@ -106,6 +106,9 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 id="safe-title" className="text-sm font-semibold uppercase tracking-wide text-muted">
                 Safe to spend today
+                {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
+                  <Info label="Notes">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</Info>
+                )}
               </h2>
               <div className="flex gap-1">
                 {allowance.status === "shortfall" && <Badge tone="bad">Shortfall</Badge>}
@@ -140,11 +143,6 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               </div>
             )}
             <DailyCaps m={m} today={today} />
-            {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
-              <p className="mt-2 text-xs text-muted">
-                Notes <Info label="Notes">{plan.notes.filter((n) => n !== allowance.explanation[0]).join(" ")}</Info>
-              </p>
-            )}
             <div className="mt-3">
               <Link href={base + "/what-if#afford"} className="btn btn-secondary btn-sm">
                 Can I afford it? →

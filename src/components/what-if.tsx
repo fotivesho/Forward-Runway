@@ -194,10 +194,6 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
       {check && (
         <section className="card p-4 sm:p-5" aria-live="polite" aria-labelledby="wi-a">
           <h2 id="wi-a" className="sr-only">Answer</h2>
-          <p className="text-sm text-muted">
-            {what && <><span className="font-semibold text-ink">{what}</span> · </>}<Money cents={cents!} whole className="font-semibold text-ink" /> · {formatShort(date)}
-            {check.cash.viaCard && !check.cash.beyondHorizon && <> · cash leaves {formatShort(check.cash.date)}</>}
-          </p>
           <PlanImpact check={check} reservedCents={reserved} />
           {ripple && (
             <div className="mt-4 rounded-xl border border-line p-3">
@@ -365,8 +361,7 @@ function ScenarioBuilder({ snapshot, input, today }: { snapshot: Snapshot; input
   }
 
   return (
-    <Card title="What-if scenarios" id="scenarios">
-      <p className="mb-3 text-sm text-muted">Try changes without touching your real plan: a raise, a cancelled subscription, a skipped bill, a bigger cash floor.</p>
+    <Card title={<>What-if scenarios <Info label="What-if scenarios">Try changes without touching your real plan: a raise, a cancelled subscription, a skipped bill, a bigger cash floor.</Info></>} id="scenarios">
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="flex flex-col gap-1">
           <label htmlFor="s-type" className="text-sm font-medium">Change</label>

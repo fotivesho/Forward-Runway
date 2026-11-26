@@ -5,6 +5,7 @@ import { ThemeToggle } from "@/components/theme";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
 import { clearDecisions, deleteCorrection, setHideAmounts } from "@/app/app/actions";
+import { Info } from "@/components/info";
 import { APP_NAME } from "@/lib/brand";
 
 const DECISION_LABEL: Record<string, string> = {
@@ -20,13 +21,11 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
       <PageHeader title="Settings" subtitle={user.email ? `Signed in as ${user.email}` : undefined} />
       <div className="grid gap-4">
         <Card title="Profile"><ProfileForm snapshot={snapshot} /></Card>
-        <Card title="Appearance">
-          <p className="mb-3 text-sm text-muted">Auto follows your phone or computer's light/dark setting. Your choice is saved to your account and used on every device.</p>
+        <Card title={<>Appearance <Info label="Appearance">Auto follows your phone or computer's light/dark setting. Your choice is saved to your account and used on every device.</Info></>}>
           <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
-        <Card title={`What ${APP_NAME} remembers`} id="memory">
-          <p className="mb-3 text-sm text-muted">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</p>
+        <Card title={<>What {APP_NAME} remembers <Info label="What we remember">Corrections and decisions you've confirmed, so you don't have to repeat them. Remove anything you don't want remembered.</Info></>} id="memory">
           <h3 className="text-sm font-semibold">Event cost corrections</h3>
           {corrections.length === 0 ? (
             <p className="text-sm text-faint">None yet. Correct an event's cost and tick “Remember this for similar events”.</p>
@@ -67,21 +66,18 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
         <Card title="Privacy" id="privacy">
           <div className="space-y-5">
             <div>
-              <h3 className="text-sm font-semibold">Hide amounts on screen</h3>
-              <p className="mb-2 text-sm text-muted">Masks every dollar amount until you turn it off. Handy in public.</p>
+              <h3 className="mb-2 text-sm font-semibold">Hide amounts on screen <Info label="Hide amounts on screen">Masks every dollar amount until you turn it off. Handy in public.</Info></h3>
               <form action={setHideAmounts} aria-disabled={demo}>
                 <input type="hidden" name="hide" value={snapshot.profile.hideAmounts ? "false" : "true"} />
                 <button className="btn btn-secondary" disabled={demo} aria-pressed={snapshot.profile.hideAmounts}>{snapshot.profile.hideAmounts ? "Show amounts" : "Hide amounts"}</button>
               </form>
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Export your data</h3>
-              <p className="mb-2 text-sm text-muted">Everything as JSON (amounts in cents). Calendar addresses are left out because they're secrets.</p>
+              <h3 className="mb-2 text-sm font-semibold">Export your data <Info label="Export your data">Everything as JSON (amounts in cents). Calendar addresses are left out because they're secrets.</Info></h3>
               {demo ? <button className="btn btn-secondary" disabled>Download JSON</button> : <a href="/app/export" className="btn btn-secondary" download>Download JSON</a>}
             </div>
             <div>
-              <h3 className="text-sm font-semibold">Import</h3>
-              <p className="mb-2 text-sm text-muted">Restore from an export. The file is checked first; nothing changes if it's invalid.</p>
+              <h3 className="mb-2 text-sm font-semibold">Import <Info label="Import">Restore from an export. The file is checked first; nothing changes if it's invalid.</Info></h3>
               <ImportForm />
             </div>
             <div>
@@ -89,13 +85,11 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
               <PasswordForm />
             </div>
             <div className="rounded-xl border border-danger/40 p-3">
-              <h3 className="text-sm font-semibold text-danger">Delete all data</h3>
-              <p className="mb-2 text-sm text-muted">Erases your financial data and memory but keeps your login.</p>
+              <h3 className="mb-2 text-sm font-semibold text-danger">Delete all data <Info label="Delete all data">Erases your financial data and memory but keeps your login.</Info></h3>
               <DeleteDataForm />
             </div>
             <div className="rounded-xl border border-danger/40 p-3">
-              <h3 className="text-sm font-semibold text-danger">Delete account</h3>
-              <p className="mb-2 text-sm text-muted">Permanently removes your login and every row of your data.</p>
+              <h3 className="mb-2 text-sm font-semibold text-danger">Delete account <Info label="Delete account">Permanently removes your login and every row of your data.</Info></h3>
               <DeleteAccountForm />
             </div>
           </div>

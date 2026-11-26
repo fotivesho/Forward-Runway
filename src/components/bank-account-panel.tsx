@@ -3,6 +3,7 @@ import { Money } from "@/components/privacy";
 import { Badge } from "@/components/ui";
 import { setCardPayInFull } from "@/app/app/actions";
 import { diffDays, formatShort, type ISODate } from "@/lib/dates";
+import { Info } from "./info";
 import type { Account, CardProjection, CardStatement, OneTimeTransaction } from "@/lib/engine";
 
 function ago(iso: string | null, now: number): string {
@@ -108,7 +109,7 @@ export function BankAccountPanel({
               {latest.status !== "paid" && <Row label="Left to pay"><span className="text-warn"><Money cents={leftOnStatement} /></span></Row>}
             </dl>
           ) : (
-            <p className="mt-1 text-sm text-muted">Your bank hasn't shared statement details for this card. The forecast estimates it from the balance and the closing day.</p>
+            <p className="mt-1 text-sm text-muted">Estimated <Info label="No statement details">Your bank hasn't shared statement details for this card. The forecast estimates it from the balance and the closing day.</Info></p>
           )}
         </section>
 

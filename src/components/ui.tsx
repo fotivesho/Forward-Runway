@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Info } from "./info";
 
 export function Card({ title, action, children, className = "", id, as: Tag = "section" }: {
   title?: React.ReactNode;
@@ -70,8 +71,10 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-muted">{subtitle}</p>}
+        <h1 className="text-2xl font-bold tracking-tight text-ink">
+          {title}
+          {subtitle && <Info label={`About ${title}`}>{subtitle}</Info>}
+        </h1>
       </div>
       {action}
     </header>

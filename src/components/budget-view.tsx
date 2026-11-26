@@ -51,7 +51,7 @@ function LifeSplit({ life, plans }: { life: BudgetPlan["life"]; plans: string[] 
     <div className="mt-3 rounded-xl border border-line p-2.5">
       <p className="flex items-center justify-between text-xs font-semibold text-muted">
         <span>
-          Spending is built from{" "}
+          Built from{" "}
           <Info label="Organized and predicted">
             Organized: bills and calendar plans{plans.length ? ` (${plans.join(", ")})` : ""}. Predicted: everyday spending from your patterns, and set-asides for big costs that come every few months.
           </Info>
@@ -94,6 +94,7 @@ export function BudgetView({
             {monthName}'s plan
             <Info label="How smart budgets work">
               Not a copy of last month. Bills and calendar plans (organized life) are counted as scheduled. Everyday categories are predicted from your patterns: this month's weekends and paydays included. Big rare costs get a monthly set-aside. If it doesn't fit, needs stay and wants shrink. Budgets you set always win. The tick on a bar is an even pace.
+              {plan.notes.length > 0 && <span className="mt-2 block text-warn">{plan.notes.join(" ")}</span>}
             </Info>
           </h2>
           <span className="text-xs text-muted">{Math.round(plan.progress * 100)}% through the month</span>
@@ -125,9 +126,9 @@ export function BudgetView({
             <LifeSplit life={plan.life} plans={plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`)} />
           </>
         ) : (
-          <p className="mt-1 text-sm text-muted">Add your paycheck as repeating (Money → Overview) so budgets can start from your income.</p>
+          <p className="mt-1 text-sm text-muted">No income yet <Info label="No income">Add your paycheck as repeating (Money → Overview) so budgets can start from your income.</Info></p>
         )}
-        {plan.notes.length > 0 && <p className="mt-2 text-xs text-warn">Heads up <Info label="Budget notes">{plan.notes.join(" ")}</Info></p>}
+
       </section>
 
       {/* Each group and its categories. */}
