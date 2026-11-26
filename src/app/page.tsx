@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/theme";
 import { Logo } from "@/components/logo";
 import { HeroAfford } from "@/components/landing/hero-afford";
+import { PlannerShowcase } from "@/components/landing/planner-showcase";
 import { RevealRoot } from "@/components/landing/motion";
 import { SpokenFor } from "@/components/landing/spoken-for";
 import { SnapshotTiles } from "@/components/snapshot";
@@ -77,8 +78,18 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
       </div>
 
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        {/* ---------------------------------------------- plan it */}
+        {d.planner && (
+          <section className="reveal py-14 sm:py-20" aria-labelledby="plan-title">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Something coming up?</p>
+            <h2 id="plan-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Plan it before you live it.</h2>
+            <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">&ldquo;Can I afford it?&rdquo; is for a maybe. This is for the things you&apos;re doing anyway: dinners, trips, birthdays. Three taps and you know what&apos;s free, what it usually costs you, and that it fits.</p>
+            <div className="mt-8"><PlannerShowcase planner={d.planner} /></div>
+          </section>
+        )}
+
         {/* ---------------------------------------------- connect once */}
-        <section className="reveal py-14 sm:py-20" aria-labelledby="once-title">
+        <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="once-title">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
           <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Connect once. That's it.</h2>
           <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>

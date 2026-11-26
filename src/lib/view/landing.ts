@@ -10,6 +10,7 @@ import type { PlannedEvent } from "../engine/advisor";
 import { buildDashboard, type DashboardModel } from "./dashboard";
 import { buildBudget, type BudgetPlan } from "./budget";
 import { everydayHabits, insights, type Habit, type Insight } from "./patterns";
+import { exploreData, profileCategory, suggestAmounts } from "./explore";
 
 export interface LandingStep {
   date: ISODate;
@@ -48,6 +49,13 @@ export interface LandingData {
   insights: Insight[];
   /** Everyday spending the sample person's habits predict for the next 7 days. */
   habits: Habit[];
+  /** The guided planner, filled in for one sample dinner. */
+  planner: {
+    period: { start: ISODate; end: ISODate; freeCents: Cents; perDayCents: Cents };
+    committed: { bills: Cents; savings: Cents; plans: Cents };
+    profile: { avgCents: Cents; lowCents: Cents; highCents: Cents; perWeek: number; busiestDow: number | null } | null;
+    suggestions: Array<{ label: string; cents: Cents }>;
+  } | null;
 }
 
 export function buildLanding(today: ISODate, nowIso: string): LandingData {
@@ -77,6 +85,26 @@ export function buildLanding(today: ISODate, nowIso: string): LandingData {
     overview: { cash: m.cash, savings: m.savings, goals: m.goals, cards: m.cards, loans: m.loans },
     insights: insights(snapshot, today).slice(0, 4),
     habits: everydayHabits(snapshot, today, 7).slice(0, 4),
+    planner: (() => {
+      const period = m.payPeriods[1] ?? m.payPeriods[0];
+      if (!period) return null;
+      let bills = 0, savings = 0;
+      for (const d of m.forecast90.days) {
+        if (d.date < period.start || d.date > period.end) continue;
+        for (const it of d.items) {
+          if (it.kind === "savings_transfer") savings -= it.cashEffectCents;
+          else if (["bill", "subscription", "loan_payment", "expense", "card_payment"].includes(it.kind) && it.cashEffectCents < 0) bills -= it.cashEffectCents;
+        }
+      }
+      const plans = m.allEvents.filter((v) => v.event.date >= period.start && v.event.date <= period.end && v.event.decision !== "skip").reduce((a, v) => a + (v.advice?.capCents ?? 0), 0);
+      const p = profileCategory(exploreData(snapshot, today), "Dining");
+      return {
+        period: { start: period.start, end: period.end, freeCents: period.freeCents, perDayCents: period.perDayCents },
+        committed: { bills, savings, plans },
+        profile: p && { avgCents: p.avgCents, lowCents: p.lowCents, highCents: p.highCents, perWeek: p.perWeek, busiestDow: p.busiestDow },
+        suggestions: suggestAmounts(p, "Dining"),
+      };
+    })(),
     budget: buildBudget(snapshot, today, m.allEvents.map((v) => ({ title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category }))),
     hero: {
       safeTodayCents: m.plan.todayCap.capCents,

@@ -10,6 +10,7 @@ import { Info } from "./info";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { ForecastChart } from "./forecast-chart";
 import { CashPath } from "./cash-path";
+import { Plus } from "lucide-react";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { ActionForm, QuickAction, Submit } from "./form";
@@ -149,6 +150,19 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             maxLength={80}
           />
           <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+            <button
+              type="button"
+              onClick={() => {
+                setWhat("");
+                setAmount("");
+                setReserved(0);
+                setAdded(null);
+                window.setTimeout(() => document.getElementById("wi-amount")?.focus(), 0);
+              }}
+              className="flex min-h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-brand px-3.5 text-[13px] font-bold text-brand-ink shadow-[0_4px_14px_-6px_var(--color-brand)] transition active:scale-95"
+            >
+              <Plus size={15} strokeWidth={2.6} aria-hidden /> Your own
+            </button>
             {plans.map((v) => (
               <button key={v.event.id} type="button" className={chip(what === v.event.title)} onClick={() => pick(v.event.title, v.plannedCents, v.event.date, v.advice?.capCents ?? 0)}>
                 <Glyph name="📅" size="xs" /> {v.event.title} · <Money cents={v.plannedCents} whole />
