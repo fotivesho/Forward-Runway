@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { APP_NAME } from "@/lib/brand";
+import { APP_NAME, SUPPORT_EMAIL } from "@/lib/brand";
 
 export const metadata: Metadata = { title: "Privacy" };
 
@@ -19,6 +19,10 @@ export default function Privacy() {
         <li>You can export everything as JSON, wipe all your data, or delete your account at any time from Settings → Privacy.</li>
         <li>“Hide amounts” masks numbers on screen for when someone's looking over your shoulder.</li>
       </ul>
+      <p className="mt-6 text-muted">
+        See also the <Link className="text-brand underline" href="/terms">Terms of Service</Link>.
+        {SUPPORT_EMAIL && <> Questions: <a className="text-brand underline" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.</>}
+      </p>
     </main>
   );
 }

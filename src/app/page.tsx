@@ -213,6 +213,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <span>© {now.getFullYear()} {APP_NAME}. Examples on this page use made-up sample data.</span>
           <span className="flex gap-4">
             <Link href="/privacy" className="underline">Privacy</Link>
+            <Link href="/terms" className="underline">Terms</Link>
             <Link href="/login" className="underline">Sign in</Link>
           </span>
         </footer>

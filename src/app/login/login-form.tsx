@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -97,6 +98,12 @@ export function LoginForm({ initialMode, next, callbackError }: { initialMode: M
           {info && <p className="rounded-lg border border-brand/40 bg-brand/5 px-3 py-2 text-sm text-brand">{info}</p>}
         </div>
         <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? "Please wait…" : titles[mode]}</button>
+        {mode === "signup" && (
+          <p className="text-xs text-faint">
+            By creating an account you agree to the <Link href="/terms" className="underline">Terms of Service</Link> and{" "}
+            <Link href="/privacy" className="underline">Privacy Policy</Link>.
+          </p>
+        )}
       </form>
       <div className="mt-4 flex flex-col gap-1 text-sm">
         {mode !== "signin" && <button className="btn btn-ghost btn-sm justify-start" onClick={() => setMode("signin")}>Have an account? Sign in</button>}
