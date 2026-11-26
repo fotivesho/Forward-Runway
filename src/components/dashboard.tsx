@@ -59,7 +59,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                 {allowance.status === "shortfall" ? "Shortfall" : allowance.status === "tight" ? "Tight" : "On track"}
               </StatusPill>
             </div>
-            <p className="font-display mt-3 text-7xl leading-none tracking-tight text-ink">
+            <p className="font-num mt-3 text-7xl leading-none tracking-tight text-display">
               <Money cents={plan.todayCap.capCents} />
             </p>
             <p className="mt-3 text-sm text-faint">
@@ -216,7 +216,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
                 className={`relative w-full rounded-2xl px-1 py-2 text-center transition ${on ? "bg-brand text-brand-ink shadow-md" : "bg-surface-2/70 text-ink hover:bg-surface-3"}`}
               >
                 <span className={`block text-[11px] font-medium ${on ? "opacity-80" : "text-faint"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
-                <Money cents={d.capCents} whole className="block text-lg font-bold tabular" />
+                <Money cents={d.capCents} whole className="font-num block text-xl" />
                 {d.eventIds.length > 0 && <span aria-label="has a plan" className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${on ? "bg-brand-ink" : "bg-info"}`} />}
               </button>
             </li>
@@ -252,7 +252,7 @@ function DayCard({
       <p className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-bold text-ink">{sel.date === today ? "Today" : `${formatWeekday(sel.date)} ${formatShort(sel.date)}`}</span>
         <span className="text-sm">
-          <Money cents={sel.capCents} className="text-xl font-bold tabular text-ink" /> <span className="text-faint">{sel.date === today || sel.spentCents > 0 ? "left" : "to spend"}</span>
+          <Money cents={sel.capCents} className="font-num text-2xl text-display" /> <span className="text-faint">{sel.date === today || sel.spentCents > 0 ? "left" : "to spend"}</span>
         </span>
       </p>
       {items.length > 0 && (

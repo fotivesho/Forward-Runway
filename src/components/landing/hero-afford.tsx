@@ -80,7 +80,7 @@ export function HeroAfford({
         )}
       </div>
       <p className="mt-1 flex items-baseline gap-3">
-        <span className="font-display text-6xl leading-none tabular sm:text-7xl">{formatCents(safe)}</span>
+        <span className="font-num text-6xl leading-none text-[#1f4531] sm:text-7xl">{formatCents(safe)}</span>
         {check && afterSafe !== hero.safeTodayCents && (
           <span className="text-sm font-semibold text-[#4f6455] line-through decoration-[#a8502a]/60">{formatCents(hero.safeTodayCents)}</span>
         )}

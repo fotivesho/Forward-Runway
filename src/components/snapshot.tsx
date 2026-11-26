@@ -69,7 +69,7 @@ function SnapTile({ icon, label, value, sub, bar, title }: { icon: string; label
         <Glyph name={icon} size="xs" bare />
         {label}
       </p>
-      <p className="mt-0.5 text-xl font-bold tabular text-ink sm:text-2xl">{value}</p>
+      <p className="font-num mt-1 text-2xl text-display">{value}</p>
       {bar != null && (
         <div className="mt-1 h-1.5 rounded-full bg-surface-3" aria-hidden>
           <div className="h-1.5 rounded-full bg-brand" style={{ width: `${Math.min(100, bar)}%` }} />

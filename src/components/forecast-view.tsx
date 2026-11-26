@@ -67,7 +67,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
                 ))}
               </div>
             </div>
-            <p className={`font-display mt-3 text-6xl leading-none tracking-tight tabular ${below ? "text-warn" : "text-ink"}`}><Money cents={life.low.cents} whole sign={life.low.cents < 0} /></p>
+            <p className={`font-num mt-3 text-6xl leading-none tracking-tight tabular ${below ? "text-warn" : "text-display"}`}><Money cents={life.low.cents} whole sign={life.low.cents < 0} /></p>
             <p className="mt-2 text-sm">
               <span className={`font-semibold ${below ? "text-warn" : "text-brand"}`}>
                 {below ? <><Money cents={f.floorCents - life.low.cents} whole /> under your floor</> : <><Money cents={life.low.cents - f.floorCents} whole /> above your floor</>}

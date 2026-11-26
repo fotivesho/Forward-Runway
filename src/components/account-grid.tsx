@@ -41,7 +41,7 @@ export function AccountGrid({ tiles }: { tiles: AccountTile[] }) {
                 {t.tag && <span className="rounded-full bg-surface-3 px-1.5 py-0.5 text-[10px] font-medium text-muted">{t.tag}</span>}
               </span>
               <span className="mt-1 truncate text-sm font-bold text-ink">{t.name}</span>
-              <span className="text-xl font-extrabold tabular text-ink">
+              <span className="font-num text-2xl text-display">
                 {t.cents == null ? <span className="text-sm text-danger">No balance</span> : <Money cents={t.cents} whole sign={t.cents < 0} />}
               </span>
               {t.bar && (

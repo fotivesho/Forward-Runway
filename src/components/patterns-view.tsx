@@ -77,7 +77,7 @@ export function PatternsView({
               </h2>
               {short ? <Badge tone="warn">Tight</Badge> : <Badge tone="good">Covered</Badge>}
             </div>
-            <p className="mt-2 font-display text-6xl leading-none tracking-tight text-ink">~<Money cents={pace.usualCents} whole /></p>
+            <p className="mt-2 font-num text-6xl leading-none tracking-tight text-display">~<Money cents={pace.usualCents} whole /></p>
             <p className="mt-1 text-sm text-muted">
               You have <Money cents={spendingMoneyCents} whole className="font-semibold text-ink" /> ·{" "}
               {short ? (

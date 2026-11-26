@@ -13,7 +13,7 @@ export function SpokenFor({ data }: { data: LandingData["spokenFor"] }) {
   return (
     <div ref={ref} className="grid grid-cols-[minmax(0,1fr)] gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] lg:items-center">
       <div>
-        <h2 className="font-display text-3xl leading-tight text-ink sm:text-4xl">
+        <h2 className="font-display text-3xl leading-tight text-display sm:text-4xl">
           Your bank says <span className="tabular text-brand">{formatCents(data.startCents)}</span>.
           <br />
           That's not the full story.

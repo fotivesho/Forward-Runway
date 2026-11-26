@@ -184,7 +184,7 @@ export function AccountsView({
         <section className="card overflow-hidden" aria-label="Net worth">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
           <h2 className="text-base font-bold text-ink">Net worth <Info>Everything you have (cash and savings) minus everything you owe (cards and loans).</Info></h2>
-          <p className={`mt-1 font-display text-6xl leading-none tracking-tight tabular ${assets - owed < 0 ? "text-danger" : "text-ink"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
+          <p className={`mt-1 font-num text-6xl leading-none tracking-tight tabular ${assets - owed < 0 ? "text-danger" : "text-display"}`}><Money cents={assets - owed} whole sign={assets - owed < 0} /></p>
           <p className="mt-1 text-sm text-muted">
             Have <Money cents={assets} whole className="font-semibold text-ink" /> · Owe <Money cents={owed} whole className="font-semibold text-ink" />
           </p>

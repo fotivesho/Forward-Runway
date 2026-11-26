@@ -80,7 +80,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         {/* ---------------------------------------------- connect once */}
         <section className="reveal py-14 sm:py-20" aria-labelledby="once-title">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">Set up once</p>
-          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-ink sm:text-6xl">Connect once. That's it.</h2>
+          <h2 id="once-title" className="font-display mt-1 max-w-3xl text-4xl leading-tight text-display sm:text-6xl">Connect once. That's it.</h2>
           <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">No spreadsheets, no categorizing, no logging every coffee. It keeps itself up to date.</p>
           <ol className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-3">
             {[
@@ -101,7 +101,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         {/* ---------------------------------------------- it learns your life */}
         <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="learns-title">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand sm:text-sm">It learns you</p>
-          <h2 id="learns-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-ink sm:text-5xl">Plans you made. Habits you didn't notice.</h2>
+          <h2 id="learns-title" className="font-display mt-1 max-w-3xl text-3xl leading-tight text-display sm:text-5xl">Plans you made. Habits you didn't notice.</h2>
           <p className="mt-3 max-w-2xl text-base text-muted sm:text-lg">Your calendar covers the planned life. Your history covers the rest: lunch, rides, the payday splurge. Budgets come from both.</p>
           <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
             <article className="card p-4 sm:p-5">
@@ -168,7 +168,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
 
         {/* ---------------------------------------------- supporting proof, compact */}
         <section className="reveal border-t border-line py-14 sm:py-20" aria-labelledby="also-title">
-          <h2 id="also-title" className="font-display text-3xl leading-tight text-ink sm:text-4xl">Everything it watches for you.</h2>
+          <h2 id="also-title" className="font-display text-3xl leading-tight text-display sm:text-4xl">Everything it watches for you.</h2>
           <div className="mt-8 grid grid-cols-[minmax(0,1fr)] gap-4 ">
             <article className="card p-4 sm:p-5">
               <h3 className="font-semibold text-ink">Everything, in one look</h3>

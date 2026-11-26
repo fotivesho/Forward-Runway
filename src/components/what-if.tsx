@@ -133,7 +133,7 @@ export function WhatIf({ snapshot, today, nowIso, demo = false }: { snapshot: Sn
             <input
               id="wi-amount"
               aria-label="How much"
-              className="w-full min-w-0 bg-transparent font-display text-6xl leading-none tracking-tight text-ink tabular outline-none placeholder:text-faint"
+              className="w-full min-w-0 bg-transparent font-num text-6xl leading-none tracking-tight text-display tabular outline-none placeholder:text-faint"
               inputMode="decimal"
               value={amount}
               placeholder="0"

@@ -71,7 +71,7 @@ export function PageHeader({ title, subtitle, action }: { title: string; subtitl
   return (
     <header className="mb-4 flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">
+        <h1 className="font-display text-3xl leading-tight text-display">
           {title}
           {subtitle && <Info label={`About ${title}`}>{subtitle}</Info>}
         </h1>
