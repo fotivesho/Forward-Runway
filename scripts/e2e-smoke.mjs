@@ -45,12 +45,12 @@ async function unlabeled(page) {
   check(errors.length === 0, `landing has no console errors at 390px ${errors.join(" | ")}`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), "landing has no horizontal scroll at 390px");
   check((await unlabeled(page)) === 0, "landing inputs are labelled");
-  check((await page.getByRole("link", { name: /See the full picture/ }).count()) === 0, "the demo button waits for a first tap");
+  check((await page.getByRole("link", { name: /in the demo →/ }).count()) === 0, "the demo button waits for a first tap");
   await page.getByRole("button", { name: /Laptop/ }).click();
   await page.waitForTimeout(700);
   const verdict = await page.locator("[aria-live=polite]").first().innerText();
   check(/(Yes\. It fits|Yes, with a plan|Not yet)/.test(verdict), "tapping an option answers right in the hero");
-  check((await page.getByRole("link", { name: /See the full picture/ }).count()) === 1, "after a tap, one strong path to the demo appears");
+  check((await page.getByRole("link", { name: /in the demo →/ }).count()) === 1, "after a tap, one strong path to the demo appears");
   await page.getByRole("button", { name: /Concert/ }).click();
   await page.waitForTimeout(700);
   check(/Yes\. It fits/.test(await page.locator("[aria-live=polite]").first().innerText()), "a small purchase fits");
