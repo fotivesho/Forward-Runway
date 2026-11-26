@@ -52,10 +52,12 @@ export async function syncBankNow(connectionId: string): Promise<BankResult> {
   return { ok: r.ok, message: r.message };
 }
 
-export async function disconnectBankNow(connectionId: string): Promise<BankResult> {
+export async function disconnectBankNow(connectionId: string, removeAccounts = false): Promise<BankResult> {
   if (plaidMode() === "off" || !uuid.test(connectionId)) return { ok: false, message: "Unknown connection." };
   const { supabase, user } = await signedIn();
-  await disconnectBank(supabase, user.id, connectionId);
+  await disconnectBank(supabase, user.id, connectionId, removeAccounts === true);
   revalidatePath("/app", "layout");
-  return { ok: true, message: "Disconnected. Your accounts and history stay, and you can keep them up to date by hand." };
+  return removeAccounts
+    ? { ok: true, message: "Removed the bank and its accounts." }
+    : { ok: true, message: "Disconnected. Your accounts and history stay, and you can keep them up to date by hand." };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { disconnectBankNow, finishBankLink, startBankLink, syncBankNow, type BankResult } from "@/app/app/bank-actions";
 import { Badge } from "./ui";
 
@@ -19,12 +19,17 @@ declare global {
     Plaid?: {
       create: (config: {
         token: string;
+        /** Set when coming back from a bank's own sign-in page (OAuth banks like Chase). */
+        receivedRedirectUri?: string;
         onSuccess: (publicToken: string, metadata: { institution?: { name?: string } | null }) => void;
         onExit?: (err: unknown) => void;
       }) => PlaidHandler;
     };
   }
 }
+
+/** Remembers the Link session across an OAuth bank's redirect (this tab only). */
+const RESUME_KEY = "fr-plaid-link";
 
 const PLAID_SCRIPT = "https://cdn.plaid.com/link/v2/stable/link-initialize.js";
 
@@ -56,6 +61,57 @@ export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox
   const [pending, start] = useTransition();
   const [note, setNote] = useState<BankResult | null>(null);
 
+  const openLink = async (token: string, connectionId: string | undefined, receivedRedirectUri?: string) => {
+    try {
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({ token, connectionId: connectionId ?? null }));
+    } catch {
+      // Without storage an OAuth bank can't resume, but every other bank still works.
+    }
+    try {
+      const Plaid = await loadPlaid();
+      await new Promise<void>((done) => {
+        const finish = () => {
+          try {
+            sessionStorage.removeItem(RESUME_KEY);
+          } catch {}
+          done();
+        };
+        const handler = Plaid.create({
+          token,
+          ...(receivedRedirectUri ? { receivedRedirectUri } : {}),
+          onSuccess: (publicToken, metadata) => {
+            start(async () => {
+              setNote(connectionId ? await syncBankNow(connectionId) : await finishBankLink(publicToken, metadata.institution?.name ?? null));
+            });
+            handler.destroy();
+            finish();
+          },
+          onExit: () => {
+            handler.destroy();
+            finish();
+          },
+        });
+        handler.open();
+      });
+    } catch (e) {
+      setNote({ ok: false, message: e instanceof Error ? e.message : "Couldn't open Plaid." });
+    }
+  };
+
+  // Back from a bank's own sign-in page (Chase and other OAuth banks): pick up where Plaid left off.
+  useEffect(() => {
+    if (mode === "mock" || !new URLSearchParams(window.location.search).has("oauth_state_id")) return;
+    let saved: { token: string; connectionId: string | null } | null = null;
+    try {
+      saved = JSON.parse(sessionStorage.getItem(RESUME_KEY) ?? "null");
+    } catch {}
+    const here = window.location.href;
+    window.history.replaceState(null, "", window.location.pathname);
+    if (saved?.token) void openLink(saved.token, saved.connectionId ?? undefined, here);
+    else setNote({ ok: false, message: "Your bank sent you back, but the connection had expired. Tap Connect your bank to try again." });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const link = (connectionId?: string) =>
     start(async () => {
       setNote(null);
@@ -65,28 +121,7 @@ export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox
         setNote(connectionId ? await syncBankNow(connectionId) : await finishBankLink("public-mock-1", "Sample Bank (test)"));
         return;
       }
-      try {
-        const Plaid = await loadPlaid();
-        await new Promise<void>((done) => {
-          const handler = Plaid.create({
-            token: t.token!,
-            onSuccess: (publicToken, metadata) => {
-              start(async () => {
-                setNote(connectionId ? await syncBankNow(connectionId) : await finishBankLink(publicToken, metadata.institution?.name ?? null));
-              });
-              handler.destroy();
-              done();
-            },
-            onExit: () => {
-              handler.destroy();
-              done();
-            },
-          });
-          handler.open();
-        });
-      } catch (e) {
-        setNote({ ok: false, message: e instanceof Error ? e.message : "Couldn't open Plaid." });
-      }
+      await openLink(t.token, connectionId);
     });
 
   const run = (fn: () => Promise<BankResult>) => start(async () => setNote(await fn()));
@@ -139,6 +174,17 @@ export function BankConnections({ mode, connections }: { mode: "mock" | "sandbox
                   }}
                 >
                   Disconnect
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm text-danger"
+                  disabled={pending}
+                  onClick={() => {
+                    const n = c.accountNames.length;
+                    if (confirm(`Remove ${c.institutionName ?? "this bank"} and delete its ${n} account${n === 1 ? "" : "s"} and their history? This can't be undone.`)) run(() => disconnectBankNow(c.id, true));
+                  }}
+                >
+                  Remove bank and its accounts
                 </button>
               </div>
             </li>

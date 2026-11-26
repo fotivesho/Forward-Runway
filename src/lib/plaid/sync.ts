@@ -174,8 +174,11 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
   }
 }
 
-/** Disconnect: tell Plaid to forget it, then delete our copy of the token. Accounts and history stay, as manual. */
-export async function disconnectBank(supabase: AppSupabaseClient, userId: string, connectionId: string) {
+/**
+ * Disconnect: tell Plaid to forget it, then delete our copy of the token. By default its accounts and
+ * history stay, as manual accounts; with `removeAccounts` they're deleted too (e.g. test banks).
+ */
+export async function disconnectBank(supabase: AppSupabaseClient, userId: string, connectionId: string, removeAccounts = false) {
   const db = admin();
   const { data: secret } = await db.from("bank_secrets").select("access_token_enc").eq("connection_id", connectionId).eq("user_id", userId).maybeSingle();
   if (secret) {
@@ -185,7 +188,8 @@ export async function disconnectBank(supabase: AppSupabaseClient, userId: string
       // Still forget it on our side; a token we no longer hold can't be used.
     }
   }
-  await supabase.from("accounts").update({ balance_source: "manual" }).eq("bank_connection_id", connectionId);
+  if (removeAccounts) await supabase.from("accounts").delete().eq("bank_connection_id", connectionId);
+  else await supabase.from("accounts").update({ balance_source: "manual" }).eq("bank_connection_id", connectionId);
   await db.from("bank_connections").delete().eq("id", connectionId).eq("user_id", userId);
 }
 

@@ -101,4 +101,16 @@ describe.skipIf(!REST)("bank sync, end to end", () => {
     expect(accounts).toHaveLength(3);
     expect(accounts.every((a: { balance_source: string; bank_connection_id: string | null }) => a.balance_source === "manual" && a.bank_connection_id === null)).toBe(true);
   });
+  it("reconnecting picks the same accounts back up, and removing deletes them", async () => {
+    const r = await sync.connectBank(user, USER, "public-mock-2", "Sample Bank (test)", today);
+    expect(r.ok, r.message).toBe(true);
+    const { data: accounts } = await user.from("accounts").select("balance_source");
+    expect(accounts).toHaveLength(3);
+    expect(accounts.every((a: { balance_source: string }) => a.balance_source === "bank")).toBe(true);
+    const { data: conn } = await user.from("bank_connections").select("id").single();
+    await sync.disconnectBank(user, USER, conn.id, true);
+    expect((await user.from("accounts").select("id")).data).toHaveLength(0);
+    expect((await user.from("transactions").select("id")).data).toHaveLength(0);
+    expect((await admin.from("bank_secrets").select("*")).data).toHaveLength(0);
+  });
 });

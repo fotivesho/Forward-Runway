@@ -56,6 +56,21 @@ appears anywhere on the site.
 
 4. Redeploy. The **Bank connections** card appears on Accounts.
 
+### Banks that sign in on their own site (OAuth: Chase, Bank of America, Wells Fargo, Capital One…)
+
+In production these banks send you to their website and back. To allow that:
+
+1. Plaid → Developers → API → **Allowed redirect URIs**: add `https://runwaytomorrow.com/app/accounts`.
+2. Vercel: add `PLAID_REDIRECT_URI` = `https://runwaytomorrow.com/app/accounts` (Production), then redeploy.
+
+When the bank sends you back, the Accounts page reopens Plaid's window and finishes the connection.
+
+### Moving from Sandbox to your real bank
+
+1. On Accounts, use **Remove bank and its accounts** on the test bank so its fake accounts leave your forecast.
+2. In Vercel, set `PLAID_ENV` = `production` and `PLAID_SECRET` = the **Production** secret (same client id), then redeploy.
+3. Connect your real bank. If you'd added the same account by hand earlier, archive the manual one.
+
 ## Local development
 
 `PLAID_ENV=mock` uses a built-in fake bank (made-up data, no Plaid account needed). It's refused on
