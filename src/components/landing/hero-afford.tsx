@@ -278,8 +278,8 @@ export function HeroAfford({
                 </div>
               )}
 
-              <Link href="/demo/calendar?add=1" className="flex min-h-11 items-center justify-center rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
-                Try it with your plans in the demo →
+              <Link href="/demo" className="flex min-h-11 items-center justify-center rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
+                See your day in the demo →
               </Link>
             </div>
           )}

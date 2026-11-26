@@ -103,7 +103,7 @@ export function StickyDemo() {
   }, []);
   return (
     <div className={`fixed inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 flex justify-center transition-all duration-300 sm:hidden ${show ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-6 opacity-0"}`}>
-      <Link href="/demo/calendar?add=1" className="rounded-full bg-[#182d26] px-5 py-3 text-sm font-semibold text-[#ddefbf] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
+      <Link href="/demo" className="rounded-full bg-[#182d26] px-5 py-3 text-sm font-semibold text-[#ddefbf] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.5)] ring-1 ring-white/10">
         Try the demo →
       </Link>
     </div>

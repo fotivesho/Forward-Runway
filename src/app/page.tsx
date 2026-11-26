@@ -56,7 +56,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </div>
           <div className="fade-up lg:col-start-1 lg:row-start-2 lg:self-start" style={{ animationDelay: "360ms" }}>
             <div className="grid grid-cols-[1.3fr_1fr] gap-2 sm:flex sm:gap-3">
-              <Link href="/demo/calendar?add=1" className={`${PRIMARY} justify-center px-3 sm:px-6`}>Try the demo →</Link>
+              <Link href="/demo" className={`${PRIMARY} justify-center px-3 sm:px-6`}>Try the demo →</Link>
               <Link href="/login?mode=signup" className={`${SECONDARY} justify-center px-3 sm:px-6`}>Sign up free</Link>
             </div>
             <p className="mt-3 flex items-center gap-2 whitespace-nowrap text-xs text-[#b9cbb4] sm:text-sm">
@@ -112,7 +112,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Free while in beta. Connect once, and every morning you&apos;ll know what&apos;s safe to spend.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/login?mode=signup" className={PRIMARY}>Create your runway →</Link>
-            <Link href="/demo/calendar?add=1" className={SECONDARY}>See it with sample money</Link>
+            <Link href="/demo" className={SECONDARY}>See it with sample money</Link>
           </div>
           <div className="mt-10"><UpdatesForm /></div>
         </div>

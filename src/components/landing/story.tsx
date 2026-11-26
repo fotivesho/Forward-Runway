@@ -172,7 +172,7 @@ export function Story({ d }: { d: LandingData }) {
 
       <li className="reveal flex flex-col items-center gap-3 py-10 text-center">
         <p className="font-display text-2xl text-display sm:text-3xl">See it with your own eyes.</p>
-        <Link href="/demo/calendar?add=1" className="btn btn-primary px-6">Try the demo →</Link>
+        <Link href="/demo" className="btn btn-primary px-6">Try the demo →</Link>
         <p className="text-xs text-faint">Sample money, nothing to connect. Takes a minute.</p>
       </li>
     </ol>
