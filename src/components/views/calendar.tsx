@@ -41,7 +41,7 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
           )}
           <Card
             title="Your plans"
-            action={<AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} />}
+            action={<AddPlanButton openFromUrl snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} />}
           >
             <PlanProvider value={{ snapshot, today, nextPayday: m.nextPayday, events: m.planned, calendarIncomplete: m.coverage.incomplete }}>
               <PlanCalendar views={m.allEvents} marks={marks} baseline={m.baselineByDay} periods={m.payPeriods} today={today} end={m.forecast90.endDate} accounts={snapshot.accounts} typical={typicalDays(snapshot, today, m.forecast90.endDate)} />

@@ -115,6 +115,16 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/patterns", "/d
   check(res.status >= 300 && res.status < 400 && /\/login\?mode=reset/.test(res.headers.get("location") ?? ""), "/auth/confirm handles a bad reset link");
 }
 
+// From the landing page: the demo opens on Plans with "Add a plan" ready to try
+{
+  const { page, errors } = await visit("/demo/calendar?add=1", 390);
+  await page.waitForTimeout(400);
+  check(errors.length === 0 && (await page.getByRole("dialog", { name: "Add a plan" }).isVisible()), "demo plans open with Add a plan ready");
+  await page.goto(BASE + "/demo/forecast", { waitUntil: "networkidle" });
+  check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
+  await page.close();
+}
+
 // What if: one question, a plain answer, best time to buy, debit vs credit
 {
   {

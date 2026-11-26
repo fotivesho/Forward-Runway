@@ -63,7 +63,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           </div>
           <div className="fade-up lg:col-start-1 lg:row-start-2 lg:self-start" style={{ animationDelay: "360ms" }}>
             <div className="flex flex-wrap items-center gap-3">
-              <Link href="/demo" className={PRIMARY}>See it with sample money →</Link>
+              <Link href="/demo/calendar?add=1" className={PRIMARY}>See it with sample money →</Link>
               <Link href="/login?mode=signup" className={SECONDARY}>Create your runway</Link>
             </div>
             <p className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#b9cbb4]">
@@ -269,7 +269,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
           <p className="mx-auto mt-4 max-w-xl text-lg text-[#b9cbb4]">Connect once, and every morning you'll know what's safe to spend. Or try it first with sample money.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/login?mode=signup" className={PRIMARY}>Create your runway →</Link>
-            <Link href="/demo" className={SECONDARY}>See it with sample money</Link>
+            <Link href="/demo/calendar?add=1" className={SECONDARY}>See it with sample money</Link>
           </div>
         </div>
         <footer className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 border-t border-white/10 px-4 py-6 text-xs text-[#b9cbb4] sm:px-6">

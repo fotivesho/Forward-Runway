@@ -28,6 +28,7 @@ export function ActionForm({
   onSuccess,
   encType,
   demoPreview = false,
+  demoNote = true,
   "aria-label": ariaLabel,
 }: {
   action: Action;
@@ -39,6 +40,8 @@ export function ActionForm({
   encType?: "multipart/form-data";
   /** In the demo, let people type and see live answers; only saving is turned off. */
   demoPreview?: boolean;
+  /** Show the generic "changes aren't saved" line in the demo (off when the form has its own). */
+  demoNote?: boolean;
   "aria-label"?: string;
 }) {
   const [state, formAction] = useActionState(action, null);
@@ -63,7 +66,7 @@ export function ActionForm({
         <fieldset disabled={disabled} className="contents">
           {children}
         </fieldset>
-        {demo && demoPreview && <p className="mt-2 text-xs text-muted">Demo: try it freely. Changes aren't saved.</p>}
+        {demo && demoPreview && demoNote && <p className="mt-2 text-xs text-muted">Demo: try it freely. Changes aren't saved.</p>}
         <FormMessage />
       </form>
     </FormCtx.Provider>

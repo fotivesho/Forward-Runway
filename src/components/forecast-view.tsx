@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { buildForecast, HORIZONS } from "@/lib/engine";
-import { addDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
+import { avgDailyCardSpend, buildForecast, HORIZONS } from "@/lib/engine";
+import { addDays, diffDays, eachDay, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { CashPath } from "./cash-path";
@@ -43,7 +43,10 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
     ...items.filter((i) => Math.abs(i.cashEffectCents) >= 10_000).map((i) => ({ key: i.id, date: i.date, glyph: KIND_GLYPH[i.kind] ?? i.category ?? "bill", label: i.label, cents: i.cashEffectCents as number | null, low: false })),
     { key: "low", date: life.low.date, glyph: "⚠", label: "Lowest point", cents: null, low: true },
   ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.low ? 1 : -1));
-  const realOn = (d: ISODate) => life.real[f.days.findIndex((x) => x.date === d)] ?? 0;
+  const realOn = (d: ISODate): number | null => {
+    const i = f.days.findIndex((x) => x.date === d);
+    return i < 0 ? null : life.real[i]!;
+  };
 
   return (
     <>
@@ -117,7 +120,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
                 <span className="text-right">
                   {k.cents != null && <Money cents={k.cents} whole sign tone="auto" className="block text-sm font-bold tabular" />}
                   <span className={`block text-[11px] tabular ${k.low ? "font-bold text-warn" : "text-faint"}`}>
-                    {k.low ? <Money cents={life.low.cents} whole /> : <>→ <Money cents={realOn(k.date)} whole /></>}
+                    {k.low ? <Money cents={life.low.cents} whole /> : <>→ <Money cents={realOn(k.date) ?? 0} whole /></>}
                   </span>
                 </span>
               </li>
@@ -125,27 +128,9 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           </ol>
         </section>
 
-        {f.cards.length > 0 && (
-          <section className="card p-4" aria-labelledby="cards-title">
-            <h2 id="cards-title" className="text-base font-bold text-ink">
-              Cards <Info label="Cards">Card purchases don't touch cash until you pay the bill. These are the bills in this window.</Info>
-            </h2>
-            <ul className="mt-2 space-y-1.5">
-              {f.cards.flatMap((c) =>
-                c.statements.map((s) => (
-                  <li key={c.accountId + s.closingDate} className="flex items-center gap-2.5">
-                    <Glyph name="card" size="sm" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-ink">{c.name.split(" ")[0]} bill</span>
-                      <span className="block text-[11px] text-muted">due {formatShort(s.dueDate)}{s.isProjected ? " · projected" : ""}</span>
-                    </span>
-                    <Money cents={s.balanceCents} whole className="text-sm font-bold tabular text-ink" />
-                  </li>
-                )),
-              )}
-            </ul>
-          </section>
-        )}
+        {f.cards.map((c) => (
+          <CardBillForecast key={c.accountId} card={c} snapshot={snapshot} today={today} realOn={realOn} />
+        ))}
 
         <Disclosure summary="Every day">
           <Timeline days={f.days} mode="balance" />
@@ -160,5 +145,110 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * A card's next bill: what's on it so far this cycle (solid), where it's heading by the closing date
+ * (dashed, your usual card spending plus anything scheduled), against a dotted line at the last bill.
+ * Then the one thing that matters for cash: how much leaves, and when.
+ */
+function CardBillForecast({ card, snapshot, today, realOn }: { card: ReturnType<typeof buildForecast>["cards"][number]; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null }) {
+  const data = useMemo(() => {
+    const next = card.statements.find((s) => s.isProjected) ?? card.statements.find((s) => s.dueDate >= today);
+    if (!next) return null;
+    const prev = snapshot.statements.filter((s) => s.accountId === card.accountId && s.closingDate <= today).sort((a, b) => (a.closingDate < b.closingDate ? 1 : -1))[0];
+    const start = prev ? addDays(prev.closingDate, 1) : addDays(next.closingDate, -30);
+    const input = toEngineInput(snapshot, today);
+    const perDay = avgDailyCardSpend(input, card.accountId);
+    const left = Math.max(0, diffDays(today, next.closingDate));
+    const expected = next.isProjected ? next.balanceCents + perDay * left : next.balanceCents;
+    // On the card so far this cycle.
+    const days = eachDay(start, next.closingDate);
+    let run = 0;
+    const byDay = new Map<string, number>();
+    for (const t of snapshot.transactions) {
+      if (t.accountId !== card.accountId || t.status !== "posted" || t.date < start || t.date > today) continue;
+      byDay.set(t.date, (byDay.get(t.date) ?? 0) + (t.direction === "out" ? t.amountCents : -t.amountCents));
+    }
+    const actual: number[] = [];
+    for (const d of days) {
+      if (d > today) break;
+      run += byDay.get(d) ?? 0;
+      actual.push(run);
+    }
+    // Match what's actually owed since the last statement (purchases can predate the app's records).
+    const owedSince = card.currentOwedCents - (prev && prev.status !== "paid" ? prev.statementBalanceCents - prev.paidCents : 0);
+    const end = actual[actual.length - 1] ?? 0;
+    if (owedSince > 0 && actual.length > 1 && owedSince !== end) {
+      for (let i = 0; i < actual.length; i++) actual[i] = end > 0 ? Math.round((actual[i]! * owedSince) / end) : Math.round((owedSince * i) / (actual.length - 1));
+    }
+    // Where it's heading: straight from today to the expected bill at closing.
+    const tIdx = Math.max(0, actual.length - 1);
+    const from = actual[tIdx] ?? 0;
+    const proj = days.map((_, i) => (i < tIdx ? null : from + ((expected - from) * (i - tIdx)) / Math.max(1, days.length - 1 - tIdx)));
+    return { next, prev, days, actual, proj, expected, perDay };
+  }, [card, snapshot, today]);
+  if (!data) return null;
+  const { next, prev, days, actual, proj, expected } = data;
+  const last = prev?.statementBalanceCents ?? null;
+  const diff = last != null ? expected - last : 0;
+  const trend = last == null ? null : Math.abs(diff) <= last * 0.05 ? "in line with" : diff > 0 ? "above" : "below";
+  const W = 300;
+  const H = 90;
+  const top = Math.max(expected, last ?? 0, ...actual) * 1.12 || 1;
+  const x = (i: number) => (i / Math.max(1, days.length - 1)) * W;
+  const y = (c: number) => H - (c / top) * H;
+  const path = (pts: Array<number | null>) => pts.map((c, i) => (c == null ? "" : `${pts.slice(0, i).some((v) => v != null) ? "L" : "M"}${x(i).toFixed(1)},${y(c).toFixed(1)}`)).join("");
+  const name = card.name.split(" ")[0];
+  return (
+    <section className="card p-4 sm:p-5" aria-labelledby={`bill-${card.accountId}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 id={`bill-${card.accountId}`} className="text-base font-bold text-ink">
+          {name} next bill
+          <Info label="How this is projected">On the card so far this cycle, plus your usual card spending (about {"$"}{Math.round(data.perDay / 100)} a day) and anything scheduled, until it closes {formatShort(next.closingDate)}. Paid in full on {formatShort(next.dueDate)}.</Info>
+        </h2>
+        <span className="text-xs text-faint">closes {formatShort(next.closingDate)}</span>
+      </div>
+      <p className="mt-1 flex flex-wrap items-baseline gap-x-2">
+        <Money cents={expected} whole className="font-num text-3xl text-display" />
+        {trend && (
+          <span className={`text-sm font-semibold ${trend === "above" ? "text-warn" : trend === "below" ? "text-brand" : "text-muted"}`}>
+            {trend === "in line with" ? "in line with last bill" : <>{trend === "above" ? "↑" : "↓"} <Money cents={Math.abs(diff)} whole /> {trend} last bill</>}
+          </span>
+        )}
+      </p>
+      <div className="relative mt-3" style={{ height: H }}>
+        <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full overflow-visible" aria-hidden>
+          {last != null && <line x1="0" x2={W} y1={y(last)} y2={y(last)} stroke="currentColor" className="text-faint" strokeDasharray="2 4" strokeWidth="1.25" vectorEffect="non-scaling-stroke" />}
+          <path d={`${path(actual)}L${x(actual.length - 1)},${H}L0,${H}Z`} fill="currentColor" className="text-brand opacity-[0.1]" />
+          <path d={path(actual)} fill="none" stroke="currentColor" className="text-brand" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+          <path d={path(proj)} fill="none" stroke="currentColor" className={trend === "above" ? "text-warn" : "text-brand"} strokeWidth="2" strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
+        </svg>
+        {last != null && (
+          <span className="absolute left-0 -translate-y-full text-[10px] text-faint" style={{ top: `${(y(last) / H) * 100}%` }}>
+            Last bill <Money cents={last} whole />
+          </span>
+        )}
+      </div>
+      <p className="mt-1 flex justify-between text-[10px] text-faint">
+        <span>{formatShort(days[0]!)}</span>
+        <span>Today</span>
+        <span>{formatShort(next.closingDate)}</span>
+      </p>
+      <div className="mt-3 flex items-center gap-2.5 rounded-2xl bg-surface-2/60 p-3">
+        <Glyph name="card" size="sm" />
+        <span className="min-w-0 flex-1 text-sm">
+          <span className="block font-semibold text-ink">
+            <Money cents={-expected} whole sign className="font-bold text-out" /> from cash on {formatShort(next.dueDate)}
+          </span>
+          {realOn(next.dueDate) != null && (
+            <span className="block text-[11px] text-faint">
+              Cash after: <Money cents={realOn(next.dueDate)!} whole className="font-semibold text-muted" />
+            </span>
+          )}
+        </span>
+      </div>
+    </section>
   );
 }

@@ -8,6 +8,7 @@ import { checkAffordability, previewOption, type AffordAction, type AffordCheck,
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import type { LandingData } from "@/lib/view/landing";
 import { Glyph } from "@/components/icon";
+import { BillRoom } from "@/components/bill-room";
 import { explain } from "../afford-result";
 import { useCountUp } from "./motion";
 
@@ -211,14 +212,14 @@ export function HeroAfford({
               {/* What it does to your money */}
               <div className="grid grid-cols-2 gap-2">
                 {bill ? (
-                  <Meter
+<BillRoom
                     label="Credit card bill"
-                    when={`due ${formatShort(bill.due)}`}
-                    before={bill.usualCents}
-                    after={bill.withCents}
-                    limit={bill.capCents}
-                    tone={shown.verdict !== "yes" && bill.withCents > bill.capCents ? C.warn : C.good}
-                    sub={shown.verdict !== "yes" && bill.withCents > bill.capCents ? `${usd(bill.withCents - bill.capCents)} over what you can pay` : "Paid in full on time"}
+                    usualCents={bill.usualCents}
+                    withCents={bill.withCents}
+                    capCents={bill.capCents}
+                    due={bill.due}
+                    fits={shown.verdict === "yes"}
+                    palette={{ ink: C.body, muted: C.muted, good: C.good, warn: "#b07d0a", bad: C.bad, track: "#ebe4d2", usual: "#a9b8ac", box: "#ffffff" }}
                   />
                 ) : (
                   <Meter
@@ -285,7 +286,7 @@ export function HeroAfford({
                 </div>
               )}
 
-              <Link href="/demo" className="flex min-h-11 items-center justify-center rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
+              <Link href="/demo/calendar?add=1" className="flex min-h-11 items-center justify-center rounded-full bg-[#1f4531] px-5 text-sm font-semibold text-[#ddefbf] shadow-lg ring-4 ring-[#2e7346]/20 transition hover:bg-[#2e7346] hover:text-white">
                 Try it with your plans in the demo →
               </Link>
             </div>

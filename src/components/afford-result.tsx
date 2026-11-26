@@ -5,6 +5,7 @@ import { applyPlanOption } from "@/app/app/actions";
 import { useContext, useState, useTransition } from "react";
 import { DemoCtx } from "./form";
 import { Info } from "./info";
+import { BillRoom } from "./bill-room";
 import { formatCents } from "@/lib/money";
 import { Glyph } from "@/components/icon";
 import type { AffordCheck } from "@/lib/engine";
@@ -326,14 +327,7 @@ export function PlanImpact({
       </p>
       <div className="mt-3 flex gap-3">
         {card ? (
-          <Meter
-            label={`${card.name.split(" ")[0]} bill`}
-            when={`due ${formatShort(card.due)}`}
-            value={dollars(card.withCents)}
-            pos={gauge(card.withCents, card.capCents, card.capCents)}
-            tone={card.withCents > card.capCents ? (check.verdict === "yes" ? "warn" : "bad") : "good"}
-            status={card.withCents > card.capCents ? `${dollars(card.withCents - card.capCents)} over what you can pay` : `you can pay up to ${dollars(card.capCents)}`}
-          />
+<BillRoom usualCents={card.usualCents} withCents={card.withCents} capCents={card.capCents} due={card.due} fits={check.verdict === "yes"} />
         ) : (
           <Meter
             label="Spending money"

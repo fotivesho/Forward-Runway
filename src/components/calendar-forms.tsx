@@ -2,7 +2,7 @@
 
 import { addCalendarSource, addManualEvent, correctEvent, syncCalendar, uploadIcs } from "@/app/app/actions";
 import Link from "next/link";
-import { createContext, useContext, useDeferredValue, useMemo, useState } from "react";
+import { createContext, useContext, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { addDays, isISODate, type ISODate } from "@/lib/dates";
 import { centsToInput, parseDollars } from "@/lib/money";
 import type { EventView } from "@/lib/view/dashboard";
@@ -76,7 +76,7 @@ export function PlanForm({ snapshot, today, nextPayday, events, calendarIncomple
   );
   const short = title.length > 24 ? title.slice(0, 24) + "…" : title;
   return (
-    <ActionForm action={ev ? correctEvent : addManualEvent} demoPreview onSuccess={onDone} className="grid gap-3" aria-label={ev ? `Change ${ev.title}` : "Add a plan"}>
+    <ActionForm action={ev ? correctEvent : addManualEvent} demoPreview demoNote={false} onSuccess={onDone} className="grid gap-3" aria-label={ev ? `Change ${ev.title}` : "Add a plan"}>
       {ev && <input type="hidden" name="eventId" value={ev.id} />}
       <Field name="title" label="What's the plan?" placeholder="Birthday dinner, concert, weekend away…" maxLength={200} required value={title} onChange={(e) => setTitle(e.target.value)} />
       <div className="grid grid-cols-2 gap-3">
@@ -191,9 +191,18 @@ export function SyncButton({ id, label = "Sync now" }: { id?: string; label?: st
 }
 
 /** "+ Add a plan" opens the add-a-plan pop-up. */
-export function AddPlanButton(props: Omit<React.ComponentProps<typeof AddPlanForm>, "onDone"> & { className?: string }) {
-  const { className = "btn btn-primary btn-sm", ...form } = props;
+export function AddPlanButton(props: Omit<React.ComponentProps<typeof AddPlanForm>, "onDone"> & { className?: string; openFromUrl?: boolean }) {
+  const { className = "btn btn-primary btn-sm", openFromUrl = false, ...form } = props;
   const [open, setOpen] = useState(false);
+  // "?add=1" (from the landing page): open straight away, so you can try one of your own plans.
+  useEffect(() => {
+    if (!openFromUrl) return;
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("add") !== "1") return;
+    setOpen(true);
+    url.searchParams.delete("add");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [openFromUrl]);
   return (
     <>
       <button type="button" className={className} onClick={() => setOpen(true)}>
