@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatLong, formatShort } from "@/lib/dates";
+import { formatShort } from "@/lib/dates";
 import { GROUPS, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { Glyph } from "@/components/icon";

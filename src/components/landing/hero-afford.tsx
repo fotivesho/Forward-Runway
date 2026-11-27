@@ -21,9 +21,7 @@ const OPTIONS = [
 
 // Fixed colors: this card is always cream, whatever the page theme.
 const C = { ink: "#1f4531", body: "#1d3324", muted: "#4f6455", good: "#2e7346", warn: "#9a6a00", bad: "#b3261e", line: "#ddd3bb", soft: "#f3efe2" };
-const TONE = { yes: C.good, yes_with_plan: C.warn, not_yet: C.bad } as const;
 const WORD = { yes: "Yes. It fits.", yes_with_plan: "Yes, with a plan.", not_yet: "Not yet." } as const;
-const SHORT = { yes: "Fits", yes_with_plan: "Plan", not_yet: "Not yet" } as const;
 const OPTION_ICON: Record<string, string> = { move: "🛟", skip_plan: "✂️", lean: "🥗", wait: "⏳", goal: "🎯", cheaper: "🏷️", go: "income" };
 const usd = (c: number) => (Math.abs(c) >= 100_000 ? formatCents(c, { compact: true }) : `${c < 0 ? "−" : ""}$${Math.round(Math.abs(c) / 100).toLocaleString("en-US")}`);
 

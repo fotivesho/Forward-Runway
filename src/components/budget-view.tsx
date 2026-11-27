@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { saveCategorySetting } from "@/app/app/actions";
-import { formatLong, formatShort } from "@/lib/dates";
+import { formatShort } from "@/lib/dates";
 import { GROUPS, type BudgetPlan, type CategoryBudget, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { ActionForm, SelectField, Submit } from "./form";
@@ -89,8 +89,7 @@ export function BudgetView({
 }) {
   const [edit, setEdit] = useState<CategoryBudget | null>(null);
   const monthName = new Date(`${plan.month}T12:00:00Z`).toLocaleString("en-US", { month: "long", timeZone: "UTC" });
-  const spendingBudget = plan.groups.needs.budgetCents + plan.groups.wants.budgetCents;
-  return (
+    return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {compact ? (
         <div className="flex items-center justify-between gap-2">
@@ -216,8 +215,6 @@ export function BudgetView({
   );
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const monthName = (m: string) => MONTHS[Number(m.slice(5, 7)) - 1]!;
 
 /**
  * The budget, editable right at the top: type it or drag the slider and the line on the chart moves
@@ -233,7 +230,6 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
   const vals = first < 0 ? all : all.slice(Math.min(first, Math.max(0, all.length - 3)));
   const top = Math.max(1, c.usualCents, c.budgetCents, ...vals.map((v) => v.cents)) * 1.25;
   const sliderMax = Math.max(1000, Math.ceil(top / 500) * 500);
-  const line = (cents: number) => `calc(1.25rem + ${(Math.min(cents, top) / top) * 7}rem)`;
   return (
     <ActionForm demoPreview action={saveCategorySetting} onSuccess={onDone} className="grid gap-3" aria-label={`Budget for ${c.category}`}>
       <input type="hidden" name="name" value={c.category} />

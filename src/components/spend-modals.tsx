@@ -8,7 +8,6 @@ import { RuleForm, TransactionForm, TransferForm } from "./entity-forms";
 import { QuickAction } from "./form";
 import { Modal } from "./modal";
 import { Money } from "./privacy";
-import { Info } from "./info";
 import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
 import { Pencil } from "lucide-react";

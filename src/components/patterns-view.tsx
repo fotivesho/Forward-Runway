@@ -27,7 +27,6 @@ export function InsightTiles({ items }: { items: Insight[] }) {
   );
 }
 
-const WD = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function PatternsView({
   insights,
@@ -65,7 +64,6 @@ export function PatternsView({
     { label: "Everyday", cents: ahead.everydayCents, color: "bg-brand", kind: "Predicted" },
     { label: "Big one-offs", cents: ahead.rareCents, color: "bg-warn", kind: "Predicted" },
   ].filter((s) => s.cents > 0);
-  const maxDay = Math.max(1, ...week.weekday, week.payday);
   const short = pace && pace.gapCents < 0;
 
   return (

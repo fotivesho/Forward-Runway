@@ -14,7 +14,6 @@ import { Info } from "./info";
 import { Money } from "./privacy";
 
 const FREQ: Record<string, string> = { weekly: "every week", biweekly: "every 2 weeks", semimonthly: "twice a month", monthly: "every month" };
-const ordinal = (d: number) => (d === -1 ? "last day" : `${d}${d % 10 === 1 && d !== 11 ? "st" : d % 10 === 2 && d !== 12 ? "nd" : d % 10 === 3 && d !== 13 ? "rd" : "th"}`);
 
 export function suggestionToRule(s: RecurringSuggestion): RecurringRule {
   return {

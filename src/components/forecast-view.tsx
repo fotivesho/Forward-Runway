@@ -36,8 +36,6 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
   const items = f.days.flatMap((d) => d.items.map((it) => ({ ...it, day: d })));
   const paydays = items.filter((i) => i.kind === "income" && i.cashEffectCents > 0);
   const bills = items.filter((i) => i.cashEffectCents < 0);
-  const inCents = paydays.reduce((a, i) => a + i.cashEffectCents, 0);
-  const outCents = -bills.reduce((a, i) => a + i.cashEffectCents, 0);
   // The days that matter: paydays, anything $100+, and the low point.
   const moments = [
     ...items.filter((i) => Math.abs(i.cashEffectCents) >= 10_000).map((i) => ({ key: i.id, date: i.date, glyph: KIND_GLYPH[i.kind] ?? i.category ?? "bill", label: i.label, cents: i.cashEffectCents as number | null, low: false })),
@@ -90,20 +88,10 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
               />
             </div>
           </div>
-          <dl className="grid grid-cols-4 divide-x divide-line border-t border-line text-center">
-            {[
-              { label: "Paydays", v: inCents, tone: "in" as const, sub: `${paydays.length}×` },
-              { label: "Out", v: -outCents, tone: "out" as const, sub: `${bills.length} items` },
-              { label: "Everyday", v: -life.everyday, tone: "out" as const, sub: life.hasModel ? "expected" : "—" },
-              { label: `On ${formatShort(f.endDate)}`, v: end, tone: undefined, sub: "end" },
-            ].map((t) => (
-              <div key={t.label} className="min-w-0 px-1 py-2">
-                <dt className="truncate text-[11px] font-bold text-ink">{t.label}</dt>
-                <dd className="truncate text-sm font-extrabold tabular"><Money cents={t.v} whole tone={t.tone} /></dd>
-                <dd className="truncate text-[10px] text-faint">{t.sub}</dd>
-              </div>
-            ))}
-          </dl>
+          <p className="flex items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-sm">
+            <span className="text-muted">On {formatShort(f.endDate)}</span>
+            <span><Money cents={end} whole className="font-semibold text-ink" /> <span className="text-xs text-faint">after {paydays.length} payday{paydays.length === 1 ? "" : "s"} and {bills.length} bills</span></span>
+          </p>
         </section>
 
         {/* The days that matter */}

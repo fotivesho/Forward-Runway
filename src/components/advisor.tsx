@@ -9,7 +9,7 @@ import { toEngineInput } from "@/lib/data/snapshot";
 import type { EventView, Question } from "@/lib/view/dashboard";
 import { ActionForm, DemoCtx, Field, MoneyField, QuickAction, SelectField, Submit } from "./form";
 import { Money } from "./privacy";
-import { Badge, StatusPill, Disclosure } from "./ui";
+import { StatusPill, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
 import { Modal } from "./modal";

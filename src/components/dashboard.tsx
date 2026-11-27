@@ -12,7 +12,6 @@ import { buildDashboard } from "@/lib/view/dashboard";
 import { buildBudget } from "@/lib/view/budget";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { Money } from "./privacy";
-import { ItemRow } from "./timeline";
 import { Card, Disclosure, EmptyState, StatusPill } from "./ui";
 import { ago, SnapshotTiles } from "./snapshot";
 import { Info } from "./info";

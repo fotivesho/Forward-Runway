@@ -6,7 +6,6 @@ import { createContext, useContext, useDeferredValue, useEffect, useMemo, useSta
 import { addDays, isISODate, type ISODate } from "@/lib/dates";
 import { centsToInput, parseDollars } from "@/lib/money";
 import type { EventView } from "@/lib/view/dashboard";
-import { APP_NAME } from "@/lib/brand";
 import { Money } from "./privacy";
 import { checkAffordability, type PlannedEvent } from "@/lib/engine";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";

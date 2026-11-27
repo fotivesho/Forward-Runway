@@ -4,7 +4,7 @@ import { typicalDays } from "@/lib/view/patterns";
 import { EventCard } from "@/components/advisor";
 import { AddCalendarForm, AddPlanButton, PlanProvider, SyncButton, UploadIcsForm } from "@/components/calendar-forms";
 import { QuickAction } from "@/components/form";
-import { Badge, Card, Disclosure, EmptyState, Notice, PageHeader } from "@/components/ui";
+import { Badge, Card, Disclosure, Notice, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { PlanCalendar, type DayMark } from "@/components/plan-calendar";

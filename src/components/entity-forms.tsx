@@ -5,7 +5,6 @@ import { saveAccount, saveGoal, saveRule, saveStatement, saveTransaction, saveTr
 import type { Account, CardStatement, RecurringRule, SavingsGoal } from "@/lib/engine";
 import { centsToInput } from "@/lib/money";
 import type { ISODate } from "@/lib/dates";
-import { SPEND_CATEGORIES } from "./advisor";
 import { CATEGORY_LIST } from "@/lib/categories";
 import { ActionForm, CheckboxField, Field, MoneyField, SelectField, Submit } from "./form";
 

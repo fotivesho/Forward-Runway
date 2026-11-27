@@ -2,11 +2,10 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
 import { CategoryMenu } from "./category-menu";
-import { Plus, Repeat, Search, Sparkles, Tag } from "lucide-react";
-import { useCategoryStyles } from "./custom-glyph";
-import { NewCategoryButton, NewCategoryForm } from "./new-category";
+import { Repeat, Search, Sparkles } from "lucide-react";
+import { NewCategoryButton } from "./new-category";
 import { looksLike } from "@/lib/data/match";
-import { createCategory, deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
+import { deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
 import { addDays, addMonths, formatLong, formatShort, type ISODate } from "@/lib/dates";
 import { describeSchedule, nextOccurrence, type Account, type OneTimeTransaction, type RecurringRule } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
@@ -21,8 +20,8 @@ import { HistoryChart } from "./history-chart";
 import { Info } from "./info";
 import { inPeriod, itemStats, PERIOD_LABEL, txnHistory, type HistoryView, type StatPeriod } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
-import { Glyph, GlyphView, PICKABLE, PICKABLE_COLORS } from "@/components/icon";
-import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
+import { Glyph } from "@/components/icon";
+import { isNotSpending } from "@/lib/categories";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
@@ -339,50 +338,7 @@ const pill = (on: boolean) =>
 /** The category, live: the pill shows what it is now (changed here or in the picker). */
 const CatCtx = createContext<{ cat: string | null; set: (c: string | null) => void; pending: boolean; note: string | null }>({ cat: null, set: () => {}, pending: false, note: null });
 
-function CategoryPill({ txn, open, onToggle, categories }: { txn: OneTimeTransaction; open: boolean; onToggle: () => void; categories: string[] }) {
-  const { cat, pending } = useContext(CatCtx);
-  void categories;
-  return (
-    <button type="button" onClick={onToggle} aria-expanded={open} className={pill(open)}>
-      <Glyph name={cat ?? txn.category ?? (txn.direction === "in" ? "income" : "spend")} size="xs" bare /> {cat ?? txn.category ?? (txn.direction === "in" ? "Income" : "Uncategorized")}
-      {pending ? <span className="text-xs font-normal text-faint">Saving…</span> : <span aria-hidden className={`text-faint transition ${open ? "rotate-180" : ""}`}>▾</span>}
-    </button>
-  );
-}
 
-/** Pick a category (saved on the spot), or make a new one with its own symbol and color. */
-function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; categories: string[]; onDone: () => void }) {
-  const { cat, set } = useContext(CatCtx);
-  const { styles } = useCategoryStyles();
-  const [making, setMaking] = useState(false);
-  const spend = [...new Set([...Object.keys(styles), ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c) && !["Income", "Salary", "Interest", "Other"].includes(c)).slice(0, 16);
-  // Money in: income kinds first, then Transfer (your own money moving), then spending categories (a refund lowers that category).
-  const choices = txn.direction === "in" ? ["Income", "Salary", "Interest", "Transfer", ...spend] : [...spend, "Other", "Transfer"];
-  const choose = (c: string) => { set(c); onDone(); };
-  return (
-    <div className="fade-up">
-      <ul className="flex flex-wrap gap-1.5" aria-label="Pick a category">
-        {choices.map((c) => (
-          <li key={c}>
-            <button type="button" onClick={() => choose(c)} aria-pressed={c === cat} className={chip(c === cat)}>
-              <Glyph name={c} size="xs" bare /> {c}
-            </button>
-          </li>
-        ))}
-        <li>
-          <button type="button" onClick={() => setMaking((m) => !m)} aria-expanded={making} className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand/60 px-3 py-1.5 text-xs font-semibold text-brand">
-            <Plus size={13} strokeWidth={2.6} aria-hidden /> New
-          </button>
-        </li>
-      </ul>
-      {making && (
-        <div className="fade-up mt-3 rounded-2xl border border-line bg-surface-2/50 p-3">
-          <NewCategoryForm onCreated={choose} />
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** Already repeating: what that means, and a one-tap way to stop it. */
 function RepeatingInfo({ rule, today }: { rule: RecurringRule; today: ISODate }) {

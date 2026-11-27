@@ -8,7 +8,7 @@ import type { FlowItem } from "@/lib/view/spend";
 import { DemoCtx } from "./form";
 import { Glyph } from "@/components/icon";
 import { CategoryMenu } from "./category-menu";
-import { CATEGORY_LIST, INCOME_CATEGORIES, NOT_SPENDING } from "@/lib/categories";
+import { INCOME_CATEGORIES, NOT_SPENDING } from "@/lib/categories";
 import { Info } from "./info";
 import { Modal } from "./modal";
 import { Money } from "./privacy";
@@ -87,11 +87,9 @@ function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string
   const router = useRouter();
   const [busy, start] = useTransition();
   const [note, setNote] = useState<string | null>(null);
-  const [picking, setPicking] = useState<string | null>(null);
   const [cats, setCats] = useState<Record<string, string>>({});
   const choose = (i: FlowItem, c: string) =>
     start(async () => {
-      setPicking(null);
       if (!demo) {
         const r = await setTransactionCategory(i.txnId!, c);
         if (!r.ok) return setNote(r.error ?? "Couldn't save that.");
@@ -107,7 +105,6 @@ function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string
     });
   const done = items.filter((i) => i.when === "done");
   const coming = items.filter((i) => i.when === "coming");
-  const order = ["Income", "Salary", "Interest", "Transfer", ...CATEGORY_LIST.filter((c) => !["Income", "Transfer", "Card payment", "Other"].includes(c))];
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">

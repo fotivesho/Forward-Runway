@@ -3,7 +3,6 @@ import { Money } from "@/components/privacy";
 import { AddButton, RecurringTiles, type RuleTile } from "@/components/spend-modals";
 import { TransactionList } from "@/components/transaction-list";
 import { MoneyTabs } from "@/components/money-tabs";
-import { isNotSpending } from "@/lib/categories";
 import { findRecurring } from "@/lib/view/recurring";
 import { ruleHistory } from "@/lib/view/history";
 import { RecurringSuggestions } from "@/components/recurring-suggestions";
@@ -40,7 +39,6 @@ export function SpendView({ snapshot, today, nowIso, demo = false, section = "ov
   const model = spendModel(snapshot, today);
   const left = diffDays(today, endOfMonth(today)) + 1;
   const expectedPerDay = model ? Math.round(predict(model, today, endOfMonth(today)).totalCents / left) : undefined;
-  const active = snapshot.rules.filter((r) => r.active !== false);
   const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 2000);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
 
