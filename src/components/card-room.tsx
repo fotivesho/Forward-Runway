@@ -14,14 +14,14 @@ export function CardRoomView({ rooms }: { rooms: CardRoom[] }) {
   const [i, setI] = useState(0);
   if (rooms.length === 0) return null;
   const r = rooms[Math.min(i, rooms.length - 1)]!;
-  const fits = r.roomCents >= r.billCents;
-  const gap = Math.abs(r.roomCents - r.billCents);
+  const fits = r.maxCents >= r.billCents;
+  const gap = Math.abs(r.maxCents - r.billCents);
   return (
-    <section className="rounded-2xl border border-line p-3.5" aria-label="Room for this bill">
+    <section className="rounded-2xl border border-line p-3.5" aria-label="Max bill">
       <div className="flex items-center justify-between gap-2">
         <h3 className="flex items-center text-sm font-bold text-ink">
-          Room for this bill
-          <Info label="Room for this bill">The biggest bill you can pay on its due date from your cash and paychecks, without moving money from savings. It counts every bill, card payment and plan before then, the everyday spending you usually do, what you&apos;ll still need afterwards until your next payday, and your cushion. It isn&apos;t your credit limit.</Info>
+          Max bill without savings
+          <Info label="Max bill">The biggest bill you can pay on its due date from your cash and paychecks, without moving money from savings. It counts every bill, card payment and plan before then, the everyday spending you usually do, what you&apos;ll still need afterwards until your next payday, and your cushion. It isn&apos;t your credit limit. What if uses this same number.</Info>
         </h3>
         {rooms.length > 1 && (
           <div role="group" aria-label="Which bill" className="flex rounded-full border border-line p-0.5">
@@ -34,7 +34,7 @@ export function CardRoomView({ rooms }: { rooms: CardRoom[] }) {
         )}
       </div>
       <p className="mt-2 text-sm">
-        Up to <Money cents={Math.max(0, r.roomCents)} whole className={`font-num text-2xl ${fits ? "text-display" : "text-warn"}`} /> on {formatShort(r.due)}
+        Max <Money cents={Math.max(0, r.maxCents)} whole className={`font-num text-2xl ${fits ? "text-display" : "text-warn"}`} /> on {formatShort(r.due)}
       </p>
       <p className={`text-xs ${fits ? "text-brand" : "text-warn"}`}>
         {r.projected ? "Expected bill" : "This bill"} <Money cents={r.billCents} whole /> ·{" "}
@@ -50,8 +50,8 @@ export function CardRoomView({ rooms }: { rooms: CardRoom[] }) {
             </div>
           ))}
           <div className="flex justify-between gap-2 border-t border-line pt-1 font-semibold">
-            <dt className="text-ink">Room for the bill</dt>
-            <dd className="tabular text-ink"><Money cents={r.roomCents} whole sign /></dd>
+            <dt className="text-ink">Max bill</dt>
+            <dd className="tabular text-ink"><Money cents={r.maxCents} whole sign /></dd>
           </div>
         </dl>
       </details>

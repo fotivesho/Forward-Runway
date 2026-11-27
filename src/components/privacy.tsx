@@ -38,7 +38,7 @@ export function Money({
     );
   }
   if (whole) {
-    const dollars = Math.trunc(cents / 100);
+    const dollars = Math.round(cents / 100);
     const text = (dollars < 0 ? "−$" : "$") + Math.abs(dollars).toLocaleString("en-US");
     return <span className={`tabular ${color} ${className}`}>{text}</span>;
   }

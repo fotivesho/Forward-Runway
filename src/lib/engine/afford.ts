@@ -1,3 +1,4 @@
+import { cardRoomFor } from "./card-room";
 import { addMonths, diffDays, formatShort, maxDate, parts as dateParts, type ISODate } from "../dates";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -158,11 +159,17 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   const pot = pots[potIndex]!;
   const withPurchase = buildForecast(input, 90, { extraItems: [item] });
   const floorShort = Math.max(0, floor - withPurchase.lowest.cents);
-  const shortfall = Math.max(0, amt - pot.free);
+  // On a card, the max bill is the same calculation as on Accounts and Forecast: cash and paychecks
+  // minus every other bill, plan and usual everyday spending until it's due, what's still needed
+  // until the next payday, and your cushion. It never assumes the expected bill fits.
+  if (card && !cash.beyondHorizon) {
+    const r = cardRoomFor(input, payAcct!.id, base).find((x) => x.due === card!.due);
+    card.capCents = (r ? r.maxCents : card.usualCents + pot.free) + reserved;
+  }
+  // How much would have to come from savings: on a card, whatever the bill goes over max; in cash,
+  // whatever this pay period's free money doesn't cover.
+  const shortfall = card && !cash.beyondHorizon ? Math.max(0, card.withCents - card.capCents) : Math.max(0, amt - pot.free);
   const room = { start: pot.start, end: pot.end, before: pot.free, after: Math.max(0, pot.free - amt), shortfall, borrowed: 0 };
-  // The statement cap: what's already headed there, plus the free money of the due-date pay period
-  // (plus anything already set aside for this exact plan).
-  if (card && !cash.beyondHorizon) card.capCents = card.usualCents + pot.free + reserved;
   const lowest = { before: base.lowest, after: withPurchase.lowest };
 
   const result = (verdict: AffordVerdict, headline: string, action: AffordAction, alternatives: AffordAction[]): AffordCheck => ({
@@ -330,9 +337,11 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   }
 
   // 6. Cut it down to what fits as is.
-  const cheaper = friendlyRoundDown(reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor)));
+  // On a card: what fits under the max bill. In cash: this pay period's free money.
+  const fitsAsIs = card && !cash.beyondHorizon ? card.capCents - card.usualCents : reserved + Math.min(pot.free, Math.max(0, base.lowest.cents - floor));
+  const cheaper = friendlyRoundDown(Math.max(0, fitsAsIs));
   if (cheaper >= 500 && cheaper < req.amountCents) {
-    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `Spend at most ${money(cheaper)} on it. That fits in your spending money for ${range(pot.start, pot.end)} without moving anything.`, apply: { capCents: cheaper } });
+    options.push({ kind: "cheaper", rank: 7, title: `Cut it to ${money(cheaper)}`, detail: `Spend at most ${money(cheaper)} on it. ${card && !cash.beyondHorizon ? `That keeps your ${card.name} bill under its max, so it's paid from cash` : `That fits in your spending money for ${range(pot.start, pot.end)}`} without moving anything.`, apply: { capCents: cheaper } });
   }
 
   options.sort((a, b) => a.rank - b.rank);

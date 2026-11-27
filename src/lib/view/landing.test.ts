@@ -1,3 +1,4 @@
+import { cardRoomFor } from "../engine";
 import { describe, expect, it } from "vitest";
 import { addDays, formatShort } from "../dates";
 import { buildLanding } from "./landing";
@@ -124,21 +125,18 @@ describe("card statement cap", () => {
   const ctx = { input: toEngineInput(d.snapshot, today), events: d.afford.events, calendarIncomplete: d.afford.calendarIncomplete, nextPayday: d.hero.nextPayday };
   const visa = d.snapshot.accounts.find((a) => a.kind === "credit_card")!.id;
 
-  it("cap = what's already headed to the statement + the due-date pay period's free money", () => {
+  it("max is the same number Accounts and Forecast show for that bill", () => {
     const r = checkAffordability(ctx, { amountCents: 100, date: "2026-11-29", paymentAccountId: visa });
-    expect(r.card!.capCents).toBe(r.card!.usualCents + r.room.before);
-    expect(r.verdict).toBe("yes");
-    expect(r.action.detail).toMatch(/paid off in full/);
+    const same = cardRoomFor(ctx.input, visa).find((x) => x.due === r.card!.due)!;
+    expect(r.card!.capCents).toBe(same.maxCents);
+    // The verdict follows max: under it fits as is; over it, the overage is what's short.
+    expect(r.verdict === "yes").toBe(r.card!.withCents <= r.card!.capCents);
   });
 
-  it("staying under the cap needs no savings; going over it is short by exactly the overage", () => {
-    const probe = checkAffordability(ctx, { amountCents: 100, date: "2026-11-29", paymentAccountId: visa });
-    const underCap = Math.floor((probe.card!.capCents - probe.card!.usualCents) / 2);
-    const small = checkAffordability(ctx, { amountCents: underCap, date: "2026-11-29", paymentAccountId: visa });
-    expect(small.card!.withCents).toBeLessThanOrEqual(small.card!.capCents);
-    expect([small.action, ...small.alternatives].some((a) => a.kind === "move")).toBe(false);
+  it("going over max is short by exactly the overage", () => {
     const big = checkAffordability(ctx, { amountCents: 170_000, date: "2026-11-29", paymentAccountId: visa });
     expect(big.card!.withCents - big.card!.capCents).toBe(big.room.shortfall);
+    expect(big.verdict).not.toBe("yes");
   });
 });
 

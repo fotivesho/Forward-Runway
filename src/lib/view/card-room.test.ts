@@ -10,7 +10,7 @@ describe("room for a card bill", () => {
     const rooms = cardRoom(s, today, card.id);
     expect(rooms.length).toBeGreaterThan(0);
     for (const r of rooms) {
-      expect(r.lines.reduce((t, l) => t + l.cents, 0)).toBe(r.roomCents);
+      expect(r.lines.reduce((t, l) => t + l.cents, 0)).toBe(r.maxCents);
       expect(r.billCents).toBeGreaterThan(0);
     }
   });

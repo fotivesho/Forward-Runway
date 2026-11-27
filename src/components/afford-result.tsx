@@ -246,7 +246,7 @@ function doableTitle(a: AffordCheck["action"]): string {
   }
 }
 
-/** The two ⓘ notes on a card bill, written to teach: where "from next pay" comes from, and what "room" is made of. */
+/** The two ⓘ notes on a card bill, written to teach: where "from next pay" comes from, and what "max" is made of. */
 export function billNotes(check: AffordCheck): { borrow: React.ReactNode; max: React.ReactNode } {
   const r = check.room;
   const c = check.card;
@@ -274,7 +274,7 @@ export function billNotes(check: AffordCheck): { borrow: React.ReactNode; max: R
         <span className="mt-1 block">
           <B>2. Your free money, {dollars(free)}.</B> What&apos;s left from the {span(r.start, r.end)} paycheck after bills, savings and plans.
         </span>
-        <span className="mt-1.5 block">Stay within the room and the card is paid in full, so you pay no interest. Anything you add uses that free money, so your daily spending limits for {span(r.start, r.end)} get smaller.</span>
+        <span className="mt-1.5 block">Stay under max and the card is paid in full, so you pay no interest. Anything you add uses that free money, so your daily spending limits for {span(r.start, r.end)} get smaller.</span>
       </>
     ) : null,
   };
