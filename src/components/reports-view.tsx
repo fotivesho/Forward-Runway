@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatLong } from "@/lib/dates";
+import { formatLong, formatShort } from "@/lib/dates";
 import { GROUPS, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
 import { Glyph } from "@/components/icon";
 import { Info } from "./info";
 import { Money, useHideAmounts } from "./privacy";
+import { Modal } from "./modal";
+import { AvgLine, shortMoney } from "./avg-line";
+import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 
 const COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
 const seg = (active: boolean) => `min-h-9 flex-1 rounded-md px-2 text-xs font-medium sm:text-sm ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`;
@@ -42,7 +45,6 @@ export function ReportsView({
 
   // Chart: one category, one group, or everything stacked by group.
   const series = (m: SpendingReport[number]): Array<{ key: string; cents: number; cls: string }> => {
-    if (cat) return [{ key: cat, cents: m.categories[cat] ?? 0, cls: COLOR[groupOf[cat] ?? "wants"] }];
     if (focus === "all") return GROUPS.map((g) => ({ key: g.id, cents: m.groups[g.id], cls: COLOR[g.id] }));
     return [{ key: focus, cents: m.groups[focus], cls: COLOR[focus] }];
   };
@@ -57,22 +59,14 @@ export function ReportsView({
     const target = picked ?? data[data.length - 1]!;
     return [...names]
       .map((c) => {
-        const avg = full.length ? Math.round(full.reduce((t, m) => t + (m.categories[c] ?? 0), 0) / full.length) : 0;
+        const avg = avgSince(full, c);
         return { c, avg, now: target.categories[c] ?? 0, total: data.reduce((t, m) => t + (m.categories[c] ?? 0), 0) };
       })
       .sort((a, b) => b.now - a.now || b.total - a.total);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data, full, focus, groupOf, picked]);
 
-  // Transactions for the selected category, in the picked period or across the range.
-  const txns = useMemo(() => {
-    if (!cat) return [];
-    const from = picked?.month ?? data[0]!.month;
-    const to = picked?.end ?? data[data.length - 1]!.end;
-    return (items[cat] ?? []).filter((i) => i.date >= from && i.date <= to);
-  }, [cat, picked, data, items]);
-
-  const title = cat ? cat : focus === "all" ? "Spending by group" : GROUPS.find((g) => g.id === focus)!.label;
+  const title = focus === "all" ? "Spending by group" : GROUPS.find((g) => g.id === focus)!.label;
   const periodName = (m: SpendingReport[number]) => (by === "month" ? `${m.label} ${m.month.slice(0, 4)}` : m.label);
 
   return (
@@ -80,8 +74,8 @@ export function ReportsView({
       <section className="card p-4 sm:p-5" aria-labelledby="rep-title">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="rep-title" className="text-base font-bold text-ink">{title}</h2>
-          {(cat || pick || focus !== "all") && (
-            <button type="button" className="text-xs font-medium text-brand" onClick={() => { setCat(null); setPick(null); setFocus("all"); }}>Clear filters</button>
+          {(pick || focus !== "all") && (
+            <button type="button" className="text-xs font-medium text-brand" onClick={() => { setPick(null); setFocus("all"); }}>Clear filters</button>
           )}
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -102,11 +96,7 @@ export function ReportsView({
         </div>
 
         <div className="relative mt-4">
-          {avgTotal > 0 && (
-            <span className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-faint" style={{ bottom: `calc(1.5rem + ${(avgTotal / max) * 10}rem)` }} aria-hidden>
-              <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] text-faint">avg {hide ? "" : short(Math.round(avgTotal))}</span>
-            </span>
-          )}
+          {avgTotal > 0 && <AvgLine bottom={`calc(1.5rem + ${(avgTotal / max) * 10}rem)`} label={`avg ${hide ? "" : short(Math.round(avgTotal))}`} />}
           <ol className="grid items-end gap-1" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} aria-label="Spending by period. Tap a bar to see that period.">
             {data.map((m, i) => {
               const parts = series(m);
@@ -136,7 +126,7 @@ export function ReportsView({
           </ol>
         </div>
         <p className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
-          {!cat && focus === "all" && GROUPS.map((g) => <span key={g.id}><span className={`mr-1 inline-block h-2 w-2 rounded-full ${COLOR[g.id]}`} />{g.label}</span>)}
+          {focus === "all" && GROUPS.map((g) => <span key={g.id}><span className={`mr-1 inline-block h-2 w-2 rounded-full ${COLOR[g.id]}`} />{g.label}</span>)}
           <Info label="Reading the chart">Each bar is one {by === "month" ? "month" : "pay period"}, split into needs, wants and savings. Tap a bar to see that {by === "month" ? "month" : "pay period"}'s categories below. The dashed line is your average.</Info>
         </p>
       </section>
@@ -149,11 +139,9 @@ export function ReportsView({
         <ul className="mt-2 divide-y divide-line">
           {rows.map((r) => {
             const pace = r.avg ? r.now / r.avg : 0;
-            const active = cat === r.c;
-            const dim = cat != null && !active;
             return (
-              <li key={r.c} className={`transition ${dim ? "opacity-40" : ""}`}>
-                <button type="button" onClick={() => setCat(active ? null : r.c)} aria-pressed={active} className={`flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left ${active ? "bg-brand/10 ring-1 ring-brand" : ""}`}>
+              <li key={r.c}>
+                <button type="button" onClick={() => setCat(r.c)} aria-haspopup="dialog" className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition hover:bg-surface-2/60">
                   <Glyph name={r.c} size="md" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-medium text-ink">{r.c}</span>
@@ -163,6 +151,7 @@ export function ReportsView({
                     <Money cents={r.now} whole className="font-semibold text-ink" />
                     {r.avg > 0 && <span className={`block text-[11px] ${pace > 1.1 ? "text-warn" : "text-muted"}`}>{Math.round(pace * 100)}% of avg</span>}
                   </span>
+                  <span aria-hidden className="text-faint">›</span>
                 </button>
               </li>
             );
@@ -171,32 +160,133 @@ export function ReportsView({
       </section>
 
       {cat && (
-        <section className="card p-4 sm:p-5" aria-labelledby="txn-title">
-          <div className="flex items-baseline justify-between gap-2">
-            <h2 id="txn-title" className="text-base font-bold text-ink"><Glyph name={cat} size="xs" /> {cat} transactions</h2>
-            <span className="text-xs text-muted">{picked ? periodName(picked) : `last ${range} ${by === "month" ? "months" : "pay periods"}`}</span>
-          </div>
-          {txns.length === 0 ? (
-            <p className="mt-2 text-sm text-muted">Nothing in this period.</p>
-          ) : (
-            <ul className="mt-2 divide-y divide-line">
-              {txns.map((i, k) => (
-                <li key={`${i.date}-${k}`} className="flex items-center justify-between gap-2 py-1.5 text-sm">
-                  <span className="min-w-0">
-                    <span className="block truncate text-ink">{i.label}</span>
-                    <span className="block text-[11px] text-muted">{formatLong(i.date)} · {i.account}{i.repeating ? " · repeating" : ""}{i.pending ? " · pending" : ""}</span>
-                  </span>
-                  <Money cents={-i.cents} sign tone="auto" className="shrink-0 tabular" />
-                </li>
-              ))}
-              <li className="flex justify-between pt-2 text-sm font-semibold text-ink">
-                <span>Total</span>
-                <Money cents={txns.reduce((t, i) => t + i.cents, 0)} />
-              </li>
-            </ul>
-          )}
-        </section>
+        <Modal open onClose={() => setCat(null)} icon={cat} title={cat} subtitle={<>{GROUPS.find((g) => g.id === (groupOf[cat] ?? "wants"))!.label} · last {range} {by === "month" ? "months" : "pay periods"}</>}>
+          <CategoryReport cat={cat} data={data} items={items[cat] ?? []} by={by} periodName={periodName} />
+        </Modal>
       )}
+    </div>
+  );
+}
+
+/** A category's average, counted only from the first period it showed up (earlier ones are before your history). */
+function avgSince(periods: SpendingReport, c: string): number {
+  const first = periods.findIndex((m) => (m.categories[c] ?? 0) > 0);
+  if (first < 0) return 0;
+  const list = periods.slice(first);
+  return Math.round(list.reduce((t, m) => t + (m.categories[c] ?? 0), 0) / list.length);
+}
+
+/**
+ * One category, up close: how it's trending, a bar for each period with the average as a dotted
+ * line, and its transactions below. Tap a bar to list just that period.
+ */
+function CategoryReport({ cat, data, items, by, periodName }: { cat: string; data: SpendingReport; items: CategoryItem[]; by: "month" | "period"; periodName: (m: SpendingReport[number]) => string }) {
+  const hide = useHideAmounts();
+  const [pick, setPick] = useState<string | null>(null);
+  const [all, setAll] = useState(false);
+  const full = data.filter((m) => !m.current);
+  const avg = avgSince(full, cat);
+  const vals = data.map((m) => m.categories[cat] ?? 0);
+  const first = vals.findIndex((v) => v > 0);
+  const shown = first < 0 ? data : data.slice(Math.min(first, Math.max(0, data.length - 3)));
+  const max = Math.max(1, avg, ...shown.map((m) => m.categories[cat] ?? 0));
+  const now = data[data.length - 1]!;
+  const nowCents = now.categories[cat] ?? 0;
+  // Trend: the last three finished periods against the three before.
+  const done = full.slice(Math.max(0, first)).map((m) => m.categories[cat] ?? 0);
+  const recent = done.slice(-3);
+  const before = done.slice(-6, -3);
+  const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const trend = recent.length >= 2 && before.length >= 2 && mean(before) > 0 ? Math.round(((mean(recent) - mean(before)) / mean(before)) * 100) : null;
+  const top = shown.reduce((m, x) => ((x.categories[cat] ?? 0) > (m.categories[cat] ?? 0) ? x : m), shown[0]!);
+  const unit = by === "month" ? "month" : "pay period";
+  const picked = data.find((m) => m.month === pick) ?? null;
+  const from = picked?.month ?? shown[0]!.month;
+  const to = picked?.end ?? now.end;
+  const list = items.filter((i) => i.date >= from && i.date <= to);
+  const rows = all ? list : list.slice(0, 8);
+  const total = list.reduce((t, i) => t + i.cents, 0);
+  const pace = avg ? nowCents / avg : 0;
+  const TrendIcon = trend == null || Math.abs(trend) < 10 ? Minus : trend > 0 ? TrendingUp : TrendingDown;
+  const trendTone = trend == null || Math.abs(trend) < 10 ? "text-muted" : trend > 0 ? "text-warn" : "text-brand";
+
+  return (
+    <div className="space-y-4">
+      <ul className="grid grid-cols-3 gap-2 text-center">
+        <li className="rounded-xl bg-surface-2/60 px-1 py-2">
+          <span className="block text-[11px] text-faint">This {unit}</span>
+          <span className={`block font-num text-lg leading-tight ${pace > 1.1 ? "text-warn" : "text-display"}`}><Money cents={nowCents} whole /></span>
+          <span className="block text-[10px] text-faint">{avg ? `${Math.round(pace * 100)}% of avg` : "so far"}</span>
+        </li>
+        <li className="rounded-xl bg-surface-2/60 px-1 py-2">
+          <span className="block text-[11px] text-faint">Average</span>
+          <span className="block font-num text-lg leading-tight text-display"><Money cents={avg} whole /></span>
+          <span className="block text-[10px] text-faint">a {unit}</span>
+        </li>
+        <li className="rounded-xl bg-surface-2/60 px-1 py-2">
+          <span className="block text-[11px] text-faint">Trend</span>
+          <span className={`flex items-center justify-center gap-1 font-num text-lg leading-tight ${trendTone}`}>
+            <TrendIcon size={16} strokeWidth={2.4} aria-hidden />{trend == null ? "—" : Math.abs(trend) < 10 ? "Steady" : `${Math.abs(trend)}%`}
+          </span>
+          <span className="block text-[10px] text-faint">last 3 vs 3 before</span>
+        </li>
+      </ul>
+      {(trend != null || top) && (
+        <p className="text-xs text-muted">
+          {trend != null && (Math.abs(trend) < 10 ? "Holding steady. " : trend > 0 ? `Climbing: up ${trend}% lately. ` : `Easing off: down ${Math.abs(trend)}% lately. `)}
+          {top && (top.categories[cat] ?? 0) > avg * 1.3 && <>Highest was {periodName(top)} at <Money cents={top.categories[cat] ?? 0} whole />.</>}
+        </p>
+      )}
+
+      <div className="relative pt-2">
+        {avg > 0 && <AvgLine bottom={`calc(1.5rem + ${(avg / max) * 8}rem)`} label={`avg ${hide ? "" : shortMoney(avg)}`} />}
+        <ol className="grid items-end gap-1.5" style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }} aria-label={`${cat} by ${unit}. Tap a bar to list it.`}>
+          {shown.map((m) => {
+            const v = m.categories[cat] ?? 0;
+            const on = pick === m.month;
+            const dim = pick != null && !on;
+            return (
+              <li key={m.month}>
+                <button type="button" onClick={() => setPick(on ? null : m.month)} aria-pressed={on} aria-label={`${periodName(m)}: ${hide ? "hidden" : shortMoney(v)}`} className="flex w-full flex-col items-center">
+                  <span className="flex h-32 w-full items-end justify-center">
+                    <span className={`w-full max-w-8 rounded-t transition ${v > avg * 1.1 && avg > 0 ? "bg-warn" : "bg-brand"} ${m.current ? "opacity-60" : ""} ${dim ? "opacity-25" : ""} ${on ? "ring-2 ring-ink/70 ring-offset-1 ring-offset-surface" : ""}`} style={{ height: `${Math.max(v ? 3 : 0, (v / max) * 100)}%` }} />
+                  </span>
+                  <span className={`mt-1 h-4 text-[10px] ${on ? "font-bold text-ink" : "text-faint"}`}>{by === "month" ? m.label : `${Number(m.month.slice(5, 7))}/${Number(m.month.slice(8))}`}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+      <p className="-mt-2 text-[11px] text-faint">Amber = above average · faded = still going · tap a bar to list it</p>
+
+      <div>
+        <div className="mb-1 flex items-baseline justify-between gap-2">
+          <p className="text-sm font-bold text-ink">{picked ? periodName(picked) : "All of it"} <span className="font-normal text-faint">· {list.length}</span></p>
+          <span className="flex items-baseline gap-2">
+            <Money cents={total} whole className="text-sm font-semibold text-ink" />
+            {picked && <button type="button" onClick={() => setPick(null)} className="text-xs font-semibold text-brand">Show all</button>}
+          </span>
+        </div>
+        {list.length === 0 ? (
+          <p className="text-sm text-muted">Nothing here.</p>
+        ) : (
+          <ul className="divide-y divide-line rounded-xl border border-line">
+            {rows.map((i, k) => (
+              <li key={`${i.date}-${k}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="block truncate font-medium text-ink">{i.label}</span>
+                  <span className="block text-[11px] text-muted">{formatShort(i.date)} · {i.account}{i.repeating ? " · repeating" : ""}{i.pending ? " · pending" : ""}</span>
+                </span>
+                <Money cents={-i.cents} sign tone="auto" className="shrink-0 font-semibold" />
+              </li>
+            ))}
+          </ul>
+        )}
+        {list.length > 8 && (
+          <button type="button" onClick={() => setAll((x) => !x)} className="mt-1.5 text-xs font-semibold text-brand">{all ? "Show fewer" : `Show all ${list.length}`}</button>
+        )}
+      </div>
     </div>
   );
 }

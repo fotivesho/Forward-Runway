@@ -1,5 +1,7 @@
 "use client";
 
+import { AvgLine, shortMoney } from "./avg-line";
+
 import { useState } from "react";
 import type { CategoryBucket, FlowBucket } from "@/lib/view/spend";
 import { Money, useHideAmounts } from "./privacy";
@@ -99,9 +101,7 @@ export function CategoryTrend({ category, month, week, picked, onPick }: { categ
       {onPick && !picked && <p className="text-[11px] text-faint">Tap a bar to see just those transactions.</p>}
       <div className="relative mt-3">
         {avg > 0 && (
-          <span className="pointer-events-none absolute inset-x-0 border-t border-dashed border-info" style={{ bottom: `calc(1.125rem + ${(avg / max) * 7}rem)` }} aria-hidden>
-            <span className="absolute -top-4 right-0 text-[10px] text-info">avg</span>
-          </span>
+          <AvgLine bottom={`calc(1.125rem + ${(avg / max) * 7}rem)`} label={`avg ${hide ? "" : shortMoney(avg)}`} />
         )}
         <ol className="grid items-end gap-1" style={{ gridTemplateColumns: `repeat(${data.length}, minmax(0, 1fr))` }} aria-label={`${category} spending by ${mode}`}>
           {data.map((d) => {

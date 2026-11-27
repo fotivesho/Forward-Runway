@@ -8,6 +8,7 @@ import type { CategoryGroup } from "@/lib/data/snapshot";
 import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
+import { AvgLine } from "./avg-line";
 import { Money } from "./privacy";
 import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
@@ -252,9 +253,7 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
           <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] font-semibold text-ink">budget <Money cents={budget} whole /></span>
         </span>
         {c.usualCents > 0 && (
-          <span className="pointer-events-none absolute inset-x-0 z-10 border-t border-dotted border-info" style={{ bottom: line(c.usualCents) }} aria-hidden>
-            <span className="absolute -top-4 left-0 rounded bg-surface px-1 text-[10px] text-info">usual <Money cents={c.usualCents} whole /></span>
-          </span>
+          <AvgLine bottom={line(c.usualCents)} side="left" label={<>avg <Money cents={c.usualCents} whole /></>} />
         )}
         <ol className="grid items-end gap-1.5" style={{ gridTemplateColumns: `repeat(${vals.length}, minmax(0, 1fr))` }}>
           {vals.map((v) => (

@@ -1,7 +1,8 @@
 "use client";
 
 import type { HistBar } from "@/lib/view/history";
-import { Money } from "./privacy";
+import { Money, useHideAmounts } from "./privacy";
+import { AvgLine, shortMoney } from "./avg-line";
 
 /**
  * Past and ahead at a glance: solid bars for what happened, dashed, shaded bars for what's
@@ -18,7 +19,13 @@ export function HistoryChart({
   selected: string | null;
   onSelect: (key: string) => void;
 }) {
+  const hide = useHideAmounts();
   const max = Math.max(1, ...bars.map((b) => b.cents));
+  const past = bars.filter((b) => b.kind === "past");
+  const mean = past.length >= 2 ? past.reduce((t, b) => t + b.cents, 0) / past.length : 0;
+  // A line through identical bars (a fixed paycheck) says nothing: only show it when amounts vary.
+  const spread = past.length ? Math.max(...past.map((b) => b.cents)) - Math.min(...past.map((b) => b.cents)) : 0;
+  const avg = mean > 0 && spread > mean * 0.05 ? mean : 0;
   const solid = tone === "in" ? "bg-in" : "bg-out";
   const color = tone === "in" ? "var(--color-in)" : "var(--color-out)";
   const hatch = { backgroundImage: `repeating-linear-gradient(135deg, color-mix(in srgb, ${color} 28%, transparent) 0 3px, transparent 3px 7px)`, borderColor: color };
@@ -43,6 +50,7 @@ export function HistoryChart({
         )}
       </p>
       <div className="relative mt-5 flex h-28 items-end gap-1.5" role="group" aria-label="Past and expected amounts">
+        {avg > 0 && <AvgLine bottom={`${(avg / max) * 100}%`} label={`avg ${hide ? "" : shortMoney(avg)}`} />}
         {bars.map((b, i) => {
           const h = Math.max(4, (b.cents / max) * 100);
           const on = b.key === selected;
