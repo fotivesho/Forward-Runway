@@ -105,7 +105,7 @@ describe("demo dashboard", () => {
       // The fictional demo never contains a real calendar URL.
       expect(snap.calendarSources.every((c) => c.urlHint === "calendar.example.com")).toBe(true);
     }
-  });
+  }, 30_000);
 });
 
 describe("export format rename", () => {

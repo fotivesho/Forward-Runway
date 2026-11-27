@@ -25,6 +25,7 @@ import {
   type AffordCheck,
 } from "../engine";
 import { toEngineInput, type CalendarEvent, type Snapshot } from "../data/snapshot";
+import { dayShape } from "./day-shape";
 
 export interface EventView {
   event: CalendarEvent;
@@ -207,7 +208,8 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     duplicateOf: v.duplicate?.ofId ?? null,
     needsEstimate: v.estimate.needsInput,
   }));
-  const plan = planDailySpending(input, forecast90, planned, { calendarIncomplete: coverage.incomplete });
+  const shape = dayShape(s, today, forecast90.endDate);
+  const plan = planDailySpending(input, forecast90, planned, { calendarIncomplete: coverage.incomplete, dayWeights: shape?.weights, dayReasons: shape?.reasons });
   const adviceById = new Map(plan.advice.map((a) => [a.eventId, a]));
   for (const v of events) v.advice = adviceById.get(v.event.id) ?? null;
 

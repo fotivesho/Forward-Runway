@@ -1,5 +1,7 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
+
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
@@ -201,7 +203,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="caps-title">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="caps-title" className="text-base font-bold text-ink">Daily caps<Info label="Daily caps">How much you can spend on each day until payday. Days with a plan (blue dot) get extra room for it. If you spend less one day, the leftover rolls into the next days.</Info></h2>
+        <h2 id="caps-title" className="text-base font-bold text-ink">Daily caps<Info label="Daily caps">A reasonable most to spend each day until payday. It starts from what you have left after bills and savings, adds room on days with a plan (blue dot), and follows your habits: busier weekdays and payday get more, quiet days less, and a trip that&apos;s due (like groceries, when it&apos;s been a while) gets room on the day it&apos;s likely (small spark). Spend less one day and the rest rolls into the days ahead.</Info></h2>
         {days.length > 7 && (
           <button type="button" className="text-xs font-medium text-faint hover:text-ink" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
             {showAll ? "Next 7 days" : `All ${days.length} days`}
@@ -222,6 +224,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
                 <span className={`block text-[11px] font-medium ${on ? "opacity-80" : "text-faint"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
                 <Money cents={d.capCents} whole className="font-num block text-xl" />
                 {d.eventIds.length > 0 && <span aria-label="has a plan" className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${on ? "bg-brand-ink" : "bg-info"}`} />}
+                {d.reasons?.some((r) => / likely/.test(r)) && <Sparkles aria-label="a usual trip is likely" size={10} className={`absolute left-1.5 top-1.5 ${on ? "text-brand-ink" : "text-warn"}`} />}
               </button>
             </li>
           );
@@ -259,6 +262,11 @@ function DayCard({
           <Money cents={sel.capCents} className="font-num text-2xl text-display" /> <span className="text-faint">{sel.date === today || sel.spentCents > 0 ? "left" : "to spend"}</span>
         </span>
       </p>
+      {sel.reasons && sel.reasons.length > 0 && (
+        <ul className="mt-1.5 space-y-0.5">
+          {sel.reasons.map((r) => <li key={r} className="flex items-center gap-1.5 text-xs text-muted"><Sparkles size={12} className="shrink-0 text-brand" aria-hidden />{r}</li>)}
+        </ul>
+      )}
       {items.length > 0 && (
         <ul className="mt-2 space-y-1">
           {items.map((it) => (

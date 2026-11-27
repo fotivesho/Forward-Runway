@@ -195,6 +195,8 @@ export interface DayCap {
   spentCents: Cents;
   remainingCents: Cents;
   eventIds: string[];
+  /** Why this day has more or less room than usual (from your habits). */
+  reasons?: string[];
 }
 
 export interface DailyPlan {
@@ -212,6 +214,9 @@ export interface DailyPlan {
 export interface PlanOptions {
   /** Calendar coverage is incomplete (missing, failed or stale calendars). */
   calendarIncomplete: boolean;
+  /** How busy each day usually is (1 = average), from your habits; everyday money follows it. */
+  dayWeights?: Record<ISODate, number>;
+  dayReasons?: Record<ISODate, string[]>;
 }
 
 /**
@@ -384,9 +389,9 @@ export function planDailySpending(
   }
   const eventTotal = [...eventCapsByDate.values()].reduce((s, e) => s + e.cents, 0);
   const leftover = Math.max(0, periodPools[0]! - eventTotal);
-  // Everyday money is the same every day of the period (to the cent), so any two days without
-  // plans read the same. Plan days get their plan's cap on top.
-  const base = allocate(leftover, curDates.map(() => 1));
+  // Everyday money follows your usual rhythm (busier weekdays, payday, a grocery run that's due),
+  // or is even when there isn't enough history. Plan days get their plan's cap on top.
+  const base = allocate(leftover, curDates.map((d) => Math.max(0.1, options.dayWeights?.[d] ?? 1)));
 
   const dayCaps: DayCap[] = curDates.map((date, i) => {
     const ev = eventCapsByDate.get(date);
@@ -400,6 +405,7 @@ export function planDailySpending(
       spentCents: spent,
       remainingCents: cap,
       eventIds: ev?.ids ?? [],
+      reasons: options.dayReasons?.[date],
     };
   });
   // Spending logged today is already out of the balance (and the pool), so
