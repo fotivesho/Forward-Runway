@@ -9,6 +9,10 @@ import { ruleOccurrences, type RecurringRule } from "../engine";
 import type { Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
 import { isNotSpending, isRefund } from "../categories";
+import { looksLike } from "../data/match";
+
+/** Costs that are fixed by nature: counted with bills, not everyday spending. */
+const FIXED_CATEGORIES = new Set(["Housing", "Utilities", "Insurance", "Subscriptions", "Debt"]);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (d: ISODate, today: ISODate) => (parts(d).y === parts(today).y ? MONTHS[parts(d).m - 1]! : `${MONTHS[parts(d).m - 1]} ’${String(parts(d).y).slice(2)}`);
@@ -133,6 +137,7 @@ export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowIte
   const name = (id: string) => s.accounts.find((a) => a.id === id)?.name ?? "";
   const ins: FlowItem[] = [];
   const outs: FlowItem[] = [];
+  const bills = s.rules.filter((r) => r.active !== false && r.kind !== "income" && !r.toAccountId);
   for (const r of s.rules) {
     if (r.active === false || r.kind === "card_payment" || r.kind === "transfer") continue;
     for (const o of ruleOccurrences(r, s.overrides, b.start, b.end)) {
@@ -154,10 +159,12 @@ export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowIte
     if (t.status !== "planned" && t.date > today) continue;
     if (isNotSpending(t.category)) continue;
     const refund = isRefund(t);
+    // A real charge for a repeating bill (or anything in a fixed-cost category) is fixed, not everyday spending.
+    const fixed = t.direction === "out" && (FIXED_CATEGORIES.has(t.category ?? "") || bills.some((r) => looksLike(r, t)));
     const it: FlowItem = {
       key: `t-${t.id}`, txnId: t.id, date: t.date, label: refund ? `${t.description} (refund)` : t.description, category: t.category ?? null, account: name(t.accountId),
       cents: refund ? -t.amountCents : t.amountCents,
-      when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" && !refund ? "income" : "spending",
+      when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" && !refund ? "income" : fixed ? "bill" : "spending",
     };
     (t.direction === "in" && !refund ? ins : outs).push(it);
   }

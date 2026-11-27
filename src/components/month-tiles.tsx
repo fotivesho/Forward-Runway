@@ -36,7 +36,7 @@ export function MonthTiles({ month, items, today, expectedPerDayCents }: { month
       <h2 id="month-title" className="mb-2 flex items-center text-sm font-bold text-ink">
         {month}
         <Info label={month}>
-          <b>Income</b> is everything that came in this month, plus paydays still coming before it ends. <b>Spent</b> is what you&apos;ve spent so far. <b>Net</b> is income minus everything going out this month: spending, bills and savings moves, including what&apos;s still scheduled. Moves between your own accounts and card payments aren&apos;t counted. Tap any of them to see what it&apos;s made of.
+          <b>Income</b> is everything that came in this month, plus paydays still coming before it ends. <b>Spent</b> is your everyday spending so far. Bills and subscriptions, paid or still coming, count as fixed instead. <b>Net</b> is income minus everything going out this month: spending, bills and savings moves, including what&apos;s still scheduled. Moves between your own accounts and card payments aren&apos;t counted. Tap any of them to see what it&apos;s made of.
         </Info>
       </h2>
       <ul className="grid grid-cols-3 gap-2 sm:gap-3">

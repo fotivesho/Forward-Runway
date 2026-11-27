@@ -66,3 +66,12 @@ describe("refunds", () => {
     expect(items.out.find((i) => i.txnId === "rf")!.cents).toBe(-1_500);
   });
 });
+
+describe("fixed vs everyday", () => {
+  it("a paid bill from the bank counts as fixed, not everyday spending", () => {
+    const b = monthBuckets(today);
+    const rent = { id: "nv", accountId: s.accounts[0]!.id, direction: "out" as const, amountCents: 201_000, description: "NORTHVALE", date: "2026-11-02", status: "posted" as const, category: "Housing" };
+    const items = flowItems({ ...s, transactions: [...s.transactions, rent] }, today, b[b.length - 1]!);
+    expect(items.out.find((i) => i.txnId === "nv")!.kind).toBe("bill");
+  });
+});
