@@ -12,6 +12,7 @@ import { Money } from "./privacy";
 import { StatusPill, Disclosure } from "./ui";
 import { LOOK, PlanImpact } from "./afford-result";
 import { Info } from "./info";
+import { Check, Pencil } from "lucide-react";
 import { Modal } from "./modal";
 import { EstimateLine } from "./estimate-ui";
 import { estimatePlan, readTitle } from "@/lib/view/estimate";
@@ -195,6 +196,7 @@ export function EventCard({ view }: { view: EventView; accounts?: Account[] }) {
             </>
           ) : (
             <>
+              {!needs && <PlanAmount view={view} />}
               {smart && (
                 <div className="mb-3">
                   <EstimateLine e={smart} />
@@ -298,5 +300,29 @@ function PlanSetSummary({ view }: { view: EventView }) {
         <QuickAction action={applyPlanOption} fields={{ eventId: event.id, kind: "undo" }} variant="ghost" confirm="Undo? This removes the savings moves planned for it and goes back to the suggestion.">Undo</QuickAction>
       </div>
     </div>
+  );
+}
+
+/** The planned amount, tap to set your own (it then counts everywhere instead of the estimate). */
+function PlanAmount({ view }: { view: EventView }) {
+  const [edit, setEdit] = useState(false);
+  const e = view.event;
+  if (!edit)
+    return (
+      <button type="button" onClick={() => setEdit(true)} className="mb-3 flex w-full items-center justify-between gap-2 rounded-xl border border-line px-3 py-2 text-left transition hover:bg-surface-2" aria-label="Change the planned amount">
+        <span className="text-xs text-muted">Planned{e.estimateConfirmed ? " · set by you" : ""}</span>
+        <span className="flex items-center gap-1.5 font-num text-xl text-ink"><Money cents={view.plannedCents} whole /><Pencil size={13} strokeWidth={2.4} className="text-faint" aria-hidden /></span>
+      </button>
+    );
+  return (
+    <ActionForm action={correctEvent} demoPreview demoNote={false} onSuccess={() => setEdit(false)} className="mb-3 flex items-end gap-2 rounded-xl border border-brand/40 px-3 py-2" aria-label="Set the planned amount">
+      <input type="hidden" name="eventId" value={e.id} />
+      {e.decision && <input type="hidden" name="decision" value={e.decision} />}
+      {e.essential && <input type="hidden" name="essential" value="on" />}
+      {e.paymentAccountId && <input type="hidden" name="paymentAccountId" value={e.paymentAccountId} />}
+      <div className="min-w-0 flex-1"><MoneyField name="estimate" label="Planned amount" defaultValue={String(Math.round(view.plannedCents / 100))} autoFocus required /></div>
+      <Submit className="btn-sm" aria-label="Save amount"><Check size={15} strokeWidth={2.6} aria-hidden /></Submit>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setEdit(false)}>Cancel</button>
+    </ActionForm>
   );
 }

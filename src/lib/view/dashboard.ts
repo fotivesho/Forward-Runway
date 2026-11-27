@@ -2,7 +2,7 @@ import { calendarCoverage, type Coverage } from "../calendar/coverage";
 import { findDuplicates } from "../calendar/duplicates";
 import { estimateEventCost, type CostEstimate, type Correction } from "../calendar/estimate";
 import { addDays, diffDays, parts, startOfMonth, type ISODate } from "../dates";
-import type { Cents } from "../money";
+import { allocate, type Cents } from "../money";
 import {
   buildForecast,
   isCash,
@@ -223,6 +223,37 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
   const plan = planDailySpending(input, forecast90, planned, { calendarIncomplete: coverage.incomplete, dayWeights: shape?.weights, dayReasons: shape?.reasons });
   const adviceById = new Map(plan.advice.map((a) => [a.eventId, a]));
   for (const v of events) v.advice = adviceById.get(v.event.id) ?? null;
+  // A plan on your calendar counts at what you plan to spend, everywhere (the cash forecast already
+  // does), not at the advisor's suggested cap: that suggestion still shows as the plan's status.
+  // The affordability check below keeps the advisor's own set-aside, so it can still say "tight".
+  const suggestedCap = new Map(plan.advice.map((a) => [a.eventId, a.capCents]));
+  for (const v of events) {
+    if (!v.advice || v.duplicate) continue;
+    const d = v.event.decision;
+    v.advice.capCents = d === "skip" || d === "postpone" ? 0 : Math.max(v.advice.capCents, v.plannedCents);
+  }
+  {
+    const byDate = new Map<ISODate, { cents: Cents; ids: string[] }>();
+    for (const v of events) {
+      if (!v.advice || v.duplicate) continue;
+      const e = byDate.get(v.event.date) ?? { cents: 0, ids: [] };
+      e.cents += v.advice.capCents;
+      if (v.advice.capCents > 0) e.ids.push(v.event.id);
+      byDate.set(v.event.date, e);
+    }
+    const extra = plan.days.reduce((t, d) => t + Math.max(0, (byDate.get(d.date)?.cents ?? 0) - d.eventCents), 0);
+    const baseTotal = plan.days.reduce((t, d) => t + d.baseCents, 0);
+    // What the plans now take comes out of the everyday money, in the same shape.
+    const bases = extra > 0 ? allocate(Math.max(0, baseTotal - extra), plan.days.map((d) => Math.max(1, d.baseCents))) : plan.days.map((d) => d.baseCents);
+    plan.days.forEach((d, i) => {
+      const e = byDate.get(d.date);
+      d.baseCents = bases[i]!;
+      d.eventCents = e?.cents ?? 0;
+      d.eventIds = e?.ids ?? [];
+      d.capCents = d.baseCents + d.eventCents;
+      d.remainingCents = d.capCents;
+    });
+  }
 
   const nextPayday =
     forecast90.days.find((d) => d.date > today && d.items.some((i) => i.kind === "income" && i.cashEffectCents > 0))?.date ?? null;
@@ -231,7 +262,7 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
   const mainCard = s.accounts.find((a) => a.kind === "credit_card" && !a.archived) ?? null;
   for (const v of events) {
     if (v.duplicate || v.plannedCents <= 0 || v.event.decision === "skip") continue;
-    const req = { amountCents: v.plannedCents, date: v.event.date, reservedCents: v.advice?.capCents ?? 0 };
+    const req = { amountCents: v.plannedCents, date: v.event.date, reservedCents: suggestedCap.get(v.event.id) ?? 0 };
     const payCard = s.accounts.find((a) => a.id === v.event.paymentAccountId && a.kind === "credit_card") ?? null;
     v.checkDebit = checkAffordability(ctx, { ...req, paymentAccountId: payCard ? null : v.event.paymentAccountId });
     const card = payCard ?? mainCard;
