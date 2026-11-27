@@ -143,14 +143,22 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
   const history = monthlyByCategory(s, today, past).filter((h) => h.byCategory.size > 0);
   const [current] = monthlyByCategory(s, today, [month]);
   const usual = new Map<string, Cents>();
-  for (const h of history) for (const [c, v] of h.byCategory) usual.set(c, (usual.get(c) ?? 0) + v);
-  for (const [c, v] of usual) usual.set(c, Math.round(v / history.length));
-  // Repeating bills set up but not yet paid in history still count.
+  // Averaged only over the months since the category first showed up: months before your
+  // history (or before you started paying it here) aren't zeros, they're unknown.
+  const oldestFirst = [...history].reverse();
+  for (const c of new Set(history.flatMap((h) => [...h.byCategory.keys()]))) {
+    const start = oldestFirst.findIndex((h) => (h.byCategory.get(c) ?? 0) > 0);
+    const months = oldestFirst.slice(start);
+    usual.set(c, Math.round(months.reduce((t, h) => t + (h.byCategory.get(c) ?? 0), 0) / months.length));
+  }
+  // Repeating bills are what's actually coming: they set the category's month.
+  const ruleBy = new Map<string, Cents>();
   for (const r of s.rules) {
     if (r.active === false || !["bill", "subscription", "expense", "loan_payment"].includes(r.kind) || r.toAccountId) continue;
     const cat = r.kind === "loan_payment" ? "Debt" : (r.category ?? r.name);
-    if (!usual.has(cat)) usual.set(cat, monthlyEquivalent(r));
+    ruleBy.set(cat, (ruleBy.get(cat) ?? 0) + monthlyEquivalent(r));
   }
+  for (const [c, v] of ruleBy) usual.set(c, Math.max(v, usual.get(c) ?? 0));
 
   // Everyday categories: what your patterns say this month costs. Rare big costs: a monthly set-aside.
   const model = spendModel(s, today);
@@ -164,6 +172,13 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     for (const l of model.lumpy) {
       usual.set(l.category, l.monthlyCents);
       basisOf.set(l.category, "set-aside");
+    }
+  }
+  // A category your repeating bills cover isn't guessed from patterns.
+  for (const [c, v] of ruleBy) {
+    if (basisOf.get(c) && v >= (usual.get(c) ?? 0)) {
+      usual.set(c, v);
+      basisOf.delete(c);
     }
   }
 

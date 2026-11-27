@@ -80,3 +80,21 @@ describe("category items", () => {
     }
   });
 });
+
+describe("usual month", () => {
+  const base: Snapshot = { ...demoSnapshot(today, `${today}T15:00:00Z`) };
+  const rent = (date: string, cents: number) => ({ id: `h${date}`, accountId: base.accounts[0]!.id, direction: "out" as const, amountCents: cents, description: "Northvale", date, status: "posted" as const, category: "Home rent", flexible: false });
+
+  it("doesn't count months before the category first showed up as zeros", () => {
+    const s = { ...base, rules: base.rules.filter((r) => r.category !== "Home rent"), transactions: [...base.transactions, rent("2026-10-02", 207_600)] };
+    const c = buildBudget(s, today).categories.find((x) => x.category === "Home rent")!;
+    expect(c.usualCents).toBe(207_600);
+  });
+
+  it("a repeating bill sets its category's month", () => {
+    const rule = { id: "nv", name: "Northvale", kind: "bill" as const, amountCents: 204_300, accountId: base.accounts[0]!.id, category: "Home rent", schedule: { frequency: "monthly" as const, startDate: "2026-12-02", dayOfMonth: 2 } };
+    const s = { ...base, rules: [...base.rules, rule], transactions: [...base.transactions, rent("2026-10-02", 199_000)] };
+    const c = buildBudget(s, today).categories.find((x) => x.category === "Home rent")!;
+    expect(c.usualCents).toBe(204_300);
+  });
+});

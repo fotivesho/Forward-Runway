@@ -201,7 +201,10 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
   const [value, setValue] = useState(c.yours ? String(Math.round(c.budgetCents / 100)) : "");
   const typed = value.trim() === "" ? null : Math.max(0, Math.round(Number(value.replace(/[$,]/g, "")) * 100) || 0);
   const budget = typed ?? c.budgetCents;
-  const vals = history.slice(-6).map((m) => ({ month: m.month, label: m.label, current: m.current, cents: m.categories[c.category] ?? 0 }));
+  const all = history.slice(-6).map((m) => ({ month: m.month, label: m.label, current: m.current, cents: m.categories[c.category] ?? 0 }));
+  // Start at the first month it showed up (keep at least three bars so it still reads as a chart).
+  const first = all.findIndex((v) => v.cents > 0);
+  const vals = first < 0 ? all : all.slice(Math.min(first, Math.max(0, all.length - 3)));
   const top = Math.max(1, c.usualCents, c.budgetCents, ...vals.map((v) => v.cents)) * 1.25;
   const sliderMax = Math.max(1000, Math.ceil(top / 500) * 500);
   const line = (cents: number) => `calc(1.25rem + ${(Math.min(cents, top) / top) * 7}rem)`;
