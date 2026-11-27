@@ -161,8 +161,11 @@ export function RuleForm({
   accounts,
   today,
   defaultKind,
+  startFrom,
   onDone,
 }: {
+  /** Changing it from this date on: the form starts here. */
+  startFrom?: ISODate;
   rule?: RecurringRule;
   /** Starting values for a new item, e.g. from a transaction or a suggestion. */
   prefill?: RecurringRule;
@@ -208,7 +211,7 @@ export function RuleForm({
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <Field name="startDate" type="date" label={freq === "once" ? "Date" : rule ? "Starting from" : "First one"} defaultValue={base?.schedule.startDate ?? today} required />
+        <Field name="startDate" type="date" label={freq === "once" ? "Date" : rule ? "Starting from" : "First one"} defaultValue={startFrom ?? base?.schedule.startDate ?? today} required />
         <SelectField
           name="accountId"
           label={kind === "income" ? "Paid into" : transferKind ? "From" : "Paid with"}

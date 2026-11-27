@@ -7,7 +7,6 @@ import { describeSchedule, type Account, type Occurrence, type RecurringRule } f
 import { RuleForm, TransactionForm, TransferForm } from "./entity-forms";
 import { QuickAction } from "./form";
 import { Modal } from "./modal";
-import { OccurrenceControls } from "./occurrence-controls";
 import { Money } from "./privacy";
 import { Info } from "./info";
 import { Glyph } from "@/components/icon";
@@ -15,6 +14,7 @@ import { Badge } from "./ui";
 import { Pencil } from "lucide-react";
 import { HistoryChart } from "./history-chart";
 import type { HistoryView } from "@/lib/view/history";
+import { cleanName } from "@/lib/view/recurring";
 
 const KIND_ICON: Partial<Record<RecurringRule["kind"], string>> = { income: "💰", loan_payment: "🏦", card_payment: "💳", savings_transfer: "🐷", transfer: "↔️", subscription: "🔁" };
 export const ruleIcon = (r: RecurringRule) => KIND_ICON[r.kind] ?? r.category ?? "bill";
@@ -35,8 +35,11 @@ export interface RuleTile {
 /** Repeating items as tiles; tapping one opens it in a pop-up to edit, skip a date, pause or delete. */
 export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; accounts: Account[]; today: ISODate }) {
   const [openId, setOpenIdRaw] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditingRaw] = useState(false);
+  const [from, setFrom] = useState<ISODate | null>(null);
+  const setEditing = (v: boolean | ((e: boolean) => boolean)) => { setEditingRaw(v); setFrom(null); };
   const setOpenId = (id: string | null) => { setOpenIdRaw(id); setEditing(false); };
+  const editFrom = (d: ISODate) => { setEditingRaw(true); setFrom(d); };
   const open = tiles.find((t) => t.rule.id === openId) ?? null;
   return (
     <>
@@ -83,7 +86,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
           title={open.rule.name}
           subtitle={
             <>
-              <Money cents={open.rule.kind === "income" ? open.rule.amountCents : -open.rule.amountCents} sign tone="auto" className="font-semibold" /> · {describeSchedule(open.rule.schedule)}
+              {describeSchedule(open.rule.schedule)}
               <span className="block text-xs">
                 {open.rule.kind === "income" ? "Into" : "From"} {open.from}
                 {open.to && ` → ${open.to}`}
@@ -94,7 +97,8 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
         >
           {editing ? (
             <div className="space-y-4">
-              <RuleForm rule={open.rule} accounts={accounts} today={today} onDone={() => setEditing(false)} />
+              {from && <p className="rounded-xl bg-surface-2/70 px-3 py-2 text-xs text-muted">Changes apply from <b className="text-ink">{formatShort(from)}</b> on. Earlier ones stay as they were.</p>}
+              <RuleForm key={from ?? "all"} rule={open.rule} startFrom={from ?? undefined} accounts={accounts} today={today} onDone={() => setEditing(false)} />
               <div className="flex items-center justify-between gap-2 border-t border-line pt-3">
                 <QuickAction action={toggleRule} fields={{ id: open.rule.id, active: open.rule.active === false ? "true" : "false" }} variant="ghost">
                   {open.rule.active === false ? "Resume" : "Pause"}
@@ -105,7 +109,7 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
               </div>
             </div>
           ) : (
-            <RuleBody tile={open} />
+            <RuleBody tile={open} onEditFrom={editFrom} />
           )}
         </Modal>
       )}
@@ -114,69 +118,63 @@ export function RecurringTiles({ tiles, accounts, today }: { tiles: RuleTile[]; 
 }
 
 /** Inside a repeating item: the chart (past solid, ahead dashed), the picked date's actions, details folded away. */
-function RuleBody({ tile }: { tile: RuleTile }) {
+/** A repeating item: the chart (the selected amount is the one big number), then every time, newest first. */
+function RuleBody({ tile, onEditFrom }: { tile: RuleTile; onEditFrom: (d: ISODate) => void }) {
   const { rule, history } = tile;
   const bars = history?.bars ?? [];
   const income = rule.kind === "income";
   const [sel, setSel] = useState<string | null>(bars.find((b) => b.kind === "ahead")?.key ?? bars[bars.length - 1]?.key ?? null);
   const picked = bars.find((b) => b.key === sel);
-  const o = picked?.occurrence;
   const ahead = bars.filter((b) => b.kind === "ahead");
-  const aheadTotal = ahead.reduce((s, b) => s + b.cents, 0);
   const past = [...(history?.items ?? [])].reverse();
   const signed = (c: number) => (income ? c : -c);
+  const nextDate = (b: (typeof bars)[number]) => b.occurrence?.date ?? b.key.slice(2);
   return (
     <div className="space-y-4">
       {bars.length > 0 && <HistoryChart bars={bars} tone={income ? "in" : "out"} selected={sel} onSelect={setSel} />}
-
-      {/* A coming date you tapped: what you can do about that one date (the rest of the schedule stays). */}
-      {o && (
-        <div className="fade-up rounded-2xl border border-line p-3">
-          <p className="text-sm text-ink">
-            <span className="font-semibold">{formatShort(o.date)}</span> · <Money cents={signed(o.amountCents)} sign tone="auto" className="font-semibold" />
-            {o.posted && <> <Badge tone="good">{income ? "Received" : "Paid"}</Badge></>}
-            {o.movedFrom && <> <Badge tone="info">moved from {formatShort(o.movedFrom)}</Badge></>}
-            {o.overridden && !o.posted && !o.movedFrom && <> <Badge tone="info">changed</Badge></>}
-          </p>
-          <p className="mb-2 text-[11px] text-faint">Only this {income ? "payday" : "date"}. The rest of the schedule stays the same.</p>
-          <OccurrenceControls ruleId={rule.id} originalDate={o.originalDate} date={o.date} amountCents={o.amountCents} overridden={o.overridden} income={income} />
-        </div>
+      {/* Past ones are what happened; a coming one can be changed from that date on. */}
+      {picked?.kind === "ahead" && (
+        <button type="button" onClick={() => onEditFrom(nextDate(picked))} className="fade-up flex w-full items-center justify-between rounded-full border border-line px-4 py-2 text-sm text-muted transition hover:border-brand/60">
+          <span>Change from <b className="text-ink">{formatShort(nextDate(picked))}</b> on</span>
+          <span aria-hidden className="text-faint">›</span>
+        </button>
       )}
-
-      {/* Every time: what came in (or went out), then what's coming. */}
       <div>
-        <p className="mb-1 flex items-baseline justify-between text-xs font-semibold text-faint">
-          <span>Every time</span>
-          {ahead.length > 0 && <span>Next {ahead.length}: <Money cents={signed(aheadTotal)} sign tone="auto" whole /></span>}
-        </p>
+        <p className="mb-1 text-xs font-semibold text-faint">Every time</p>
         <ul className="divide-y divide-line rounded-xl border border-line">
-          {ahead.map((b) => (
+          {[...ahead].reverse().map((b) => (
             <li key={b.key}>
               <button type="button" onClick={() => setSel(b.key)} className={`flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm ${sel === b.key ? "bg-brand/[0.07]" : ""}`}>
-                <span className="text-muted"><span className="font-semibold text-ink">{formatShort(b.occurrence?.date ?? b.key.slice(2))}</span> · expected</span>
-                <Money cents={signed(b.cents)} sign className="shrink-0 text-faint" />
+                <span><span className="font-semibold text-ink">{formatShort(nextDate(b))}</span> <span className="text-xs text-faint">expected</span></span>
+                {b.cents !== rule.amountCents && <Money cents={signed(b.cents)} sign className="shrink-0 text-xs text-faint" />}
               </button>
             </li>
-          )).reverse()}
+          ))}
           {past.map((i) => (
             <li key={i.id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-              <span className="min-w-0 truncate"><span className="font-semibold text-ink">{formatShort(i.date)}</span> <span className="text-xs text-muted">{i.description}</span></span>
+              <span className="min-w-0 truncate"><span className="font-semibold text-ink">{formatShort(i.date)}</span> <span className="text-xs text-muted">{prettyName(i.description)}</span></span>
               <Money cents={signed(i.cents)} sign tone="auto" className="shrink-0 font-semibold" />
             </li>
           ))}
           {past.length === 0 && [...bars].filter((b) => b.kind === "past").reverse().map((b) => (
             <li key={b.key} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-              <span className="text-muted"><span className="font-semibold text-ink">{b.title}</span> · scheduled</span>
-              <Money cents={signed(b.cents)} sign className="shrink-0 text-muted" />
+              <span><span className="font-semibold text-ink">{b.title}</span> <span className="text-xs text-faint">scheduled</span></span>
             </li>
           ))}
           {past.length === 0 && (
-            <li className="px-3 py-2 text-[11px] text-faint">These are from the schedule. Once the real {income ? "deposits" : "charges"} come in from your bank, they show here instead.</li>
+            <li className="px-3 py-2 text-[11px] text-faint">From the schedule. Once the real {income ? "deposits" : "charges"} come in from your bank, they show here instead.</li>
           )}
         </ul>
       </div>
     </div>
   );
+}
+
+/** "TRINET 11102026 PAYROLL PPD ID: 84…" → "Trinet Payroll". */
+function prettyName(s: string): string {
+  const k = cleanName(s);
+  if (!k) return s;
+  return k.split(" ").map((w) => w[0]!.toUpperCase() + w.slice(1)).join(" ");
 }
 
 /** "+ Add" buttons that open the matching form in a pop-up. */

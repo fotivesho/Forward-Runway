@@ -192,15 +192,12 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
   };
 }
 
-/** Under the bars, a month name only where the month changes: "Sep 7, 21, Oct 5, 19". */
+/** Under the bars: "9/7", "9/21", "10/5": the month is always there, and short. */
 function compact(bars: HistBar[]): HistBar[] {
-  let prev = "";
   return bars.map((b) => {
     const [mon, day] = b.label.split(" ");
     if (!day) return b;
-    const label = mon === prev ? day : b.label;
-    prev = mon!;
-    return { ...b, label };
+    return { ...b, label: `${MONTHS.indexOf(mon!) + 1}/${day}` };
   });
 }
 

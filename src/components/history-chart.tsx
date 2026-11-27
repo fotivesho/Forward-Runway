@@ -22,10 +22,7 @@ export function HistoryChart({
   const hide = useHideAmounts();
   const max = Math.max(1, ...bars.map((b) => b.cents));
   const past = bars.filter((b) => b.kind === "past");
-  const mean = past.length >= 2 ? past.reduce((t, b) => t + b.cents, 0) / past.length : 0;
-  // A line through identical bars (a fixed paycheck) says nothing: only show it when amounts vary.
-  const spread = past.length ? Math.max(...past.map((b) => b.cents)) - Math.min(...past.map((b) => b.cents)) : 0;
-  const avg = mean > 0 && spread > mean * 0.05 ? mean : 0;
+  const avg = past.length >= 2 ? past.reduce((t, b) => t + b.cents, 0) / past.length : 0;
   const color = tone === "in" ? "var(--color-in)" : "var(--color-out)";
   const grad = `linear-gradient(to top, color-mix(in srgb, ${color} 50%, transparent), ${color})`;
   const glow = `0 0 12px -2px color-mix(in srgb, ${color} 70%, transparent)`;
