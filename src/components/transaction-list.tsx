@@ -52,6 +52,7 @@ export function TransactionList({
   const [q, setQ] = useState("");
   const setCat = (c: string | null) => { setCatRaw(c); setPeriod(null); };
   const [open, setOpen] = useState<string | null>(null);
+  const [startCat, setStartCat] = useState(false);
   // Show the latest days first; older ones a tap away.
   const [days, setDays] = useState(10);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
@@ -132,9 +133,11 @@ export function TransactionList({
               </h3>
               <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
                 {list.map((t) => (
-                  <li key={t.id}>
-                    <button type="button" onClick={() => setOpen(t.id)} aria-haspopup="dialog" className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-2/60">
-                      <Glyph name={t.direction === "in" ? "income" : t.category} size="md" />
+                  <li key={t.id} className="flex items-center transition hover:bg-surface-2/60">
+                    <button type="button" onClick={() => { setStartCat(true); setOpen(t.id); }} aria-label={`Change category of ${t.description}`} title="Change category" className="py-2 pl-3 pr-0 transition hover:scale-105">
+                      <Glyph name={t.category ?? (t.direction === "in" ? "income" : "spend")} size="md" />
+                    </button>
+                    <button type="button" onClick={() => { setStartCat(false); setOpen(t.id); }} aria-haspopup="dialog" className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left">
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
                           <span className="truncate">{t.description}</span>
@@ -167,7 +170,7 @@ export function TransactionList({
             setOpen(null);
             setRepeat(false);
           }}
-          icon={current.direction === "in" ? "income" : (current.category ?? "spend")}
+          icon={current.category ?? (current.direction === "in" ? "income" : "spend")}
           tone={current.direction === "in" ? "in" : "out"}
           title={current.description}
           subtitle={
@@ -204,7 +207,7 @@ export function TransactionList({
             </>
           ) : (
             <CatProvider key={current.id} txn={current}>
-            <TxnBody txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
+            <TxnBody startPanel={startCat ? "cat" : null} txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
               <div className="mt-4 flex justify-end border-t border-line pt-4">
                 <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
@@ -219,9 +222,9 @@ export function TransactionList({
 }
 
 /** Inside a transaction: two quick pills (category, repeats), what it's been over time, then the edit form folded away. */
-function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; rules: RecurringRule[]; accountName: (id: string) => string; onRepeat: () => void; children: React.ReactNode }) {
+function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accountName, onRepeat, children }: { startPanel?: "cat" | null; txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; rules: RecurringRule[]; accountName: (id: string) => string; onRepeat: () => void; children: React.ReactNode }) {
   const h = txnHistory(txn, txns, today);
-  const [panel, setPanel] = useState<"cat" | "repeat" | null>(null);
+  const [panel, setPanel] = useState<"cat" | "repeat" | null>(startPanel);
   const toggle = (p: "cat" | "repeat") => setPanel((x) => (x === p ? null : p));
   const repeating = rules.find((r) => r.active !== false && looksLike(r, txn));
   // Everyday things (lunch, coffee) are predicted from your habits already; repeating is for bills and subscriptions.
@@ -229,7 +232,7 @@ function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, c
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {txn.direction === "out" && <CategoryPill txn={txn} open={panel === "cat"} onToggle={() => toggle("cat")} categories={categories} />}
+        {<CategoryPill txn={txn} open={panel === "cat"} onToggle={() => toggle("cat")} categories={categories} />}
         {repeating ? (
           <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
             <Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating
@@ -288,7 +291,7 @@ function CategoryPill({ txn, open, onToggle, categories }: { txn: OneTimeTransac
   void categories;
   return (
     <button type="button" onClick={onToggle} aria-expanded={open} className={pill(open)}>
-      <Glyph name={cat ?? txn.category ?? "spend"} size="xs" bare /> {cat ?? txn.category ?? "Uncategorized"}
+      <Glyph name={cat ?? txn.category ?? (txn.direction === "in" ? "income" : "spend")} size="xs" bare /> {cat ?? txn.category ?? (txn.direction === "in" ? "Income" : "Uncategorized")}
       {pending ? <span className="text-xs font-normal text-faint">Saving…</span> : <span aria-hidden className={`text-faint transition ${open ? "rotate-180" : ""}`}>▾</span>}
     </button>
   );
@@ -299,9 +302,10 @@ function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; 
   const { cat, set } = useContext(CatCtx);
   const { styles } = useCategoryStyles();
   const [making, setMaking] = useState(false);
-  const choices = [...new Set([...Object.keys(styles), ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 18);
+  const spend = [...new Set([...Object.keys(styles), ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c) && !["Income", "Salary", "Interest", "Other"].includes(c)).slice(0, 16);
+  // Money in: income kinds first, then Transfer (your own money moving), then spending categories (a refund lowers that category).
+  const choices = txn.direction === "in" ? ["Income", "Salary", "Interest", "Transfer", ...spend] : [...spend, "Other", "Transfer"];
   const choose = (c: string) => { set(c); onDone(); };
-  void txn;
   return (
     <div className="fade-up">
       <ul className="flex flex-wrap gap-1.5" aria-label="Pick a category">
