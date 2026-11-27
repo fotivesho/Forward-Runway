@@ -254,13 +254,14 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: 
   const [open, setOpen] = useState<ISODate | null>(null);
   const [all, setAll] = useState(false);
   const capOf = new Map(m.plan.days.map((d) => [d.date, d]));
+  const leanSet = new Set(m.leanDates);
   const plansOn = (d: ISODate) => m.allEvents.filter((v) => v.event.date === d);
   const limit = (d: ISODate) => {
     const c = capOf.get(d);
     if (c) return { cents: c.capCents, firm: true, reasons: c.reasons ?? [] };
     const base = m.baselineByDay[d];
     if (base == null) return null;
-    return { cents: base + plansOn(d).reduce((t, v) => t + (v.advice?.capCents ?? 0), 0), firm: false, reasons: [] as string[] };
+    return { cents: base + plansOn(d).reduce((t, v) => t + (v.advice?.capCents ?? 0), 0), firm: false, reasons: m.leanReasons[d] ?? ([] as string[]) };
   };
   const days = all ? f.days : f.days.slice(0, 14);
   return (
@@ -299,6 +300,7 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: 
                   {d.items.some((i) => i.cashEffectCents > 0) && <span className="h-1.5 w-1.5 rounded-full bg-in" aria-label="money in" />}
                   {d.items.some((i) => i.cashEffectCents < 0) && <span className="h-1.5 w-1.5 rounded-full bg-out" aria-label="bill" />}
                   {l?.reasons.some((r) => / likely/.test(r)) && <Sparkles size={11} className="text-warn" aria-label="usual trip likely" />}
+                  {leanSet.has(d.date) && <span className="rounded-full bg-warn/15 px-1.5 text-[10px] font-bold text-warn">Lean</span>}
                 </span>
                 <span className="w-16 text-right font-num text-base text-display">{l ? <>{l.firm ? "" : "~"}<Money cents={l.cents} whole /></> : "—"}</span>
                 <span className="flex w-20 items-center justify-end gap-1 text-right text-xs tabular text-muted">

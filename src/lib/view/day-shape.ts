@@ -3,7 +3,7 @@
  * busier weekdays and payday get more room, quiet days less, and a trip that's due (groceries
  * every ~6 days, last one 8 days ago) gets room on the day it's likely. Pure and deterministic.
  */
-import { addDays, diffDays, eachDay, type ISODate } from "../dates";
+import { addDays, dayOfWeek, diffDays, eachDay, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { isNotSpending } from "../categories";
 import type { Snapshot } from "../data/snapshot";
@@ -91,8 +91,54 @@ export function dayShape(s: Snapshot, today: ISODate, until: ISODate): DayShape 
   }
   const vals = Object.values(expected);
   const avg = vals.reduce((a, b) => a + b, 0) / Math.max(1, vals.length) || 1;
-  // Lean toward even, so a quiet day still has a sensible amount: 40% even, 60% your pattern.
+  // Mostly your pattern (weekends and payday where you really spend), a little even so a quiet day isn't zero.
   const weights: Record<ISODate, number> = {};
-  for (const [d, v] of Object.entries(expected)) weights[d] = 0.4 + 0.6 * (v / avg);
+  for (const [d, v] of Object.entries(expected)) weights[d] = 0.2 + 0.8 * (v / avg);
   return { weights, reasons };
+}
+
+/** Needs you keep buying even on a lean day. Dining out, coffee, shopping and fun are left out. */
+const LEAN_NEEDS = new Set(["Groceries", "Transport", "Car", "Health", "Home", "Personal care", "Fitness", "Services"]);
+const WD = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Fridays", "Saturdays"];
+
+/**
+ * Lean days: what each day ahead needs, and nothing else. Routine trips (groceries every ~6 days)
+ * land on the day they're due; everyday needs (transit on workdays) follow the weekday they happen.
+ */
+export function leanDays(s: Snapshot, today: ISODate, until: ISODate): Record<ISODate, { cents: Cents; reasons: string[] }> {
+  const from = addDays(today, -84);
+  const needs = s.transactions.filter(
+    (t) => t.status === "posted" && t.direction === "out" && t.date >= from && t.date < today && !t.calendarEventId && t.flexible !== false && !isNotSpending(t.category) && LEAN_NEEDS.has(t.category ?? ""),
+  );
+  const trips = dueTrips(s, today, until).filter((t) => LEAN_NEEDS.has(t.category));
+  const tripCats = new Set(trips.map((t) => t.category));
+  // Everyday needs by weekday: the average for that weekday over the last 12 weeks.
+  const byWd: Record<string, number[]> = {};
+  for (const t of needs) {
+    if (tripCats.has(t.category ?? "")) continue;
+    const w = dayOfWeek(t.date);
+    const k = `${t.category}|${w}`;
+    (byWd[k] ??= []).push(t.amountCents);
+  }
+  const weeks = 12;
+  const out: Record<ISODate, { cents: Cents; reasons: string[] }> = {};
+  for (const d of eachDay(today, until)) {
+    const w = dayOfWeek(d);
+    let cents = 0;
+    const reasons: string[] = [];
+    for (const [k, list] of Object.entries(byWd)) {
+      const [cat, wd] = k.split("|");
+      if (Number(wd) !== w) continue;
+      const avg = list.reduce((a, b) => a + b, 0) / weeks;
+      if (avg < 100) continue;
+      cents += avg;
+      reasons.push(`${cat}: usual on ${WD[w]}`);
+    }
+    for (const t of trips.filter((x) => x.date === d)) {
+      cents += t.cents;
+      reasons.push(`${t.category} likely (about every ${t.everyDays} days)`);
+    }
+    out[d] = { cents: Math.round(cents / 100) * 100, reasons: reasons.length ? ["Lean: needs only", ...reasons] : ["Lean: needs only. Nothing routine today"] };
+  }
+  return out;
 }

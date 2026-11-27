@@ -25,7 +25,7 @@ import {
   type AffordCheck,
 } from "../engine";
 import { toEngineInput, type CalendarEvent, type Snapshot } from "../data/snapshot";
-import { dayShape } from "./day-shape";
+import { dayShape, leanDays } from "./day-shape";
 import { planResults } from "./actuals";
 import { findRecurring } from "./recurring";
 
@@ -100,6 +100,10 @@ export interface DashboardModel {
   nextPayday: ISODate | null;
   /** Recent plans with a likely charge, for "How did it go?". */
   checkins: import("./actuals").PlanResult[];
+  /** The money's run short: limits are needs only until `until`. */
+  lean: { until: ISODate; shortCents: Cents } | null;
+  leanDates: ISODate[];
+  leanReasons: Record<ISODate, string[]>;
   found: import("./recurring").RecurringSuggestion[];
   /**
    * Everyday safe-to-spend for each day of the forecast, before any plan that day: what's left in
@@ -214,6 +218,8 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     needsEstimate: v.estimate.needsInput,
   }));
   const shape = dayShape(s, today, forecast90.endDate);
+  const leanMap = leanDays(s, today, forecast90.endDate);
+  const leanDates = new Set<ISODate>();
   const plan = planDailySpending(input, forecast90, planned, { calendarIncomplete: coverage.incomplete, dayWeights: shape?.weights, dayReasons: shape?.reasons });
   const adviceById = new Map(plan.advice.map((a) => [a.eventId, a]));
   for (const v of events) v.advice = adviceById.get(v.event.id) ?? null;
@@ -301,10 +307,34 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     if (i === 0) return;
     const pool = p.budgetCents - Math.round((p.budgetCents * pct) / 100);
     const reserved = planned.filter((e) => !e.duplicateOf && e.date >= p.start && e.date <= p.end).reduce((t, e) => t + (capOf.get(e.id) ?? 0), 0);
-    const perDay = Math.max(0, Math.floor((pool - reserved) / Math.max(1, p.days)));
-    payPeriods.push({ start: p.start, end: p.end, freeCents: Math.max(0, pool - reserved), perDayCents: perDay });
-    for (let d = p.start; d <= p.end && d <= forecast90.endDate; d = addDays(d, 1)) baselineByDay[d] = perDay;
+    const free = Math.max(0, pool - reserved);
+    const perDay = Math.floor(free / Math.max(1, p.days));
+    payPeriods.push({ start: p.start, end: p.end, freeCents: free, perDayCents: perDay });
+    // Shaped by your weekday rhythm too (weekends where you really spend), and lean when nothing's free.
+    const ds: ISODate[] = [];
+    for (let d = p.start; d <= p.end && d <= forecast90.endDate; d = addDays(d, 1)) ds.push(d);
+    const lean = free < 100 * ds.length;
+    const w = ds.map((d) => Math.max(0.1, shape?.weights[d] ?? 1));
+    const tw = w.reduce((a, b) => a + b, 0) || 1;
+    ds.forEach((d, k) => {
+      baselineByDay[d] = lean ? (leanMap[d]?.cents ?? 0) : Math.floor((free * w[k]!) / tw);
+      if (lean) leanDates.add(d);
+    });
   });
+  // This pay period with nothing free (under $1 a day): lean days, needs only, instead of $0.
+  const curFree = plan.days.reduce((t, d) => t + d.baseCents, 0);
+  if (plan.days.length && curFree < 100 * plan.days.length) {
+    for (const d of plan.days) {
+      const l = leanMap[d.date];
+      const spent = d.date === today ? d.spentCents : 0;
+      d.baseCents = Math.max(0, (l?.cents ?? 0) - spent);
+      d.capCents = d.baseCents + d.eventCents;
+      d.remainingCents = d.capCents;
+      d.reasons = l?.reasons;
+      d.lean = true;
+      leanDates.add(d.date);
+    }
+  }
   for (const d of plan.days) baselineByDay[d.date] = d.baseCents;
   if (plan.days.length) {
     payPeriods.unshift({
@@ -350,6 +380,12 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     upcoming,
     nextPayday,
     // Plans from the last ten days with a charge we think was theirs, waiting for a yes or no.
+    // Lean mode: from today until the first day that isn't short.
+    lean: leanDates.has(today)
+      ? { until: forecast90.days.find((d) => d.date > today && !leanDates.has(d.date))?.date ?? forecast90.endDate, shortCents: plan.allowance.shortfallCents }
+      : null,
+    leanDates: [...leanDates],
+    leanReasons: Object.fromEntries([...leanDates].map((d) => [d, leanMap[d]?.reasons ?? []])),
     checkins: planResults(s, today, 10).filter((r) => r.actual && !r.confirmed).slice(0, 3),
     // Just connected a bank: what repeats in its history, to review once.
     found:

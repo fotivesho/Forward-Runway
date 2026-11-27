@@ -197,6 +197,8 @@ export interface DayCap {
   eventIds: string[];
   /** Why this day has more or less room than usual (from your habits). */
   reasons?: string[];
+  /** The pay period is short: this day's limit is needs only. */
+  lean?: boolean;
 }
 
 export interface DailyPlan {

@@ -62,15 +62,21 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
                   )}
                 </Info>
               </h2>
-              <StatusPill tone={allowance.status === "shortfall" ? "bad" : allowance.status === "tight" ? "warn" : "good"}>
-                {allowance.status === "shortfall" ? "Shortfall" : allowance.status === "tight" ? "Tight" : "On track"}
-              </StatusPill>
+              {m.lean ? (
+                <StatusPill tone="warn">Lean</StatusPill>
+              ) : (
+                <StatusPill tone={allowance.status === "shortfall" ? "bad" : allowance.status === "tight" ? "warn" : "good"}>
+                  {allowance.status === "shortfall" ? "Shortfall" : allowance.status === "tight" ? "Tight" : "On track"}
+                </StatusPill>
+              )}
             </div>
-            <p className="font-num mt-3 text-7xl leading-none tracking-tight text-display">
-              <Money cents={plan.todayCap.capCents} />
+            <p className={`font-num mt-3 text-7xl leading-none tracking-tight ${m.lean ? "text-warn" : "text-display"}`}>
+              <Money cents={plan.todayCap.capCents} whole={!!m.lean} />
             </p>
             <p className="mt-3 text-sm text-faint">
-              {allowance.status === "shortfall" ? (
+              {m.lean ? (
+                <>until {formatShort(m.lean.until)}<Info label="Lean mode">We recommend lean mode until <b>{formatShort(m.lean.until)}</b>.{m.lean.shortCents > 0 ? <> This pay period is short by <b><Money cents={m.lean.shortCents} whole /></b>.</> : null} Each day&apos;s limit is just what that day usually needs, from your history: groceries when they&apos;re due, transit on workdays, nothing for dining out or shopping. Even if savings covers the gap, staying lean refills it sooner.</Info></>
+              ) : allowance.status === "shortfall" ? (
                 <><Money cents={allowance.shortfallCents} whole /> short on {formatShort(allowance.shortfallDate!)}</>
               ) : (
                 <>
@@ -314,11 +320,12 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
                 type="button"
                 onClick={() => setSelected(on ? null : d.date)}
                 aria-pressed={on}
-                className={`relative w-full rounded-2xl px-1 py-2 text-center transition ${on ? "bg-brand text-brand-ink shadow-md" : "bg-surface-2/70 text-ink hover:bg-surface-3"}`}
+                className={`relative w-full rounded-2xl px-1 py-2 text-center transition ${on ? (d.lean ? "bg-warn text-brand-ink shadow-md" : "bg-brand text-brand-ink shadow-md") : "bg-surface-2/70 text-ink hover:bg-surface-3"}`}
               >
                 <span className={`block text-[11px] font-medium ${on ? "opacity-80" : "text-faint"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
                 <Money cents={d.capCents} whole className="font-num block text-xl" />
                 {d.eventIds.length > 0 && <span aria-label="has a plan" className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${on ? "bg-brand-ink" : "bg-info"}`} />}
+                {d.lean && !on && <span aria-label="lean day" className="absolute right-1.5 bottom-1.5 h-1.5 w-1.5 rounded-full bg-warn" />}
                 {d.reasons?.some((r) => / likely/.test(r)) && <Sparkles aria-label="a usual trip is likely" size={10} className={`absolute left-1.5 top-1.5 ${on ? "text-brand-ink" : "text-warn"}`} />}
               </button>
             </li>
