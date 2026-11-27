@@ -77,6 +77,7 @@ export function dayShape(s: Snapshot, today: ISODate, until: ISODate): DayShape 
   const tripShare = Math.min(0.8, m.byCategory.filter((c) => tripCats.has(c.category)).reduce((a, c) => a + c.perDayCents, 0) / m.perDayCents);
   const expected: Record<ISODate, number> = {};
   const reasons: Record<ISODate, string[]> = {};
+  const usual = weekdayHabits(s, today, () => true);
   for (const d of eachDay(today, until)) {
     const t = typicalDay(m, d);
     const onDay = trips.filter((x) => x.date === d);
@@ -87,6 +88,9 @@ export function dayShape(s: Snapshot, today: ISODate, until: ISODate): DayShape 
       const ago = diffDays(x.lastDate, today);
       why.push(x.overdue ? `${x.category} likely: last time was ${ago} days ago, usually every ${x.everyDays}` : `${x.category} likely (about every ${x.everyDays} days)`);
     }
+    // What this weekday's money usually goes to (habits only), so the limit has a picture.
+    const top = (usual.get(dayOfWeek(d)) ?? []).filter((h) => !onDay.some((x) => x.category === h.cat)).slice(0, 3);
+    if (top.length) why.push(`Usually: ${top.map((h) => `${h.cat} $${Math.round(h.cents / 100)}`).join(" · ")}`);
     if (why.length) reasons[d] = why;
   }
   const vals = Object.values(expected);
@@ -147,5 +151,32 @@ export function leanDays(s: Snapshot, today: ISODate, until: ISODate): Record<IS
     }
     out[d] = { cents: Math.round(cents / 100) * 100, reasons: reasons.length ? ["Lean: needs only", ...reasons] : ["Lean: needs only. Nothing routine today"] };
   }
+  return out;
+}
+
+/**
+ * Your everyday habits by weekday: a category counts on a weekday when it happened on that weekday
+ * in at least 4 of the last 12 weeks, at its typical (median) amount scaled by how often. Biggest first.
+ */
+export function weekdayHabits(s: Snapshot, today: ISODate, keep: (category: string) => boolean): Map<number, Array<{ cat: string; cents: number; seen: number }>> {
+  const from = addDays(today, -84);
+  const BILLS = new Set(["Housing", "Utilities", "Insurance", "Subscriptions", "Debt", "Savings", "Fees"]);
+  const days: Record<string, Map<ISODate, number>> = {};
+  for (const t of s.transactions) {
+    const c = t.category ?? "Other";
+    if (t.status !== "posted" || t.direction !== "out" || t.date < from || t.date >= today || t.calendarEventId || t.flexible === false || isNotSpending(t.category) || BILLS.has(c) || !keep(c)) continue;
+    const k = `${c}|${dayOfWeek(t.date)}`;
+    const m = (days[k] ??= new Map());
+    m.set(t.date, (m.get(t.date) ?? 0) + t.amountCents);
+  }
+  const out = new Map<number, Array<{ cat: string; cents: number; seen: number }>>();
+  for (const [k, m] of Object.entries(days)) {
+    if (m.size < 4) continue;
+    const [cat, wd] = k.split("|");
+    const cents = median([...m.values()]) * Math.min(1, m.size / 12);
+    if (cents < 100) continue;
+    out.set(Number(wd), [...(out.get(Number(wd)) ?? []), { cat: cat!, cents, seen: m.size }]);
+  }
+  for (const list of out.values()) list.sort((a, b) => b.cents - a.cents);
   return out;
 }
