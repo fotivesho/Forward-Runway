@@ -57,6 +57,9 @@ export async function linkToken(userId: string, connectionId?: string): Promise<
 export async function connectBank(supabase: AppSupabaseClient, userId: string, publicToken: string, institutionName: string | null, today: string) {
   const { accessToken, itemId } = await api().exchangePublicToken(publicToken);
   const db = admin();
+  // Same bank and accounts as a connection you already have? Move it onto those accounts instead of adding copies.
+  const same = await sameAccountsAs(userId, accessToken, itemId);
+  if (same) return adoptConnection(supabase, userId, same, accessToken, itemId, today);
   const { data: existing } = await db.from("bank_secrets").select("connection_id").eq("item_id", itemId).eq("user_id", userId).maybeSingle();
   let connectionId = existing?.connection_id as string | undefined;
   if (!connectionId) {
@@ -86,6 +89,8 @@ export interface SyncResult {
   refreshed?: boolean;
   accounts: number;
   added: number;
+  /** When the sync read the bank's full list (no cursor): every transaction id it sent. */
+  seen?: Set<string>;
 }
 
 /** Balances, card statements and new transactions for one connection. Safe to run any time. */
@@ -149,6 +154,7 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
 
     // Transactions, page by page from the last cursor.
     let cursor = (secret.sync_cursor as string | null) ?? null;
+    const seen = cursor ? undefined : new Set<string>();
     let added = 0;
     for (let page = 0; page < 50; page++) {
       const r = await bank.syncTransactions(token, cursor);
@@ -166,11 +172,12 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       const removed = r.removed.map((x) => x.transaction_id);
       if (removed.length) await supabase.from("transactions").delete().in("external_id", removed);
       added += r.added.length;
+      if (seen) for (const t of [...r.added, ...r.modified]) seen.add(t.transaction_id);
       cursor = r.next_cursor;
       if (!r.has_more) break;
     }
 
-    if (added > 0) await foldOldCopies(supabase, [...idFor.values()].map((v) => v.id));
+    await foldOldCopies(supabase, [...idFor.values()].map((v) => v.id));
 
     // Cards: what you owe includes pending purchases (the bank's "current" balance doesn't).
     for (const [ext, v] of idFor) {
@@ -221,6 +228,7 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       message: `Synced ${idFor.size} account${idFor.size === 1 ? "" : "s"}${added ? ` and ${added} new transaction${added === 1 ? "" : "s"}` : ", nothing new yet"}.${fresh}${problem}`,
       accounts: idFor.size,
       added,
+      seen,
       refreshed,
     };
   } catch (e) {
@@ -238,17 +246,29 @@ async function foldOldCopies(supabase: AppSupabaseClient, accountIds: string[]) 
   if (!accountIds.length) return;
   const { data: olds } = await supabase.from("transactions").select("id, account_id, date, amount_cents, direction, description, category, flexible").in("account_id", accountIds).like("external_id", "old:%");
   if (!olds?.length) return;
-  const { data: fresh } = await supabase.from("transactions").select("id, account_id, date, amount_cents, direction, external_id").in("account_id", accountIds).not("external_id", "is", null).not("external_id", "like", "old:%");
+  const { data: fresh } = await supabase.from("transactions").select("id, account_id, date, amount_cents, direction").in("account_id", accountIds).not("external_id", "is", null).not("external_id", "like", "old:%");
+  const near = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) <= 2 * 86_400_000;
+  const earliest = new Map<string, string>();
+  for (const t of fresh ?? []) if (!earliest.has(t.account_id) || t.date < earliest.get(t.account_id)!) earliest.set(t.account_id, t.date);
   const used = new Set<string>();
-  const done: string[] = [];
-  for (const o of olds) {
-    const twin = (fresh ?? []).find((t) => !used.has(String(t.id)) && t.account_id === o.account_id && t.date === o.date && Number(t.amount_cents) === Number(o.amount_cents) && t.direction === o.direction);
-    if (!twin) continue;
-    used.add(String(twin.id));
-    await supabase.from("transactions").update({ description: o.description, category: o.category, flexible: o.flexible }).eq("id", twin.id);
-    done.push(String(o.id));
+  const drop: string[] = [];
+  // Exact day first, then a day or two apart (banks sometimes date the same charge differently).
+  for (const pass of [0, 1]) {
+    for (const o of olds) {
+      if (drop.includes(String(o.id))) continue;
+      const twin = (fresh ?? []).find((t) => !used.has(String(t.id)) && t.account_id === o.account_id && Number(t.amount_cents) === Number(o.amount_cents) && t.direction === o.direction && (pass === 0 ? t.date === o.date : near(t.date, o.date)));
+      if (!twin) continue;
+      used.add(String(twin.id));
+      await supabase.from("transactions").update({ description: o.description, category: o.category, flexible: o.flexible }).eq("id", twin.id);
+      drop.push(String(o.id));
+    }
   }
-  for (let i = 0; i < done.length; i += 200) await supabase.from("transactions").delete().in("id", done.slice(i, i + 200));
+  // Anything left that's well inside what the new connection already covers is a duplicate too.
+  for (const o of olds) {
+    const from = earliest.get(o.account_id);
+    if (!drop.includes(String(o.id)) && from && Date.parse(o.date) >= Date.parse(from) + 3 * 86_400_000) drop.push(String(o.id));
+  }
+  for (let i = 0; i < drop.length; i += 200) await supabase.from("transactions").delete().in("id", drop.slice(i, i + 200));
 }
 
 /**
@@ -258,12 +278,39 @@ async function foldOldCopies(supabase: AppSupabaseClient, accountIds: string[]) 
  * the re-imported transactions; then the old connection is closed.
  */
 export async function refreshBankHistory(supabase: AppSupabaseClient, userId: string, connectionId: string, publicToken: string, today: string): Promise<SyncResult> {
+  const { accessToken, itemId } = await api().exchangePublicToken(publicToken);
+  return adoptConnection(supabase, userId, connectionId, accessToken, itemId, today);
+}
+
+/** Which of your connections (if any) has the same accounts as this new one: same type and last four digits. */
+async function sameAccountsAs(userId: string, newToken: string, newItemId: string): Promise<string | null> {
+  const db = admin();
+  const { data: secrets } = await db.from("bank_secrets").select("connection_id, item_id, access_token_enc").eq("user_id", userId);
+  if (!secrets?.length) return null;
+  const bank = api();
+  const sig = (a: { mask?: string | null; subtype?: string | null; type?: string | null }) => `${a.type ?? ""}|${a.subtype ?? ""}|${a.mask ?? ""}`;
+  const fresh = new Set((await bank.getAccounts(newToken)).accounts.filter((a) => a.mask).map(sig));
+  for (const sec of secrets) {
+    if (sec.item_id === newItemId) continue;
+    try {
+      const theirs = (await bank.getAccounts(decryptToken(String(sec.access_token_enc), key()))).accounts;
+      if (theirs.some((a) => a.mask && fresh.has(sig(a)))) return String(sec.connection_id);
+    } catch {
+      // A connection that needs signing in again can't be compared; skip it.
+    }
+  }
+  return null;
+}
+
+async function adoptConnection(supabase: AppSupabaseClient, userId: string, connectionId: string, newToken: string, itemId: string, today: string): Promise<SyncResult> {
   const db = admin();
   const bank = api();
   const { data: secret } = await db.from("bank_secrets").select("access_token_enc").eq("connection_id", connectionId).eq("user_id", userId).maybeSingle();
-  if (!secret) return { ok: false, message: "That bank connection no longer exists.", accounts: 0, added: 0 };
+  if (!secret) {
+    await bank.removeItem(newToken).catch(() => {});
+    return { ok: false, message: "That bank connection no longer exists.", accounts: 0, added: 0 };
+  }
   const oldToken = decryptToken(String(secret.access_token_enc), key());
-  const { accessToken: newToken, itemId } = await bank.exchangePublicToken(publicToken);
   const giveUp = async (message: string): Promise<SyncResult> => {
     await bank.removeItem(newToken).catch(() => {});
     return { ok: false, message, accounts: 0, added: 0 };
@@ -283,7 +330,6 @@ export async function refreshBankHistory(supabase: AppSupabaseClient, userId: st
 
     // What you'd set on the old copies (category, name, day-to-day), to carry over.
     const ids = moves.map((m) => m.id);
-    const { data: oldTxns } = await supabase.from("transactions").select("id, account_id, date, amount_cents, direction, pending").in("account_id", ids).not("external_id", "is", null);
 
     // Point the accounts at the new connection's ids and swap the token; start the transaction feed from scratch.
     for (const m of moves) await supabase.from("accounts").update({ external_id: m.to }).eq("id", m.id);
@@ -291,14 +337,16 @@ export async function refreshBankHistory(supabase: AppSupabaseClient, userId: st
     const r = await syncBank(supabase, userId, connectionId, today);
     if (!r.ok) return r;
 
-    // Old copies get set aside (pending ones are simply replaced); each is folded into its re-imported
-    // twin as soon as that arrives (now, or on a later sync if the bank sends older history a bit later).
-    const old = oldTxns ?? [];
-    const pendingOld = old.filter((t) => (t as { pending?: boolean }).pending);
+    // Old copies: everything on these accounts the new connection didn't send. Pending ones are simply
+    // replaced; the rest are set aside and folded into their re-imported twins (now, or on a later sync).
+    const { data: onAccts } = await supabase.from("transactions").select("id, external_id, pending").in("account_id", ids).not("external_id", "is", null).not("external_id", "like", "old:%");
+    const old = (onAccts ?? []).filter((t) => r.seen && !r.seen.has(String(t.external_id)));
+    const pendingOld = old.filter((t) => t.pending);
     if (pendingOld.length) await supabase.from("transactions").delete().in("id", pendingOld.map((t) => t.id));
-    const keep = old.filter((t) => !(t as { pending?: boolean }).pending);
+    const keep = old.filter((t) => !t.pending);
     for (let i = 0; i < keep.length; i += 25) {
-      await Promise.all(keep.slice(i, i + 25).map((t) => supabase.from("transactions").update({ external_id: `old:${t.id}` }).eq("id", t.id)));
+      const res = await Promise.all(keep.slice(i, i + 25).map((t) => supabase.from("transactions").update({ external_id: `old:${t.id}` }).eq("id", t.id)));
+      if (res.some((x) => x.error)) throw new Error("Couldn't tidy up the old copies. Nothing was lost: try Refresh history again.");
     }
     await foldOldCopies(supabase, ids);
     await bank.removeItem(oldToken).catch(() => {});
