@@ -7,6 +7,7 @@ import { formatShort } from "@/lib/dates";
 import type { FlowItem } from "@/lib/view/spend";
 import { DemoCtx } from "./form";
 import { Glyph } from "@/components/icon";
+import { CategoryMenu } from "./category-menu";
 import { CATEGORY_LIST, INCOME_CATEGORIES, NOT_SPENDING } from "@/lib/categories";
 import { Info } from "./info";
 import { Modal } from "./modal";
@@ -119,19 +120,7 @@ function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string
           <Row key={i.key} i={i}>
             {i.txnId && (
               <>
-                <button type="button" disabled={busy} onClick={() => setPicking(picking === i.key ? null : i.key)} aria-expanded={picking === i.key}
-                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-ink transition hover:border-brand/60">
-                  <Glyph name={cats[i.key] ?? i.category ?? "Income"} size="xs" bare /> {cats[i.key] ?? i.category ?? "Income"} <span aria-hidden className="text-faint">▾</span>
-                </button>
-                {picking === i.key && (
-                  <span className="fade-up mt-2 flex flex-wrap gap-1">
-                    {order.map((c) => (
-                      <button key={c} type="button" onClick={() => choose(i, c)} className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${c === (cats[i.key] ?? i.category ?? "Income") ? "border-brand bg-brand text-brand-ink" : "border-line text-muted hover:border-brand/60"}`}>
-                        <Glyph name={c} size="xs" bare /> {c}
-                      </button>
-                    ))}
-                  </span>
-                )}
+                <span className="mt-1 block"><CategoryMenu size="sm" direction="in" disabled={busy} value={cats[i.key] ?? i.category ?? "Income"} onPick={(c) => choose(i, c)} /></span>
               </>
             )}
           </Row>

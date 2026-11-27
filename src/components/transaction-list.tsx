@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useState, useTransition } from "react";
+import { createContext, useContext, useEffect, useRef, useState, useTransition } from "react";
+import { CategoryMenu } from "./category-menu";
 import { Plus, Repeat, Search, Sparkles, Tag } from "lucide-react";
 import { useCategoryStyles } from "./custom-glyph";
 import { NewCategoryButton, NewCategoryForm } from "./new-category";
@@ -269,7 +270,7 @@ function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accou
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
-        {<CategoryPill txn={txn} open={panel === "cat"} onToggle={() => toggle("cat")} categories={categories} />}
+        <CatMenu txn={txn} categories={categories} startOpen={panel === "cat"} />
         {repeating ? (
           <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
             <Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating
@@ -280,7 +281,6 @@ function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accou
           </button>
         ) : null}
       </div>
-      {panel === "cat" && <CategoryPicker txn={txn} categories={categories} onDone={() => setPanel(null)} />}
       {panel === "repeat" && (repeating ? <RepeatingInfo rule={repeating} today={today} /> : <QuickRepeat txn={txn} h={h} today={today} accountName={accountName} onMore={onRepeat} />)}
       {h ? <Insights txn={txn} h={h} today={today} accountName={accountName} /> : (
         <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see its history and what to expect next.</p>
@@ -314,6 +314,22 @@ function CatProvider({ txn, children }: { txn: OneTimeTransaction; children: Rea
       {children}
       {note && <p className="mt-2 text-xs text-muted" aria-live="polite">{note}</p>}
     </CatCtx.Provider>
+  );
+}
+
+/** The transaction's category as a pill that pops out the category list. */
+function CatMenu({ txn, categories, startOpen }: { txn: OneTimeTransaction; categories: string[]; startOpen: boolean }) {
+  const { cat, set, pending } = useContext(CatCtx);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (startOpen) ref.current?.querySelector("button")?.click();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <span ref={ref} className="inline-flex items-center gap-2">
+      <CategoryMenu value={cat ?? txn.category ?? null} direction={txn.direction} yours={categories} onPick={set} />
+      {pending && <span className="text-xs text-faint">Saving…</span>}
+    </span>
   );
 }
 

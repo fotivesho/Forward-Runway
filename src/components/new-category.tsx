@@ -10,10 +10,10 @@ import { useCategoryStyles } from "./custom-glyph";
 import { Modal } from "./modal";
 
 /** A category of your own: a name, a symbol and a color. Used in pop-ups, Activity and Budget. */
-export function NewCategoryForm({ onCreated }: { onCreated: (name: string) => void }) {
+export function NewCategoryForm({ onCreated, initialName = "" }: { onCreated: (name: string) => void; initialName?: string }) {
   const demo = useContext(DemoCtx);
   const { add } = useCategoryStyles();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(initialName);
   const [icon, setIcon] = useState("tag");
   const [color, setColor] = useState(PICKABLE_COLORS[0]!);
   const [err, setErr] = useState<string | null>(null);

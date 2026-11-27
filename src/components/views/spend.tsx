@@ -9,11 +9,15 @@ import { ruleHistory } from "@/lib/view/history";
 import { RecurringSuggestions } from "@/components/recurring-suggestions";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
-import { addDays, diffDays, endOfMonth, formatShort, startOfMonth } from "@/lib/dates";
+import { addDays, addMonths, diffDays, endOfMonth, formatShort, startOfMonth } from "@/lib/dates";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
 import { flowItems, monthBuckets } from "@/lib/view/spend";
 import { MonthTiles } from "@/components/month-tiles";
+import { BillsOverview, type BillShare } from "@/components/bills-overview";
+import { monthlyEquivalent } from "@/lib/view/dashboard";
+import type { HistBar } from "@/lib/view/history";
+import type { FlowItem } from "@/lib/view/spend";
 import { BudgetView } from "@/components/budget-view";
 import { buildBudget, categoryItems, spendingReport } from "@/lib/view/budget";
 import { buildDashboard } from "@/lib/view/dashboard";
@@ -90,6 +94,25 @@ export function SpendView({ snapshot, today, nowIso, demo = false, section = "ov
         </>)}
 
         {section === "bills" && (<>
+        {(() => {
+          // Fixed costs: each repeating item as a monthly amount, against a month of income.
+          const live = snapshot.rules.filter((r) => r.active !== false && r.kind !== "card_payment" && r.kind !== "transfer");
+          const incomeCents = live.filter((r) => r.kind === "income").reduce((t, r) => t + monthlyEquivalent(r), 0);
+          const bills: BillShare[] = live.filter((r) => r.kind !== "income" && r.kind !== "expense").map((r) => ({ name: r.name, category: r.category ?? null, monthlyCents: monthlyEquivalent(r), kind: r.kind === "savings_transfer" ? "savings" : r.kind === "loan_payment" ? "debt" : "bill" }));
+          // Over time: six months back, the next two ahead.
+          const next = [1, 2].map((k) => { const m = addMonths(startOfMonth(today), k); return { label: MONTH_NAMES[Number(m.slice(5, 7)) - 1]!.slice(0, 3), start: m, end: endOfMonth(m), current: false }; });
+          const fixedOf = (items: FlowItem[]) => items.filter((i) => i.kind === "bill" || i.kind === "savings");
+          const byMonth: Record<string, FlowItem[]> = {};
+          const bars: HistBar[] = [...months, ...next].map((b) => {
+            const list = fixedOf(flowItems(snapshot, today, b).out);
+            byMonth[b.start] = list;
+            const total = list.reduce((t, i) => t + i.cents, 0);
+            const done = list.filter((i) => i.when === "done").reduce((t, i) => t + i.cents, 0);
+            const kind = b.current ? "now" : b.start > today ? "ahead" : "past";
+            return { key: b.start, label: b.label, title: `${MONTH_NAMES[Number(b.start.slice(5, 7)) - 1]} ${b.start.slice(0, 4)}`, cents: total, kind, doneCents: kind === "now" ? done : undefined };
+          });
+          return <BillsOverview incomeCents={incomeCents} bills={bills} months={bars} byMonth={byMonth} />;
+        })()}
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
           {!hasAccounts && <EmptyState title="Add an account first">Repeating items need an account to come from or go to.</EmptyState>}
           <RecurringSuggestions suggestions={suggestions} accounts={accounts} today={today} />
