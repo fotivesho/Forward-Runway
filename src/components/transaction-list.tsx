@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useTransition } from "react";
 import { Plus, Repeat, Search, Sparkles, Tag } from "lucide-react";
 import { useCategoryStyles } from "./custom-glyph";
+import { NewCategoryButton, NewCategoryForm } from "./new-category";
 import { looksLike } from "@/lib/data/match";
 import { createCategory, deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
 import { addDays, formatLong, formatShort, type ISODate } from "@/lib/dates";
@@ -91,7 +92,7 @@ export function TransactionList({
         <span className="sr-only">Search transactions</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, category or amount" className="pill-input min-w-0 flex-1 bg-transparent py-2.5 text-sm text-ink outline-none placeholder:text-faint" />
       </label>
-      {chips.length > 0 && (
+      {(
         <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Pick a category to see it over time (this month's totals)">
           <button type="button" onClick={() => setCat(null)} aria-pressed={cat === null} className={chip(cat === null)}>All</button>
           {chips.map(([c, cents]) => (
@@ -99,6 +100,7 @@ export function TransactionList({
               <Glyph name={c} size="xs" bare /> {c} <Money cents={cents} whole className="font-semibold" />
             </button>
           ))}
+          <NewCategoryButton label="New" />
         </div>
       )}
       {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} picked={period?.start ?? null} onPick={(b) => setPeriod(b ? { start: b.start, end: b.end, label: b.label } : null)} />}
@@ -295,27 +297,10 @@ function CategoryPill({ txn, open, onToggle, categories }: { txn: OneTimeTransac
 /** Pick a category (saved on the spot), or make a new one with its own symbol and color. */
 function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; categories: string[]; onDone: () => void }) {
   const { cat, set } = useContext(CatCtx);
-  const demo = useContext(DemoCtx);
-  const { styles, add } = useCategoryStyles();
+  const { styles } = useCategoryStyles();
   const [making, setMaking] = useState(false);
-  const [name, setName] = useState("");
-  const [icon, setIcon] = useState("tag");
-  const [color, setColor] = useState(PICKABLE_COLORS[0]!);
-  const [err, setErr] = useState<string | null>(null);
-  const [busy, start] = useTransition();
-  const mine = Object.keys(styles);
-  const choices = [...new Set([...mine, ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 18);
+  const choices = [...new Set([...Object.keys(styles), ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 18);
   const choose = (c: string) => { set(c); onDone(); };
-  const create = () => start(async () => {
-    const n = name.trim();
-    if (!n) return setErr("Give it a name.");
-    if (!demo) {
-      const r = await createCategory(n, icon, color);
-      if (!r.ok) return setErr(r.error ?? "Couldn't save that.");
-    }
-    add(n, { icon, color });
-    choose(n);
-  });
   void txn;
   return (
     <div className="fade-up">
@@ -335,30 +320,7 @@ function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; 
       </ul>
       {making && (
         <div className="fade-up mt-3 rounded-2xl border border-line bg-surface-2/50 p-3">
-          <div className="flex items-center gap-2">
-            <GlyphView style={[PICKABLE[icon] ?? Tag, color]} size="md" />
-            <label className="min-w-0 flex-1">
-              <span className="sr-only">Category name</span>
-              <input value={name} onChange={(e) => { setName(e.target.value); setErr(null); }} maxLength={40} placeholder="Name it, like Pets" className="input w-full" autoFocus />
-            </label>
-          </div>
-          <div className="mt-3 grid grid-cols-8 gap-1.5" role="radiogroup" aria-label="Symbol">
-            {Object.entries(PICKABLE).map(([k, I]) => (
-              <button key={k} type="button" role="radio" aria-checked={icon === k} aria-label={k} onClick={() => setIcon(k)} className={`flex h-8 items-center justify-center rounded-lg transition ${icon === k ? "bg-surface ring-2 ring-brand" : "hover:bg-surface"}`}>
-                <I size={16} strokeWidth={2.2} color={icon === k ? color : undefined} className={icon === k ? "" : "text-muted"} />
-              </button>
-            ))}
-          </div>
-          <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
-            {PICKABLE_COLORS.map((c) => (
-              <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} onClick={() => setColor(c)} className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : ""}`} style={{ background: c }} />
-            ))}
-          </div>
-          <div className="mt-3 flex items-center gap-2">
-            <button type="button" onClick={create} disabled={busy} className="btn btn-primary btn-sm">{busy ? "Saving…" : "Create & use"}</button>
-            {demo && <span className="text-xs text-faint">Demo: not saved.</span>}
-          </div>
-          {err && <p className="mt-2 text-xs text-warn" role="alert">{err}</p>}
+          <NewCategoryForm onCreated={choose} />
         </div>
       )}
     </div>

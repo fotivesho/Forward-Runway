@@ -9,6 +9,7 @@ import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
 import { AvgLine } from "./avg-line";
+import { NewCategoryButton } from "./new-category";
 import { Money } from "./privacy";
 import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
@@ -130,6 +131,8 @@ export function BudgetView({
         )}
 
       </section>
+
+      <div className="-mt-3 flex justify-end"><NewCategoryButton /></div>
 
       {/* Each group and its categories. */}
       {GROUPS.filter((g) => g.id !== "savings").map((g) => {

@@ -18,7 +18,7 @@ type Which = "income" | "spent" | "net";
  * The month at a glance: Income, Spent, Net, each one tappable to see exactly what it's made of,
  * so a wrong number (a transfer counted as income) is easy to spot and fix.
  */
-export function MonthTiles({ month, items }: { month: string; items: { in: FlowItem[]; out: FlowItem[] } }) {
+export function MonthTiles({ month, items, today, expectedPerDayCents }: { month: string; items: { in: FlowItem[]; out: FlowItem[] }; today: string; expectedPerDayCents?: number }) {
   const [open, setOpen] = useState<Which | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const ins = items.in.filter((i) => !hidden.has(i.key));
@@ -49,6 +49,9 @@ export function MonthTiles({ month, items }: { month: string; items: { in: FlowI
           </li>
         ))}
       </ul>
+      {expectedPerDayCents !== undefined && (
+        <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} />
+      )}
       {open && (
         <Modal open onClose={() => setOpen(null)} icon={open === "income" ? "income" : open === "spent" ? "spend" : "📊"} title={`${tiles.find((t) => t.k === open)!.label} · ${month}`}
           subtitle={<span className="font-num text-2xl text-display">{tiles.find((t) => t.k === open)!.value}</span>}>
@@ -206,6 +209,62 @@ function Group({ title, items, children }: { title: string; items: FlowItem[]; c
     <div>
       <p className="mb-1 flex justify-between text-xs font-semibold text-faint"><span>{title} · {items.length}</span><Money cents={sum(items)} whole /></p>
       <ul className="divide-y divide-line rounded-xl border border-line">{items.map(children)}</ul>
+    </div>
+  );
+}
+
+/**
+ * The month in one picture: income, minus what's fixed (bills, savings moves, plans), leaves what
+ * you live on; part of that's already spent; the rest, spread over the days left, against what a
+ * day usually costs you.
+ */
+function WhereItGoes({ income, out, today, expectedPerDayCents }: { income: number; out: FlowItem[]; today: string; expectedPerDayCents: number }) {
+  const fixed = sum(out.filter((i) => i.kind !== "spending" || i.when === "coming"));
+  const spent = sum(out.filter((i) => i.kind === "spending" && i.when === "done"));
+  const free = income - fixed;
+  const left = free - spent;
+  const y = Number(today.slice(0, 4));
+  const m = Number(today.slice(5, 7));
+  const daysLeft = new Date(Date.UTC(y, m, 0)).getUTCDate() - Number(today.slice(8)) + 1;
+  const perDay = Math.round(Math.max(0, left) / daysLeft);
+  const scale = Math.max(1, income, fixed + spent);
+  const pct = (c: number) => `${Math.max(0, (c / scale) * 100)}%`;
+  const ok = perDay >= expectedPerDayCents;
+  const gap = Math.abs(perDay - expectedPerDayCents);
+  return (
+    <div className="card mt-3 p-4">
+      <p className="flex items-center text-sm font-bold text-ink">
+        Where it goes
+        <Info label="Where it goes">
+          <b>Fixed</b> is what&apos;s already spoken for this month: repeating bills, savings moves and planned purchases, paid or still coming. Income minus fixed is what you have to <b>live on</b>. Spending so far comes out of that, and what&apos;s <b>left</b> is spread over the days remaining. <b>A usual day</b> is what everyday life typically costs you on the days ahead, learned from your habits.
+        </Info>
+      </p>
+      <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
+        <span className="h-full bg-out/80" style={{ width: pct(fixed) }} />
+        <span className="h-full bg-warn" style={{ width: pct(spent) }} />
+        <span className="h-full bg-brand" style={{ width: pct(Math.max(0, left)) }} />
+      </div>
+      <ul className="mt-2 grid grid-cols-3 gap-2 text-xs">
+        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-out/80" />Fixed</span><Money cents={fixed} whole className="font-semibold text-ink" /></li>
+        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-warn" />Spent</span><Money cents={spent} whole className="font-semibold text-ink" /></li>
+        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-brand" />Left</span><Money cents={left} whole className={`font-semibold ${left < 0 ? "text-danger" : "text-ink"}`} /></li>
+      </ul>
+      <p className="mt-1 text-[11px] text-faint">
+        <Money cents={income} whole /> income − <Money cents={fixed} whole /> fixed = <Money cents={free} whole /> to live on
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-xl bg-surface-2/60 px-3 py-2">
+          <p className="text-[11px] text-faint">Left per day · {daysLeft} {daysLeft === 1 ? "day" : "days"}</p>
+          <p className={`font-num text-2xl leading-tight ${ok ? "text-display" : "text-warn"}`}><Money cents={perDay} whole /></p>
+        </div>
+        <div className="rounded-xl bg-surface-2/60 px-3 py-2">
+          <p className="text-[11px] text-faint">A usual day</p>
+          <p className="font-num text-2xl leading-tight text-muted"><Money cents={expectedPerDayCents} whole /></p>
+        </div>
+      </div>
+      <p className={`mt-2 text-xs ${ok ? "text-brand" : "text-warn"}`}>
+        {left <= 0 ? "Nothing left for the rest of the month at this pace." : ok ? <>On track: about <Money cents={gap} whole /> a day of room.</> : <>Tight: about <Money cents={gap} whole /> a day less than usual.</>}
+      </p>
     </div>
   );
 }

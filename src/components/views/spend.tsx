@@ -9,7 +9,8 @@ import { ruleHistory } from "@/lib/view/history";
 import { RecurringSuggestions } from "@/components/recurring-suggestions";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
-import { addDays, formatShort, startOfMonth } from "@/lib/dates";
+import { addDays, diffDays, endOfMonth, formatShort, startOfMonth } from "@/lib/dates";
+import { predict, spendModel } from "@/lib/view/patterns";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
 import { categoryHistory, flowItems, monthBuckets, weekBuckets } from "@/lib/view/spend";
 import { MonthTiles } from "@/components/month-tiles";
@@ -27,6 +28,10 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
   const accounts = snapshot.accounts;
   const hasAccounts = accounts.some((a) => !a.archived);
   const monthStart = startOfMonth(today);
+  // What everyday life usually costs a day from here to month end (your habits, not a flat average).
+  const model = spendModel(snapshot, today);
+  const left = diffDays(today, endOfMonth(today)) + 1;
+  const expectedPerDay = model ? Math.round(predict(model, today, endOfMonth(today)).totalCents / left) : undefined;
   const active = snapshot.rules.filter((r) => r.active !== false);
   const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 2000);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
@@ -72,7 +77,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
       />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!)} />
+        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!)} today={today} expectedPerDayCents={section === "overview" ? expectedPerDay : undefined} />
 
         {section === "overview" && (<>
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>

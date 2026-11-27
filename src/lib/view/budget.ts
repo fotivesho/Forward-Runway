@@ -182,7 +182,7 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     }
   }
 
-  const names = new Set<string>([...usual.keys(), ...planBy.keys(), ...current!.byCategory.keys(), ...(s.categorySettings ?? []).filter((c) => c.monthlyBudgetCents != null).map((c) => c.name)]);
+  const names = new Set<string>([...usual.keys(), ...planBy.keys(), ...current!.byCategory.keys(), ...(s.categorySettings ?? []).filter((c) => c.monthlyBudgetCents != null || c.icon).map((c) => c.name)]);
   const cats: CategoryBudget[] = [...names]
     .filter((c) => !isNotSpending(c))
     .map((c) => {
