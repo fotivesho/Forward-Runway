@@ -4,9 +4,9 @@ import { createContext, useContext, useState, useTransition } from "react";
 import { Plus, Repeat, Search, Sparkles, Tag } from "lucide-react";
 import { useCategoryStyles } from "./custom-glyph";
 import { looksLike } from "@/lib/data/match";
-import { createCategory, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
+import { createCategory, deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
 import { addDays, formatLong, formatShort, type ISODate } from "@/lib/dates";
-import type { Account, OneTimeTransaction, RecurringRule } from "@/lib/engine";
+import { describeSchedule, nextOccurrence, type Account, type OneTimeTransaction, type RecurringRule } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
 import { addMonths } from "@/lib/dates";
 import { ActionForm, DemoCtx, QuickAction, Submit } from "./form";
@@ -54,6 +54,8 @@ export function TransactionList({
   // Show the latest days first; older ones a tap away.
   const [days, setDays] = useState(10);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
+  const live = rules.filter((r) => r.active !== false);
+  const repeats = (t: OneTimeTransaction) => live.some((r) => looksLike(r, t));
   const onCard = (id: string) => accounts.find((a) => a.id === id)?.kind === "credit_card";
 
   // Chips: this month's spending per category, biggest first.
@@ -132,7 +134,10 @@ export function TransactionList({
                     <button type="button" onClick={() => setOpen(t.id)} aria-haspopup="dialog" className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-surface-2/60">
                       <Glyph name={t.direction === "in" ? "income" : t.category} size="md" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium text-ink">{t.description}</span>
+                        <span className="flex items-center gap-1.5 text-sm font-medium text-ink">
+                          <span className="truncate">{t.description}</span>
+                          {repeats(t) && <Repeat size={12} strokeWidth={2.6} className="shrink-0 text-brand" aria-label="Repeating" />}
+                        </span>
                         <span className="block truncate text-xs text-muted">
                           {t.category ?? "Uncategorized"} · {name(t.accountId)}
                           {t.status === "planned" && " · planned"}
@@ -224,7 +229,9 @@ function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, c
       <div className="flex flex-wrap gap-2">
         {txn.direction === "out" && <CategoryPill txn={txn} open={panel === "cat"} onToggle={() => toggle("cat")} categories={categories} />}
         {repeating ? (
-          <span className={pill(false)}><Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating · {repeating.name}</span>
+          <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
+            <Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating
+          </button>
         ) : canRepeat ? (
           <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
             <Repeat size={14} strokeWidth={2.4} aria-hidden /> {h?.everyDays ? "Repeats?" : "Make repeating"}
@@ -232,7 +239,7 @@ function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, c
         ) : null}
       </div>
       {panel === "cat" && <CategoryPicker txn={txn} categories={categories} onDone={() => setPanel(null)} />}
-      {panel === "repeat" && <QuickRepeat txn={txn} h={h} today={today} accountName={accountName} onMore={onRepeat} />}
+      {panel === "repeat" && (repeating ? <RepeatingInfo rule={repeating} today={today} /> : <QuickRepeat txn={txn} h={h} today={today} accountName={accountName} onMore={onRepeat} />)}
       {h ? <Insights txn={txn} h={h} today={today} accountName={accountName} /> : (
         <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see its history and what to expect next.</p>
       )}
@@ -354,6 +361,22 @@ function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; 
           {err && <p className="mt-2 text-xs text-warn" role="alert">{err}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Already repeating: what that means, and a one-tap way to stop it. */
+function RepeatingInfo({ rule, today }: { rule: RecurringRule; today: ISODate }) {
+  const next = nextOccurrence(rule, [], today);
+  return (
+    <div className="fade-up flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface-2/50 px-3 py-2.5">
+      <span className="min-w-0 text-sm text-muted">
+        <span className="block font-semibold text-ink">{rule.name}</span>
+        {describeSchedule(rule.schedule)}{next ? ` · next ${formatShort(next.date)}` : ""}
+      </span>
+      <QuickAction action={deleteRule} fields={{ id: rule.id }} variant="secondary" confirm={`Stop “${rule.name}” repeating? It won't be counted ahead anymore. Past transactions stay.`}>
+        Stop repeating
+      </QuickAction>
     </div>
   );
 }

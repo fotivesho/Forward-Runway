@@ -166,6 +166,11 @@ function RuleBody({ tile, onEditFrom }: { tile: RuleTile; onEditFrom: (d: ISODat
           )}
         </ul>
       </div>
+      <div className="flex justify-center">
+        <QuickAction action={deleteRule} fields={{ id: rule.id }} variant="ghost" confirm={`Stop “${rule.name}” repeating? It won't be counted ahead anymore. Past transactions stay.`}>
+          <span className="text-xs text-muted">Stop repeating</span>
+        </QuickAction>
+      </div>
     </div>
   );
 }
