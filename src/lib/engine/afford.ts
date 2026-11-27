@@ -60,6 +60,8 @@ export interface AffordCheck {
   lowestUsual?: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
   /** Your cash floor, for showing how much cushion the lowest point keeps. */
   floorCents: Cents;
+  /** Cash already dips under your cushion without this purchase: how far, and when (not this purchase's doing). */
+  alreadyShort?: { cents: Cents; date: ISODate } | null;
   /** When the money actually leaves your cash. */
   cash: { date: ISODate; viaCard: string | null; statementCloses: ISODate | null; beyondHorizon: boolean };
   /** Paying by card: the statement it lands on, usual vs. with this purchase (incl. typical card spending). */
@@ -163,7 +165,10 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   const potIndex = cash.beyondHorizon || found < 0 ? pots.length - 1 : found;
   const pot = pots[potIndex]!;
   const withPurchase = buildForecast(input, 90, { extraItems: [item] });
-  const floorShort = Math.max(0, floor - withPurchase.lowest.cents);
+  // Only the part of a dip under your cushion that this purchase causes counts against it: if money
+  // is already short without it, that isn't this plan's doing (it's shown separately).
+  const floorShortBefore = Math.max(0, floor - base.lowest.cents);
+  const floorShort = Math.max(0, floor - withPurchase.lowest.cents - floorShortBefore);
   // On a card, the max bill is the same calculation as on Accounts and Forecast: cash and paychecks
   // minus every other bill, plan and usual everyday spending until it's due, what's still needed
   // until the next payday, and your cushion. It never assumes the expected bill fits.
@@ -191,6 +196,7 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
     action,
     alternatives,
     plan,
+    alreadyShort: floorShortBefore > 0 ? { cents: floorShortBefore, date: base.lowest.date } : null,
   });
 
   // Already budgeted in full.

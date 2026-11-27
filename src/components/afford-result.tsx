@@ -292,7 +292,9 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
   const period = span(r.start, r.end);
   const floor = check.floorCents;
   const after = (check.lowestUsual ?? check.lowest).after.cents;
-  const below = after < floor;
+  const already = (check.lowestUsual ?? check.lowest).before.cents < floor;
+  // Under the cushion because of this plan, not because money was already short.
+  const below = after < floor && !already;
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
 
   if (check.verdict === "yes") {
@@ -368,6 +370,11 @@ export function PlanImpact({
           </span>
         </Info>
       </p>
+      {cushionBefore < 0 && (
+        <p className="mt-1 text-xs text-warn">
+          Already {dollars(-cushionBefore)} under your cushion by {formatShort(lowU.before.date)}, with or without this
+        </p>
+      )}
       <div className="mt-3 flex gap-3">
         {card ? (
 <BillRoom
