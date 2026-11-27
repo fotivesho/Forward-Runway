@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { AppNav } from "@/components/app-nav";
 import { DemoProvider } from "@/components/form";
 import { PrivacyProvider } from "@/components/privacy";
+import { CategoryStylesProvider } from "@/components/custom-glyph";
 import { ThemeToggle } from "@/components/theme";
 import { DemoNudge } from "@/components/demo-nudge";
 import { formatLong, todayInZone } from "@/lib/dates";
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export default function DemoLayout({ children }: { children: React.ReactNode }) {
   return (
     <PrivacyProvider hide={false}>
+     <CategoryStylesProvider styles={{}}>
       <DemoProvider demo>
         <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-32 pt-4 sm:px-6 lg:pb-10">
           <div role="note" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/40 bg-info/5 p-3 text-sm">
@@ -41,6 +43,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
           <DemoNudge />
         </div>
       </DemoProvider>
+     </CategoryStylesProvider>
     </PrivacyProvider>
   );
 }

@@ -84,6 +84,9 @@ export interface CategorySetting {
   name: string;
   group: CategoryGroup;
   monthlyBudgetCents: Cents | null;
+  /** Your own symbol and color (a key from the icon set, "#rrggbb"). */
+  icon?: string | null;
+  color?: string | null;
 }
 
 export interface Snapshot {

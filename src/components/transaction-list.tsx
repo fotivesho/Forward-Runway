@@ -1,13 +1,16 @@
 "use client";
 
-import { useContext, useState, useTransition } from "react";
-import { Search } from "lucide-react";
-import { deleteTransaction, setTransactionCategory } from "@/app/app/actions";
-import { formatLong, formatShort, type ISODate } from "@/lib/dates";
-import type { Account, OneTimeTransaction } from "@/lib/engine";
+import { createContext, useContext, useState, useTransition } from "react";
+import { Plus, Repeat, Search, Sparkles, Tag } from "lucide-react";
+import { useCategoryStyles } from "./custom-glyph";
+import { looksLike } from "@/lib/data/match";
+import { createCategory, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
+import { addDays, formatLong, formatShort, type ISODate } from "@/lib/dates";
+import type { Account, OneTimeTransaction, RecurringRule } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
 import { addMonths } from "@/lib/dates";
-import { DemoCtx, QuickAction } from "./form";
+import { ActionForm, DemoCtx, QuickAction, Submit } from "./form";
+import { centsToInput } from "@/lib/money";
 import { Modal } from "./modal";
 import { CategoryTrend } from "./spend-insights";
 import type { CategoryBucket } from "@/lib/view/spend";
@@ -15,9 +18,9 @@ import { Money } from "./privacy";
 import { Badge, Disclosure, EmptyState } from "./ui";
 import { HistoryChart } from "./history-chart";
 import { Info } from "./info";
-import { txnHistory } from "@/lib/view/history";
+import { inPeriod, itemStats, PERIOD_LABEL, txnHistory, type HistoryView, type StatPeriod } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
-import { Glyph } from "@/components/icon";
+import { Glyph, GlyphView, PICKABLE, PICKABLE_COLORS } from "@/components/icon";
 import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
 
 
@@ -29,6 +32,7 @@ export function TransactionList({
   monthStart,
   trends = {},
   categories = [],
+  rules = [],
 }: {
   txns: OneTimeTransaction[];
   accounts: Account[];
@@ -38,6 +42,8 @@ export function TransactionList({
   trends?: Record<string, { month: CategoryBucket[]; week: CategoryBucket[] }>;
   /** Your categories, most used first. */
   categories?: string[];
+  /** Repeating items, to tell when a transaction already is one. */
+  rules?: RecurringRule[];
 }) {
   const [repeat, setRepeat] = useState(false);
   const [cat, setCatRaw] = useState<string | null>(null);
@@ -190,12 +196,14 @@ export function TransactionList({
               />
             </>
           ) : (
-            <TxnBody key={current.id} txn={current} txns={txns} today={today} categories={categories} onRepeat={() => setRepeat(true)}>
+            <CatProvider key={current.id} txn={current}>
+            <TxnBody txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
               <div className="mt-4 flex justify-end border-t border-line pt-4">
                 <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
               </div>
             </TxnBody>
+            </CatProvider>
           )}
         </Modal>
       )}
@@ -203,67 +211,46 @@ export function TransactionList({
   );
 }
 
-/** Inside a transaction: every time it showed up and what's likely next, then the edit form folded away. */
-function TxnBody({ txn, txns, today, categories, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; onRepeat: () => void; children: React.ReactNode }) {
+/** Inside a transaction: two quick pills (category, repeats), what it's been over time, then the edit form folded away. */
+function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; rules: RecurringRule[]; accountName: (id: string) => string; onRepeat: () => void; children: React.ReactNode }) {
   const h = txnHistory(txn, txns, today);
-  const [sel, setSel] = useState<string | null>(h ? (h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null) : null);
-  const canRepeat = !isNotSpending(txn.category);
-  const now = h?.bars.find((b) => b.kind === "now");
-  // This month against a usual month: well under reads green, well over reads warm.
-  const ratio = now && h?.perMonthCents ? now.cents / h.perMonthCents : 1;
-  const pace = ratio > 1.15 ? "over" : ratio < 0.85 ? "under" : undefined;
+  const [panel, setPanel] = useState<"cat" | "repeat" | null>(null);
+  const toggle = (p: "cat" | "repeat") => setPanel((x) => (x === p ? null : p));
+  const repeating = rules.find((r) => r.active !== false && looksLike(r, txn));
+  // Everyday things (lunch, coffee) are predicted from your habits already; repeating is for bills and subscriptions.
+  const canRepeat = !isNotSpending(txn.category) && !repeating && h?.unit !== "month";
   return (
     <div className="space-y-4">
-      {txn.direction === "out" && <QuickCategory txn={txn} categories={categories} />}
-      {h ? (
-        <section aria-label="This over time">
-          <ul className="mb-3 grid grid-cols-3 gap-2 text-center">
-            <Stat label="Each time" value={<Money cents={h.usualCents} whole={h.usualCents >= 10_000} />} sub="usually" />
-            <Stat label="How often" value={h.often ?? "Now & then"} sub={h.unit === "charge" ? `${h.count} times so far` : undefined} small />
-            {h.unit === "month" ? (
-              <Stat label="This month" value={<>~<Money cents={now?.cents ?? 0} whole /></>} sub={<>usually <Money cents={h.perMonthCents ?? 0} whole /></>} tone={pace} />
-            ) : h.nextDate ? (
-              <Stat label="Next" value={formatShort(h.nextDate)} sub="likely" small />
-            ) : (
-              <Stat label="All together" value={<Money cents={h.totalCents} whole />} sub={`${h.count} times`} />
-            )}
-          </ul>
-          <HistoryChart bars={h.bars} tone={txn.direction === "in" ? "in" : "out"} selected={sel} onSelect={setSel} />
-          <p className="mt-2 text-xs text-faint">
-            {h.unit === "month" ? "By month, with the rest of this month and next month predicted." : h.everyDays ? "Each time, with the next ones expected." : "Each time it showed up."}
-            <Info label="Reading the chart">Every transaction with this name. Solid bars already happened. Dashed, shaded bars are what we expect next, from how often and how much it usually is. Your budget and safe-to-spend use the same prediction.</Info>
-          </p>
-        </section>
-      ) : (
-        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see a history and what to expect next.</p>
-      )}
-      {canRepeat && !h?.perMonthCents && (
-        <button type="button" onClick={onRepeat} className="flex w-full items-center gap-3 rounded-2xl border border-line px-3 py-2.5 text-left transition hover:border-brand/60">
-          <Glyph name="🔁" size="sm" />
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold text-ink">{h?.everyDays ? "Looks like it repeats" : "Does this repeat?"}</span>
-            <span className="block text-xs text-muted">Add it as repeating so it&apos;s counted ahead</span>
-          </span>
-          <span aria-hidden className="text-faint">›</span>
-        </button>
+      <div className="flex flex-wrap gap-2">
+        {txn.direction === "out" && <CategoryPill txn={txn} open={panel === "cat"} onToggle={() => toggle("cat")} categories={categories} />}
+        {repeating ? (
+          <span className={pill(false)}><Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating · {repeating.name}</span>
+        ) : canRepeat ? (
+          <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
+            <Repeat size={14} strokeWidth={2.4} aria-hidden /> {h?.everyDays ? "Repeats?" : "Make repeating"}
+          </button>
+        ) : null}
+      </div>
+      {panel === "cat" && <CategoryPicker txn={txn} categories={categories} onDone={() => setPanel(null)} />}
+      {panel === "repeat" && <QuickRepeat txn={txn} h={h} today={today} accountName={accountName} onMore={onRepeat} />}
+      {h ? <Insights txn={txn} h={h} today={today} accountName={accountName} /> : (
+        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see its history and what to expect next.</p>
       )}
       <Disclosure summary={txn.direction === "out" ? "Edit name, amount or date" : "Edit details"}>{children}</Disclosure>
     </div>
   );
 }
 
-/** The category as one tappable pill; tap to pick another, saved on the spot. */
-function QuickCategory({ txn, categories }: { txn: OneTimeTransaction; categories: string[] }) {
+/** Holds the transaction's category while the pop-up is open: tapping one saves it right away. */
+function CatProvider({ txn, children }: { txn: OneTimeTransaction; children: React.ReactNode }) {
   const demo = useContext(DemoCtx);
   const [cat, setCat] = useState(txn.category ?? null);
-  const [picking, setPicking] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const choices = [...new Set([...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 14);
-  const pick = (c: string) => {
+  const set = (c: string | null) => {
+    if (!c || c === cat) return;
     const before = cat;
     setCat(c);
-    setPicking(false);
     if (demo) return setNote("Demo: changes aren't saved.");
     start(async () => {
       const r = await setTransactionCategory(txn.id, c);
@@ -274,28 +261,219 @@ function QuickCategory({ txn, categories }: { txn: OneTimeTransaction; categorie
     });
   };
   return (
-    <div>
-      <button type="button" onClick={() => setPicking((p) => !p)} aria-expanded={picking} className="flex w-full items-center gap-3 rounded-2xl border border-line px-3 py-2.5 text-left transition hover:border-brand/60">
-        <Glyph name={cat ?? "spend"} size="sm" />
-        <span className="min-w-0 flex-1">
-          <span className="block text-[11px] text-faint">Category</span>
-          <span className="block text-sm font-semibold text-ink">{cat ?? "Uncategorized"}{pending && <span className="ml-2 text-xs font-normal text-faint">Saving…</span>}</span>
-        </span>
-        <span className="text-xs font-semibold text-brand">{picking ? "Close" : "Change"}</span>
-      </button>
-      {picking && (
-        <ul className="fade-up mt-2 flex flex-wrap gap-1.5" aria-label="Pick a category">
-          {choices.map((c) => (
-            <li key={c}>
-              <button type="button" onClick={() => pick(c)} aria-pressed={c === cat} className={chip(c === cat)}>
-                <Glyph name={c} size="xs" bare /> {c}
+    <CatCtx.Provider value={{ cat, set, pending, note }}>
+      {children}
+      {note && <p className="mt-2 text-xs text-muted" aria-live="polite">{note}</p>}
+    </CatCtx.Provider>
+  );
+}
+
+const pill = (on: boolean) =>
+  `inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition ${on ? "border-brand bg-brand/10 text-ink" : "border-line text-ink hover:border-brand/60"}`;
+
+/** The category, live: the pill shows what it is now (changed here or in the picker). */
+const CatCtx = createContext<{ cat: string | null; set: (c: string | null) => void; pending: boolean; note: string | null }>({ cat: null, set: () => {}, pending: false, note: null });
+
+function CategoryPill({ txn, open, onToggle, categories }: { txn: OneTimeTransaction; open: boolean; onToggle: () => void; categories: string[] }) {
+  const { cat, pending } = useContext(CatCtx);
+  void categories;
+  return (
+    <button type="button" onClick={onToggle} aria-expanded={open} className={pill(open)}>
+      <Glyph name={cat ?? txn.category ?? "spend"} size="xs" bare /> {cat ?? txn.category ?? "Uncategorized"}
+      {pending ? <span className="text-xs font-normal text-faint">Saving…</span> : <span aria-hidden className={`text-faint transition ${open ? "rotate-180" : ""}`}>▾</span>}
+    </button>
+  );
+}
+
+/** Pick a category (saved on the spot), or make a new one with its own symbol and color. */
+function CategoryPicker({ txn, categories, onDone }: { txn: OneTimeTransaction; categories: string[]; onDone: () => void }) {
+  const { cat, set } = useContext(CatCtx);
+  const demo = useContext(DemoCtx);
+  const { styles, add } = useCategoryStyles();
+  const [making, setMaking] = useState(false);
+  const [name, setName] = useState("");
+  const [icon, setIcon] = useState("tag");
+  const [color, setColor] = useState(PICKABLE_COLORS[0]!);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+  const mine = Object.keys(styles);
+  const choices = [...new Set([...mine, ...categories, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c)).slice(0, 18);
+  const choose = (c: string) => { set(c); onDone(); };
+  const create = () => start(async () => {
+    const n = name.trim();
+    if (!n) return setErr("Give it a name.");
+    if (!demo) {
+      const r = await createCategory(n, icon, color);
+      if (!r.ok) return setErr(r.error ?? "Couldn't save that.");
+    }
+    add(n, { icon, color });
+    choose(n);
+  });
+  void txn;
+  return (
+    <div className="fade-up">
+      <ul className="flex flex-wrap gap-1.5" aria-label="Pick a category">
+        {choices.map((c) => (
+          <li key={c}>
+            <button type="button" onClick={() => choose(c)} aria-pressed={c === cat} className={chip(c === cat)}>
+              <Glyph name={c} size="xs" bare /> {c}
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" onClick={() => setMaking((m) => !m)} aria-expanded={making} className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand/60 px-3 py-1.5 text-xs font-semibold text-brand">
+            <Plus size={13} strokeWidth={2.6} aria-hidden /> New
+          </button>
+        </li>
+      </ul>
+      {making && (
+        <div className="fade-up mt-3 rounded-2xl border border-line bg-surface-2/50 p-3">
+          <div className="flex items-center gap-2">
+            <GlyphView style={[PICKABLE[icon] ?? Tag, color]} size="md" />
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Category name</span>
+              <input value={name} onChange={(e) => { setName(e.target.value); setErr(null); }} maxLength={40} placeholder="Name it, like Pets" className="input w-full" autoFocus />
+            </label>
+          </div>
+          <div className="mt-3 grid grid-cols-8 gap-1.5" role="radiogroup" aria-label="Symbol">
+            {Object.entries(PICKABLE).map(([k, I]) => (
+              <button key={k} type="button" role="radio" aria-checked={icon === k} aria-label={k} onClick={() => setIcon(k)} className={`flex h-8 items-center justify-center rounded-lg transition ${icon === k ? "bg-surface ring-2 ring-brand" : "hover:bg-surface"}`}>
+                <I size={16} strokeWidth={2.2} color={icon === k ? color : undefined} className={icon === k ? "" : "text-muted"} />
               </button>
-            </li>
+            ))}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2" role="radiogroup" aria-label="Color">
+            {PICKABLE_COLORS.map((c) => (
+              <button key={c} type="button" role="radio" aria-checked={color === c} aria-label={c} onClick={() => setColor(c)} className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-ink ring-offset-2 ring-offset-surface" : ""}`} style={{ background: c }} />
+            ))}
+          </div>
+          <div className="mt-3 flex items-center gap-2">
+            <button type="button" onClick={create} disabled={busy} className="btn btn-primary btn-sm">{busy ? "Saving…" : "Create & use"}</button>
+            {demo && <span className="text-xs text-faint">Demo: not saved.</span>}
+          </div>
+          {err && <p className="mt-2 text-xs text-warn" role="alert">{err}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Make it repeating in one tap: how often (guessed from its history), then add. More options opens the full form. */
+function QuickRepeat({ txn, h, today, accountName, onMore }: { txn: OneTimeTransaction; h: HistoryView | null; today: ISODate; accountName: (id: string) => string; onMore: () => void }) {
+  const guess: "weekly" | "biweekly" | "monthly" = h?.everyDays ? (h.everyDays <= 10 ? "weekly" : h.everyDays <= 20 ? "biweekly" : "monthly") : "monthly";
+  const [freq, setFreq] = useState(guess);
+  const amount = h?.usualCents ?? txn.amountCents;
+  const varies = !!h?.items && h.items.some((i) => Math.abs(i.cents - amount) > amount * 0.1);
+  const last = h?.items?.at(-1)?.date ?? txn.date;
+  let next = freq === "monthly" ? addMonths(last, 1) : addDays(last, freq === "weekly" ? 7 : 14);
+  while (next <= today) next = freq === "monthly" ? addMonths(next, 1) : addDays(next, freq === "weekly" ? 7 : 14);
+  const income = txn.direction === "in";
+  const kind = income ? "income" : txn.category === "Subscriptions" || (amount < 5_000 && freq === "monthly") ? "subscription" : "bill";
+  return (
+    <div className="fade-up rounded-2xl border border-line bg-surface-2/50 p-3">
+      <div className="flex gap-1.5" role="radiogroup" aria-label="How often">
+        {(["weekly", "biweekly", "monthly"] as const).map((f) => (
+          <button key={f} type="button" role="radio" aria-checked={freq === f} onClick={() => setFreq(f)} className={chip(freq === f)}>
+            {f === "weekly" ? "Weekly" : f === "biweekly" ? "Every 2 weeks" : "Monthly"}
+          </button>
+        ))}
+      </div>
+      <p className="mt-2 text-sm text-muted">
+        <span className="font-semibold text-ink">{varies ? "~" : ""}<Money cents={amount} /></span> · next {formatShort(next)} · {accountName(txn.accountId)}
+      </p>
+      <ActionForm action={saveRule} demoPreview className="mt-2 flex flex-wrap items-center gap-3" aria-label="Add as repeating">
+        <input type="hidden" name="kind" value={kind} />
+        <input type="hidden" name="name" value={txn.description} />
+        <input type="hidden" name="amount" value={centsToInput(amount)} />
+        <input type="hidden" name="accountId" value={txn.accountId} />
+        <input type="hidden" name="category" value={txn.category ?? ""} />
+        <input type="hidden" name="frequency" value={freq} />
+        <input type="hidden" name="startDate" value={next} />
+        {freq === "monthly" && <input type="hidden" name="dayOfMonth" value={String(Number(next.slice(8)))} />}
+        <input type="hidden" name="weekendAdjust" value={income ? "before" : "none"} />
+        {varies && <input type="hidden" name="isEstimate" value="on" />}
+        <Submit variant="primary" className="btn-sm" pendingLabel="Adding…">Add as repeating</Submit>
+        <button type="button" onClick={onMore} className="text-xs font-semibold text-brand">More options</button>
+      </ActionForm>
+    </div>
+  );
+}
+
+/** Its history: a period to look at, the cards, a finding or two, the chart, and every time it happened. */
+function Insights({ txn, h, today, accountName }: { txn: OneTimeTransaction; h: HistoryView; today: ISODate; accountName: (id: string) => string }) {
+  const [period, setPeriod] = useState<StatPeriod>("all");
+  const [sel, setSel] = useState<string | null>(h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null);
+  const [showAll, setShowAll] = useState(false);
+  const items = h.items ?? [];
+  const st = itemStats(items, period, today);
+  const now = h.bars.find((b) => b.kind === "now");
+  const ratio = now && h.perMonthCents ? now.cents / h.perMonthCents : 1;
+  const pace = ratio > 1.15 ? "over" : ratio < 0.85 ? "under" : undefined;
+  // The list follows the chart: a month bar shows that month; a charge bar marks that charge.
+  const picked = h.bars.find((b) => b.key === sel);
+  const monthPick = h.unit === "month" && picked && picked.kind !== "ahead" ? picked.key.slice(0, 7) : null;
+  const rows = items.filter((i) => (monthPick ? i.date.startsWith(monthPick) : inPeriod(i.date, period, today))).reverse();
+  const shown = showAll ? rows : rows.slice(0, 6);
+  const trendTone = st.trendPct == null ? undefined : st.trendPct >= 10 ? "over" : st.trendPct <= -10 ? "under" : undefined;
+  return (
+    <section aria-label="This over time" className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-sm font-bold text-ink">Over time</h3>
+        <label className="relative">
+          <span className="sr-only">Period</span>
+          <select value={period} onChange={(e) => setPeriod(e.target.value as StatPeriod)} className="appearance-none rounded-full border border-line bg-surface py-1 pl-3 pr-7 text-xs font-semibold text-ink">
+            {(Object.keys(PERIOD_LABEL) as StatPeriod[]).map((p) => <option key={p} value={p}>{PERIOD_LABEL[p]}</option>)}
+          </select>
+          <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-faint">▾</span>
+        </label>
+      </div>
+      {st.count === 0 ? (
+        <p className="text-xs text-muted">Nothing in this period.</p>
+      ) : (
+        <ul className="grid grid-cols-3 gap-2 text-center">
+          <Stat label="Average" value={<Money cents={st.avgCents} whole={st.avgCents >= 10_000} />} sub="each time" />
+          <Stat label="Total" value={<Money cents={st.totalCents} whole />} sub={`${st.count} ${st.count === 1 ? "time" : "times"}`} />
+          {h.unit === "month" && period === "all" ? (
+            <Stat label="This month" value={<>~<Money cents={now?.cents ?? 0} whole /></>} sub={<>usually <Money cents={h.perMonthCents ?? 0} whole /></>} tone={pace} />
+          ) : h.nextDate ? (
+            <Stat label="Next" value={formatShort(h.nextDate)} sub={h.often?.toLowerCase() ?? "likely"} small />
+          ) : st.trendPct != null ? (
+            <Stat label="Trend" value={`${st.trendPct > 0 ? "↑" : st.trendPct < 0 ? "↓" : ""}${Math.abs(st.trendPct)}%`} sub="last 3 vs before" tone={trendTone} />
+          ) : (
+            <Stat label="How often" value={h.often ?? "Now & then"} small />
+          )}
+        </ul>
+      )}
+      {st.findings.length > 0 && (
+        <ul className="space-y-1">
+          {st.findings.map((f) => (
+            <li key={f} className="flex items-center gap-2 text-xs text-muted"><Sparkles size={13} className="shrink-0 text-brand" aria-hidden /> {f}</li>
           ))}
         </ul>
       )}
-      {note && <p className="mt-1.5 text-xs text-muted" aria-live="polite">{note}</p>}
-    </div>
+      <HistoryChart bars={h.bars} tone={txn.direction === "in" ? "in" : "out"} selected={sel} onSelect={setSel} />
+      <p className="text-xs text-faint">
+        {h.unit === "month" ? "By month. Tap a month to list it." : "Each time it showed up."}
+        <Info label="Reading the chart">Every transaction with this name. Solid bars already happened; dashed, shaded bars are what we expect next. Tapping a bar only shows its amount and lists its transactions below: it doesn&apos;t change anything.</Info>
+      </p>
+      <div>
+        <p className="mb-1 text-xs font-semibold text-faint">{monthPick ? `In ${picked!.title}` : "Every time"} · {rows.length}</p>
+        <ul className="divide-y divide-line rounded-xl border border-line">
+          {shown.map((i) => (
+            <li key={i.id} className={`flex items-center justify-between gap-2 px-3 py-2 text-sm ${i.id === sel || i.id === txn.id ? "bg-brand/[0.07]" : ""}`}>
+              <span className="min-w-0">
+                <span className="font-semibold text-ink">{formatShort(i.date)}</span>
+                <span className="ml-2 truncate text-xs text-muted">{accountName(i.accountId)}{i.id === txn.id ? " · this one" : ""}</span>
+              </span>
+              <Money cents={txn.direction === "in" ? i.cents : -i.cents} sign tone="auto" className="shrink-0 font-semibold" />
+            </li>
+          ))}
+        </ul>
+        {rows.length > 6 && (
+          <button type="button" onClick={() => setShowAll((x) => !x)} className="mt-1.5 text-xs font-semibold text-brand">{showAll ? "Show fewer" : `Show all ${rows.length}`}</button>
+        )}
+      </div>
+    </section>
   );
 }
 

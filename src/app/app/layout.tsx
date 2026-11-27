@@ -9,6 +9,7 @@ import { setHideAmounts, signOut } from "./actions";
 import { Glyph } from "@/components/icon";
 import { Logo } from "@/components/logo";
 import { BankAutoSync } from "@/components/bank-auto-sync";
+import { CategoryStylesProvider } from "@/components/custom-glyph";
 import { plaidMode } from "@/lib/plaid/config";
 
 export const metadata: Metadata = { title: "Today", robots: { index: false, follow: false } };
@@ -19,6 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hide = snapshot.profile.hideAmounts;
   return (
     <PrivacyProvider hide={hide}>
+     <CategoryStylesProvider styles={Object.fromEntries((snapshot.categorySettings ?? []).filter((c) => c.icon || c.color).map((c) => [c.name, { icon: c.icon, color: c.color }]))}>
       {plaidMode() !== "off" && <BankAutoSync />}
       <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-32 pt-4 sm:px-6 lg:pb-10">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -45,6 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <main id="main">{children}</main>
         </div>
       </div>
+     </CategoryStylesProvider>
     </PrivacyProvider>
   );
 }

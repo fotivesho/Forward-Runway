@@ -56,7 +56,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
   const useCount = new Map<string, number>();
   for (const t of snapshot.transactions) if (t.category) useCount.set(t.category, (useCount.get(t.category) ?? 0) + 1);
   for (const r of snapshot.rules) if (r.category) useCount.set(r.category, (useCount.get(r.category) ?? 0) + 1);
-  const yourCategories = [...useCount.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 12);
+  const yourCategories = [...new Set([...(snapshot.categorySettings ?? []).filter((c) => c.icon).map((c) => c.name), ...[...useCount.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 12)])];
   // This month so far plus what's scheduled, the same numbers as the cash-flow chart.
   const flowMonths = cashFlow(snapshot, today, months);
   const thisMonth = flowMonths[flowMonths.length - 1]!;
@@ -106,7 +106,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
 
         {section === "transactions" && (<>
         <Card title="Transactions" action={hasAccounts ? <AddButton what="transaction" accounts={accounts} today={today} /> : undefined}>
-          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} categories={yourCategories} />
+          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} categories={yourCategories} rules={snapshot.rules} />
         </Card>
 
         <Card title="Transfers & card payments" action={hasAccounts ? <AddButton what="transfer" accounts={accounts} today={today} /> : undefined}>

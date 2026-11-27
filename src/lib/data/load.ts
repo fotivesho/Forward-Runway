@@ -53,13 +53,17 @@ export async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> 
   if (firstError) throw new LoadError(`Couldn't load your data: ${firstError.message}`);
 
   // Category settings arrived in a later update: if its table isn't there yet, carry on without it.
-  const cats = await supabase.from("category_settings").select("name, grp, monthly_budget_cents");
+  // Symbol and color arrived in a later update: read without them until it's applied.
+  let cats = await supabase.from("category_settings").select("name, grp, monthly_budget_cents, icon, color");
+  if (cats.error) cats = (await supabase.from("category_settings").select("name, grp, monthly_budget_cents")) as typeof cats;
   const categorySettings = cats.error
     ? []
     : (cats.data ?? []).map((r) => ({
         name: String(r.name),
         group: (["needs", "wants", "savings"].includes(String(r.grp)) ? r.grp : "wants") as "needs" | "wants" | "savings",
         monthlyBudgetCents: r.monthly_budget_cents == null ? null : Number(r.monthly_budget_cents),
+        icon: (r as { icon?: string | null }).icon ?? null,
+        color: (r as { color?: string | null }).color ?? null,
       }));
 
   const prof = mapProfile(profile.data);

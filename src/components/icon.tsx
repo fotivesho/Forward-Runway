@@ -4,6 +4,7 @@ import {
   ShoppingCart, Smartphone, Sparkles, Tag, Target, Tent, Ticket, TrendingUp, TriangleAlert, Triangle, UtensilsCrossed, Wallet, Wrench, Zap,
   type LucideIcon,
 } from "lucide-react";
+import { CustomGlyph } from "./custom-glyph";
 
 /** Icon + color for a category, a kind of thing, or one of the emoji the app used to show. */
 const MAP: Record<string, [LucideIcon, string]> = {
@@ -94,9 +95,32 @@ const MAP: Record<string, [LucideIcon, string]> = {
 
 const SIZE = { xs: ["h-5 w-5 rounded-md", 12], sm: ["h-7 w-7 rounded-lg", 15], md: ["h-9 w-9 rounded-xl", 18], lg: ["h-11 w-11 rounded-2xl", 22] } as const;
 
+/** Symbols you can pick for a category of your own. */
+export const PICKABLE: Record<string, LucideIcon> = {
+  tag: Tag, sparkles: Sparkles, gift: Gift, heart: HeartPulse, home: House, car: Car, plane: Plane, coffee: Coffee,
+  bag: ShoppingBag, cart: ShoppingCart, fitness: Dumbbell, laptop: Laptop, phone: Smartphone, ticket: Ticket, party: PartyPopper,
+  tools: Wrench, tent: Tent, piggy: PiggyBank, bolt: Zap, bus: Bus, scissors: Scissors, salad: Salad, flag: Flag, target: Target,
+};
+export const PICKABLE_COLORS = ["#7dd3a0", "#6cb8f0", "#8f9cf7", "#b49cf7", "#f28bb5", "#f37a8c", "#f59e6b", "#f5c94f", "#5ec8b8", "#9aa7b4"];
+
+/** A category's icon and color: built in, or one you made (passed in). */
+export function styleFor(name: string | null | undefined, custom?: { icon?: string | null; color?: string | null } | null): [LucideIcon, string] | null {
+  const builtIn = MAP[name ?? ""] ?? MAP[(name ?? "").replace(/️/g, "")] ?? MAP[`${name}️`];
+  if (builtIn) return builtIn;
+  if (custom?.icon || custom?.color) return [PICKABLE[custom.icon ?? ""] ?? Tag, custom.color ?? "#9aa7b4"];
+  return null;
+}
+
 /** A tinted rounded square with a line icon: pops without looking like phone emoji. */
 export function Glyph({ name, size = "sm", bare = false, className = "" }: { name: string | null | undefined; size?: keyof typeof SIZE; bare?: boolean; className?: string }) {
-  const [Icon, color] = MAP[name ?? ""] ?? MAP[(name ?? "").replace(/️/g, "")] ?? MAP[`${name}️`] ?? [CircleDot, "#9aa7b4"];
+  const known = styleFor(name);
+  // Not a built-in: it may be one of your own categories, whose look lives on the client.
+  if (!known && name) return <CustomGlyph name={name} size={size} bare={bare} className={className} />;
+  return <GlyphView style={known ?? [CircleDot, "#9aa7b4"]} size={size} bare={bare} className={className} />;
+}
+
+export function GlyphView({ style, size = "sm", bare = false, className = "" }: { style: [LucideIcon, string]; size?: keyof typeof SIZE; bare?: boolean; className?: string }) {
+  const [Icon, color] = style;
   const [box, px] = SIZE[size];
   if (bare) return <Icon aria-hidden size={px} color={color} strokeWidth={2.2} className={`inline-block shrink-0 align-[-2px] ${className}`} />;
   return (

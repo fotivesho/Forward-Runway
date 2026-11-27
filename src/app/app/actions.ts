@@ -266,6 +266,24 @@ export async function saveTransaction(_: ActionState, form: FormData): Promise<A
   return ok(id ? "Transaction updated." : finalRow.status === "posted" && finalRow.direction === "out" ? "Spending logged. Caps recalculated." : "Planned. It's in your forecast.");
 }
 
+/** A category of your own, with its symbol and color. */
+export async function createCategory(name: string, icon: string, color: string): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await session();
+  const clean = name.trim().replace(/\s+/g, " ").slice(0, 40);
+  if (!clean) return { ok: false, error: "Give it a name." };
+  if (!/^[a-z]{2,24}$/.test(icon) || !/^#[0-9a-fA-F]{6}$/.test(color)) return { ok: false, error: "Pick a symbol and a color." };
+  const { data: existing } = await supabase.from("category_settings").select("id").eq("name", clean).maybeSingle();
+  const { error } = existing
+    ? await supabase.from("category_settings").update({ icon, color }).eq("id", existing.id)
+    : await supabase.from("category_settings").insert({ name: clean, grp: "wants", icon, color });
+  if (error) {
+    if (/icon|color/.test(error.message ?? "")) return { ok: false, error: "New categories need one more database update: run supabase/migrations/20261130000000_category_style.sql in Supabase's SQL editor." };
+    return { ok: false, error: "Couldn't save that. Try again." };
+  }
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 /** One tap in a transaction's pop-up: just its category (bank or hand-entered). */
 export async function setTransactionCategory(id: string, category: string): Promise<{ ok: boolean; error?: string }> {
   const { supabase } = await session();
