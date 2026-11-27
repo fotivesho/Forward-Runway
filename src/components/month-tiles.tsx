@@ -13,7 +13,7 @@ import { Info } from "./info";
 import { Modal } from "./modal";
 import { Money } from "./privacy";
 
-type Which = "income" | "spent" | "net";
+type Which = "income" | "fixed" | "spent" | "net";
 
 /**
  * The month at a glance: Income, Spent, Net, each one tappable to see exactly what it's made of,
@@ -26,25 +26,30 @@ export function MonthTiles({ month, items, today, expectedPerDayCents, calendarH
   const income = sum(ins);
   const spending = items.out.filter((i) => i.kind === "spending" && i.when === "done");
   const spent = sum(spending);
-  const net = income - sum(items.out);
-  const tiles: Array<{ k: Which; label: string; value: React.ReactNode }> = [
-    { k: "income", label: "Income", value: <Money cents={income} whole tone="in" /> },
-    { k: "spent", label: "Spent", value: <Money cents={spent} whole /> },
-    { k: "net", label: "Net", value: <Money cents={net} whole sign tone="auto" /> },
+  // Everything else going out: bills, savings moves, plans and planned purchases (paid or still coming).
+  const fixedItems = items.out.filter((i) => !(i.kind === "spending" && i.when === "done"));
+  const fixed = sum(fixedItems);
+  const net = income - fixed - spent;
+  // Read as one sum: Income − Fixed − Spent = Net.
+  const tiles: Array<{ k: Which; label: string; op: string; value: React.ReactNode }> = [
+    { k: "income", label: "Income", op: "", value: <Money cents={income} whole tone="in" /> },
+    { k: "fixed", label: "Fixed", op: "−", value: <Money cents={fixed} whole /> },
+    { k: "spent", label: "Spent", op: "−", value: <Money cents={spent} whole /> },
+    { k: "net", label: "Net", op: "=", value: <Money cents={net} whole sign tone="auto" /> },
   ];
   return (
     <section aria-labelledby="month-title">
       <h2 id="month-title" className="mb-2 flex items-center text-sm font-bold text-ink">
         {month}
         <Info label={month}>
-          <b>Income</b> is everything that came in this month, plus paydays still coming before it ends. <b>Spent</b> is your everyday spending so far. Bills and subscriptions, paid or still coming, count as fixed instead. <b>Net</b> is income minus everything going out this month: spending, bills and savings moves, including what&apos;s still scheduled. Moves between your own accounts and card payments aren&apos;t counted. Tap any of them to see what it&apos;s made of.
+          <b>Income</b> is everything that came in this month, plus paydays still coming before it ends. <b>Fixed</b> is what&apos;s spoken for: bills, subscriptions, loan payments, savings moves and plans, paid or still coming. <b>Spent</b> is your everyday spending so far. <b>Net</b> is income − fixed − spent: what the month leaves you with. Moves between your own accounts and card payments aren&apos;t counted. Tap any of them to see what it&apos;s made of.
         </Info>
       </h2>
-      <ul className="grid grid-cols-3 gap-2 sm:gap-3">
+      <ul className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
         {tiles.map((t) => (
           <li key={t.k}>
             <button type="button" onClick={() => setOpen(t.k)} aria-haspopup="dialog" className="card w-full min-w-0 p-2.5 text-left transition hover:border-brand/50 sm:p-4">
-              <span className="flex items-center justify-between text-[11px] text-faint sm:text-xs">{t.label}<span aria-hidden>›</span></span>
+              <span className="flex items-center justify-between text-[11px] text-faint sm:text-xs"><span>{t.op && <span className="mr-1 font-bold text-muted">{t.op}</span>}{t.label}</span><span aria-hidden>›</span></span>
               <span className="mt-0.5 block truncate text-lg font-bold tabular text-ink sm:text-2xl">{t.value}</span>
             </button>
           </li>
@@ -54,10 +59,16 @@ export function MonthTiles({ month, items, today, expectedPerDayCents, calendarH
         <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} calendarHref={calendarHref} limit={limit} />
       )}
       {open && (
-        <Modal open onClose={() => setOpen(null)} icon={open === "income" ? "income" : open === "spent" ? "spend" : "📊"} title={`${tiles.find((t) => t.k === open)!.label} · ${month}`}
+        <Modal open onClose={() => setOpen(null)} icon={open === "income" ? "income" : open === "spent" ? "spend" : open === "fixed" ? "bill" : "📊"} title={`${tiles.find((t) => t.k === open)!.label} · ${month}`}
           subtitle={<span className="font-num text-2xl text-display">{tiles.find((t) => t.k === open)!.value}</span>}>
           {open === "income" && <IncomeList items={ins} onHide={(k) => setHidden((h) => new Set(h).add(k))} />}
           {open === "spent" && <SpentList items={spending} />}
+          {open === "fixed" && (
+            <div className="space-y-3">
+              <Group title="Paid" items={fixedItems.filter((i) => i.when === "done")}>{(i) => <Row key={i.key} i={i} sign={-1} />}</Group>
+              <Group title="Still coming" items={fixedItems.filter((i) => i.when === "coming")}>{(i) => <Row key={i.key} i={i} sign={-1} />}</Group>
+            </div>
+          )}
           {open === "net" && <NetList income={income} out={items.out} />}
         </Modal>
       )}
