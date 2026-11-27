@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { Moon, Sun, SunMoon } from "lucide-react";
 import { saveTheme } from "@/app/app/actions";
 import { THEME_COLOR, THEME_COOKIE, type ThemePref } from "@/lib/theme";
 
@@ -40,17 +41,18 @@ export function useResolvedTheme(): "light" | "dark" {
   );
 }
 
-const OPTIONS: Array<{ value: ThemePref; label: string; icon: string }> = [
-  { value: "light", label: "Light", icon: "☀" },
-  { value: "dark", label: "Dark", icon: "☾" },
-  { value: "system", label: "Auto", icon: "A" },
+const OPTIONS: Array<{ value: ThemePref; label: string; Icon: typeof Sun }> = [
+  { value: "system", label: "Auto", Icon: SunMoon },
+  { value: "light", label: "Light", Icon: Sun },
+  { value: "dark", label: "Dark", Icon: Moon },
 ];
 
 /**
- * Light / Dark / Auto switch. `saved` is the signed-in user's stored preference:
- * a device with no cookie yet adopts it, and changes are saved back to the profile.
+ * Light / Dark / Auto. In the header it's one small round button that cycles through them;
+ * in Settings (`showLabels`) it's a labelled three-way switch. `saved` is the signed-in user's
+ * stored preference: a device with no cookie yet adopts it, and changes are saved back.
  */
-export function ThemeToggle({ saved, persist = false, showLabels = false }: { saved?: ThemePref; persist?: boolean; showLabels?: boolean }) {
+export function ThemeToggle({ saved, persist = false, showLabels = false, inverse = false }: { saved?: ThemePref; persist?: boolean; showLabels?: boolean; inverse?: boolean }) {
   const [pref, setPref] = useState<ThemePref>("system");
   useEffect(() => {
     const cookie = readCookie();
@@ -70,23 +72,36 @@ export function ThemeToggle({ saved, persist = false, showLabels = false }: { sa
     }
   }
 
+  if (!showLabels) {
+    const i = OPTIONS.findIndex((o) => o.value === pref);
+    const cur = OPTIONS[i]!;
+    const next = OPTIONS[(i + 1) % OPTIONS.length]!;
+    return (
+      <button
+        type="button"
+        onClick={() => choose(next.value)}
+        aria-label={`Theme: ${cur.label}. Switch to ${next.label}.`}
+        title={`Theme: ${cur.label}`}
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition ${inverse ? "text-[#dfe9d8] hover:bg-white/10" : "text-muted hover:bg-surface-2 hover:text-ink"}`}
+      >
+        <cur.Icon size={16} strokeWidth={2} aria-hidden />
+      </button>
+    );
+  }
+
   return (
-    <div role="radiogroup" aria-label="Color theme" className="flex rounded-lg border border-line bg-surface p-0.5">
+    <div role="radiogroup" aria-label="Color theme" className="flex rounded-full border border-line bg-surface p-0.5">
       {OPTIONS.map((o) => (
         <button
           key={o.value}
           type="button"
           role="radio"
           aria-checked={pref === o.value}
-          aria-label={showLabels ? undefined : `${o.label} theme`}
-          title={`${o.label} theme`}
           onClick={() => choose(o.value)}
-          className={`flex min-h-9 min-w-9 items-center justify-center gap-1 rounded-md px-2 text-sm font-medium ${
-            pref === o.value ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"
-          }`}
+          className={`flex min-h-8 items-center justify-center gap-1.5 rounded-full px-3 text-xs font-semibold transition ${pref === o.value ? "bg-surface-3 text-ink" : "text-muted hover:text-ink"}`}
         >
-          <span aria-hidden>{o.icon}</span>
-          {showLabels && <span>{o.label}</span>}
+          <o.Icon size={14} strokeWidth={2} aria-hidden />
+          {o.label}
         </button>
       ))}
     </div>

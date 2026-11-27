@@ -33,7 +33,7 @@ export default async function Landing({ searchParams }: { searchParams: Promise<
         <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6 sm:py-5">
           <Logo size="lg" inverse />
           <nav aria-label="Site" className="flex items-center gap-2">
-            <ThemeToggle />
+            <ThemeToggle inverse />
             <Link href="/login" className="btn btn-sm border border-white/20 text-[#f1f6ea] hover:bg-white/10">Sign in</Link>
           </nav>
         </header>

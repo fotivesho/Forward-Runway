@@ -93,7 +93,8 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
   await page.goto(BASE + "/demo", { waitUntil: "networkidle" });
   check((await page.getAttribute("html", "data-theme")) === "dark", "saved dark theme is rendered by the server");
   check((await bg(page)) === "rgb(18, 26, 21)", "dark background applied");
-  await page.getByRole("radio", { name: "Light theme" }).click();
+  // One small button cycles Auto → Light → Dark: tap until it's Light.
+  for (let i = 0; i < 3 && (await page.getAttribute("html", "data-theme")) !== "light"; i++) await page.getByRole("button", { name: /^Theme:/ }).click();
   check((await page.getAttribute("html", "data-theme")) === "light" && (await bg(page)) === "rgb(246, 241, 228)", "switching to light updates the page");
   check((await ctx.cookies()).some((c) => c.name === "fr-theme" && c.value === "light"), "theme choice is remembered");
   await ctx.close();

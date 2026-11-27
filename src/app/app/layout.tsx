@@ -6,11 +6,13 @@ import { ThemeToggle } from "@/components/theme";
 import { getAppSession } from "@/lib/data/session";
 import { formatLong } from "@/lib/dates";
 import { setHideAmounts, signOut } from "./actions";
-import { Glyph } from "@/components/icon";
+import { Eye, EyeOff, LogOut, Settings } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { BankAutoSync } from "@/components/bank-auto-sync";
 import { CategoryStylesProvider } from "@/components/custom-glyph";
 import { plaidMode } from "@/lib/plaid/config";
+
+const iconBtn = "flex h-8 w-8 items-center justify-center rounded-full text-muted transition hover:bg-surface-2 hover:text-ink";
 
 export const metadata: Metadata = { title: "Today", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -27,18 +29,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/app" className="flex items-center">
             <Logo />
           </Link>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="hidden text-muted sm:inline">{formatLong(today)}</span>
+          <div className="flex items-center gap-0.5 text-sm">
+            <span className="mr-2 hidden text-muted sm:inline">{formatLong(today)}</span>
             <ThemeToggle saved={snapshot.profile.theme} persist />
             <form action={setHideAmounts}>
               <input type="hidden" name="hide" value={hide ? "false" : "true"} />
-              <button className="btn btn-ghost btn-sm" aria-pressed={hide} title="Hide amounts on screen (for when someone is looking over your shoulder)">
-                {hide ? "Show amounts" : "Hide amounts"}
+              <button aria-pressed={hide} aria-label={hide ? "Show amounts" : "Hide amounts"} title={hide ? "Show amounts" : "Hide amounts (for when someone is looking over your shoulder)"} className={iconBtn}>
+                {hide ? <EyeOff size={16} strokeWidth={2} aria-hidden /> : <Eye size={16} strokeWidth={2} aria-hidden />}
               </button>
             </form>
-            <Link href="/app/settings" className="btn btn-ghost btn-sm lg:hidden" aria-label="Settings" title="Settings"><Glyph name="⚙" size="xs" /></Link>
+            <Link href="/app/settings" className={`${iconBtn} lg:hidden`} aria-label="Settings" title="Settings"><Settings size={16} strokeWidth={2} aria-hidden /></Link>
             <form action={signOut}>
-              <button className="btn btn-ghost btn-sm" title={user.email ?? undefined}>Sign out</button>
+              <button className={iconBtn} aria-label="Sign out" title={`Sign out${user.email ? ` (${user.email})` : ""}`}><LogOut size={16} strokeWidth={2} aria-hidden /></button>
             </form>
           </div>
         </header>
