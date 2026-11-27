@@ -3,6 +3,9 @@ import { DeleteAccountForm, DeleteDataForm, ImportForm, PasswordForm, ProfileFor
 import { Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
 import { MorningToggle } from "@/components/morning-toggle";
+import { PayWith } from "@/components/pay-with";
+import { everydayPaySplit } from "@/lib/engine";
+import { toEngineInput } from "@/lib/data/snapshot";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
 import { clearDecisions, deleteCorrection, setHideAmounts } from "@/app/app/actions";
@@ -27,6 +30,15 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
         </Card>
         <Card title={<>Morning note <Info label="Morning note">Each morning, a notification with today&apos;s limit and the one thing worth knowing about the day (a plan, payday, a grocery run that&apos;s due). Tap it to open your day. It&apos;s set per device.</Info></>}>
           <MorningToggle demo={demo} />
+        </Card>
+        <Card title={<>Everyday purchases go on <Info label="Everyday purchases">Card purchases leave your cash on the statement&apos;s due date, not the day you buy. Debit purchases leave the same day. Auto reads it from your recent history. This changes when your forecast shows money leaving, not your daily limits.</Info></>}>
+          {(() => {
+            const input = toEngineInput(snapshot, new Date().toISOString().slice(0, 10));
+            const split = everydayPaySplit({ ...input, everydayPay: "auto" });
+            const cards = snapshot.accounts.filter((a) => a.kind === "credit_card" && !a.archived);
+            const auto = split.length ? split.map((x) => `${Math.round(x.share * 100)}% ${cards.find((c) => c.id === x.accountId)?.name ?? "card"}`).join(", ") + (split.reduce((t, x) => t + x.share, 0) < 0.98 ? ", rest debit" : "") : "mostly debit";
+            return <PayWith value={input.everydayPay ?? "auto"} cards={cards.map((c) => ({ id: c.id, name: c.name }))} auto={auto} />;
+          })()}
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
         <Card title={<>What {APP_NAME} remembers <Info label="What we remember">When you correct a cost or make a decision, we remember it so you don&apos;t have to repeat yourself next time. Remove anything you&apos;d rather we forget.</Info></>} id="memory">

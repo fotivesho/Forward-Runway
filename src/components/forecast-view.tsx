@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { avgDailyCardSpend, buildForecast, HORIZONS } from "@/lib/engine";
+import { avgDailyCardSpend, buildForecast, everydayCash, HORIZONS } from "@/lib/engine";
 import { addDays, diffDays, eachDay, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import { toEngineInput, type Snapshot } from "@/lib/data/snapshot";
 import { predict, spendModel } from "@/lib/view/patterns";
@@ -27,8 +27,9 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
   const model = useMemo(() => spendModel(snapshot, today), [snapshot, today]);
   const life = useMemo(() => {
     const p = model ? predict(model, today, f.endDate) : null;
-    let usual = 0;
-    const real = f.days.map((d) => d.closingCents - (usual += p?.byDay[d.date] ?? 0));
+    const usual = f.days.reduce((t, d) => t + (p?.byDay[d.date] ?? 0), 0);
+    const cash = everydayCash(toEngineInput(snapshot, today), f, (d) => p?.byDay[d] ?? 0);
+    const real = f.days.map((d, i) => d.closingCents - cash.cumulative[i]!);
     const low = real.reduce((b, c, i) => (c < real[b]! ? i : b), 0);
     return { real, everyday: usual, low: { cents: real[low]!, date: f.days[low]!.date }, hasModel: !!p, byDay: p?.byDay ?? {} };
   }, [model, f, today]);

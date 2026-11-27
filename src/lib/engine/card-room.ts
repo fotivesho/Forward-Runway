@@ -1,7 +1,8 @@
-import { diffDays, dayOfWeek, type ISODate } from "../dates";
+import { dayOfWeek, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { buildForecast } from "./forecast";
-import { avgDailyCardSpend, spendingBaseline } from "./spending";
+import { spendingBaseline } from "./spending";
+import { everydayCash } from "./everyday-cash";
 import type { EngineInput, Forecast } from "./types";
 
 export interface CardRoomResult {
@@ -25,9 +26,9 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
   if (!card) return [];
   const base = spendingBaseline(input);
   const everydayOn = (d: ISODate) => (base.reliable ? base.byWeekday[dayOfWeek(d)]! : base.avgDailyCents);
-  let everyday = 0;
-  const real = f.days.map((d) => d.closingCents - (everyday += everydayOn(d.date)));
-  const perDayOnCard = avgDailyCardSpend(input, accountId);
+  // When everyday spending leaves cash: debit the same day, card purchases on their statement's due date.
+  const cash = everydayCash(input, f, everydayOn);
+  const real = f.days.map((d, i) => d.closingCents - cash.cumulative[i]!);
   const out: CardRoomResult[] = [];
   for (const st of card.statements.filter((x) => x.dueDate >= input.today && x.dueDate <= f.endDate && x.autoPaymentCents > 0).slice(0, 2)) {
     const di = f.days.findIndex((d) => d.date === st.dueDate);
@@ -35,7 +36,7 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
     const isBill = (it: { kind: string; postings: Array<{ accountId: string }>; date: ISODate }) => it.kind === "card_payment" && it.date === st.dueDate && it.postings.some((p) => p.accountId === accountId);
     // Everyday purchases you'll still make on this card before it closes land in this bill: count
     // them in the bill (like What if does), and not a second time as everyday spending.
-    const onCard = st.isProjected ? perDayOnCard * Math.max(0, diffDays(input.today, st.closingDate)) : 0;
+    const onCard = Math.round(cash.onStatement.get(`${accountId}|${st.dueDate}`) ?? 0);
     const bill = -f.days[di]!.items.filter(isBill).reduce((t, it) => t + it.cashEffectCents, 0) + onCard;
     let paydays = 0;
     let bills = 0;
@@ -47,9 +48,9 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
         if (it.cashEffectCents > 0) paydays += it.cashEffectCents;
         else bills += -it.cashEffectCents;
       }
-      usual += everydayOn(d.date);
     }
-    usual = Math.max(0, usual - onCard);
+    // Everyday spending that leaves cash by the due date, not counting what's inside this bill.
+    usual = Math.max(0, cash.cumulative[di]! - onCard);
     const beforeBill = f.startingCashCents + paydays - bills - usual;
     const nextPay = f.days.findIndex((d, i) => i > di && d.items.some((it) => it.kind === "income" && it.cashEffectCents > 0));
     const until = nextPay < 0 ? Math.min(f.days.length - 1, di + 30) : nextPay - 1;

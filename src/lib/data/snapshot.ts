@@ -127,6 +127,7 @@ export function toEngineInput(s: Snapshot, today: ISODate): EngineInput {
     statements: s.statements,
     goals: s.goals,
     settings: s.settings,
+    everydayPay: String((s.corrections.find((c) => c.kind === "preference" && c.matchKey === "pay_everyday_with")?.value as { with?: string } | undefined)?.with ?? "auto"),
   };
 }
 

@@ -184,6 +184,8 @@ export interface EngineInput {
   statements: CardStatement[];
   goals: SavingsGoal[];
   settings: ForecastSettings;
+  /** How everyday purchases are paid: "auto" (from history), "debit", or a card's id. */
+  everydayPay?: string;
 }
 
 export type ItemSource =

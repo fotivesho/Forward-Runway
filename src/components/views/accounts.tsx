@@ -12,7 +12,7 @@ import { ReplaceWithBankForm } from "@/components/replace-with-bank";
 import { BankAccountPanel } from "@/components/bank-account-panel";
 import { CardRoomView } from "@/components/card-room";
 import { cardRoom } from "@/lib/view/card-room";
-import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
+import { avgDailyCardSpend, buildForecast, everydayCash } from "@/lib/engine";
 import { toEngineInput } from "@/lib/data/snapshot";
 import { CashPath } from "@/components/cash-path";
 import { Glyph } from "@/components/icon";
@@ -60,11 +60,11 @@ export function AccountsView({
     if (days.length < 2 || !active.some((a) => a.isSpendable)) return null;
     const model = spendModel(snapshot, today);
     const p = model ? predict(model, today, days[days.length - 1]!.date) : null;
-    let usual = 0;
+    const cash = p ? everydayCash(input, forecast, (d) => p.byDay[d] ?? 0) : null;
     return {
       dates: days.map((d) => d.date),
       scheduled: days.map((d) => d.closingCents),
-      real: p ? days.map((d) => d.closingCents - (usual += p.byDay[d.date] ?? 0)) : null,
+      real: cash ? days.map((d, i) => d.closingCents - cash.cumulative[i]!) : null,
     };
   })();
 

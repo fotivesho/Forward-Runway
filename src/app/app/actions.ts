@@ -337,6 +337,15 @@ export async function addFoundRepeats(keys: string[]): Promise<{ ok: boolean; ad
   return { ok: true, added };
 }
 
+/** How everyday purchases are paid ("auto", "debit" or a card's id): when they leave your cash. */
+export async function saveEverydayPay(value: string): Promise<{ ok: boolean }> {
+  const { supabase } = await session();
+  if (value !== "auto" && value !== "debit" && !/^[0-9a-f-]{36}$/i.test(value)) return { ok: false };
+  const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: "pay_everyday_with", value: { with: value } }, { onConflict: "user_id,kind,match_key" });
+  revalidatePath("/app", "layout");
+  return { ok: !error };
+}
+
 /** "Not repeating": stop suggesting this one (remembered, so it doesn't come back). */
 export async function dismissRecurring(form: FormData) {
   const { supabase } = await session();

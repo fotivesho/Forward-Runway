@@ -1,4 +1,5 @@
 import { cardRoomFor } from "./card-room";
+import { everydayCash } from "./everyday-cash";
 import { addMonths, dayOfWeek, diffDays, formatShort, maxDate, parts as dateParts, type ISODate } from "../dates";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -401,11 +402,10 @@ export function previewOption(ctx: AffordContext, req: AffordRequest, option: Af
 /** The lowest your balance gets with your usual everyday spending in it (same estimate as max). */
 function usualLow(input: EngineInput, f: Forecast): { cents: Cents; date: ISODate } {
   const b = spendingBaseline(input);
-  let everyday = 0;
+  const cash = everydayCash(input, f, (d) => (b.reliable ? b.byWeekday[dayOfWeek(d)]! : b.avgDailyCents));
   let low = { cents: Number.POSITIVE_INFINITY, date: f.startDate };
-  for (const d of f.days) {
-    everyday += b.reliable ? b.byWeekday[dayOfWeek(d.date)]! : b.avgDailyCents;
-    const c = d.closingCents - everyday;
+  for (const [i, d] of f.days.entries()) {
+    const c = d.closingCents - cash.cumulative[i]!;
     if (c < low.cents) low = { cents: c, date: d.date };
   }
   return Number.isFinite(low.cents) ? low : { cents: f.startingCashCents, date: f.startDate };

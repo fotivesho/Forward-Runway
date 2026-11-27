@@ -9,6 +9,8 @@ import { DemoCtx } from "./form";
 import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import type { Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
+import { everydayCash } from "@/lib/engine";
+import { toEngineInput } from "@/lib/data/snapshot";
 import { buildBudget } from "@/lib/view/budget";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
 import { Money } from "./privacy";
@@ -389,9 +391,9 @@ function TodayForecast({ m, snapshot, today, base }: { m: ReturnType<typeof buil
   const real = useMemo(() => {
     const model = spendModel(snapshot, today);
     const p = model ? predict(model, today, days[days.length - 1]!.date) : null;
-    let usual = 0;
-    return days.map((d) => d.closingCents - (usual += p?.byDay[d.date] ?? 0));
-  }, [snapshot, today, days]);
+    const cash = everydayCash(toEngineInput(snapshot, today), m.forecast90, (d) => p?.byDay[d] ?? 0);
+    return days.map((d, i) => d.closingCents - cash.cumulative[i]!);
+  }, [snapshot, today, days, m.forecast90]);
   const low = Math.min(...real);
   const floor = m.forecast90.floorCents;
   return (
