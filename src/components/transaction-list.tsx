@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useState, useTransition } from "react";
+import { Search } from "lucide-react";
 import { deleteTransaction, setTransactionCategory } from "@/app/app/actions";
 import { formatLong, formatShort, type ISODate } from "@/lib/dates";
 import type { Account, OneTimeTransaction } from "@/lib/engine";
@@ -39,7 +40,10 @@ export function TransactionList({
   categories?: string[];
 }) {
   const [repeat, setRepeat] = useState(false);
-  const [cat, setCat] = useState<string | null>(null);
+  const [cat, setCatRaw] = useState<string | null>(null);
+  const [period, setPeriod] = useState<{ start: ISODate; end: ISODate; label: string } | null>(null);
+  const [q, setQ] = useState("");
+  const setCat = (c: string | null) => { setCatRaw(c); setPeriod(null); };
   const [open, setOpen] = useState<string | null>(null);
   // Show the latest days first; older ones a tap away.
   const [days, setDays] = useState(10);
@@ -54,7 +58,17 @@ export function TransactionList({
     totals.set(c, (totals.get(c) ?? 0) + t.amountCents);
   }
   const chips = [...totals.entries()].sort((a, b) => b[1] - a[1]);
-  const shown = cat ? txns.filter((t) => (t.category ?? "Other") === cat) : txns;
+  const query = q.trim().toLowerCase();
+  const matches = (t: OneTimeTransaction) =>
+    !query ||
+    t.description.toLowerCase().includes(query) ||
+    (t.category ?? "").toLowerCase().includes(query) ||
+    name(t.accountId).toLowerCase().includes(query) ||
+    (/^[\d.,$]+$/.test(query) && (t.amountCents / 100).toFixed(2).includes(query.replace(/[$,]/g, "")));
+  const shown = txns.filter((t) => (!cat || (t.category ?? "Other") === cat) && (!period || (t.date >= period.start && t.date <= period.end)) && matches(t));
+  const filtered = !!(period || query);
+  const outTotal = shown.filter((t) => t.direction === "out").reduce((a, t) => a + t.amountCents, 0);
+  const inTotal = shown.filter((t) => t.direction === "in").reduce((a, t) => a + t.amountCents, 0);
   const current = open ? (txns.find((t) => t.id === open) ?? null) : null;
   const groups = new Map<ISODate, OneTimeTransaction[]>();
   for (const t of shown) groups.set(t.date, [...(groups.get(t.date) ?? []), t]);
@@ -64,6 +78,11 @@ export function TransactionList({
   }
   return (
     <div>
+      <label className="mb-3 flex items-center gap-2 rounded-full border border-line bg-surface px-4 focus-within:border-brand/60">
+        <Search size={15} className="text-faint" aria-hidden />
+        <span className="sr-only">Search transactions</span>
+        <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, category or amount" className="pill-input min-w-0 flex-1 bg-transparent py-2.5 text-sm text-ink outline-none placeholder:text-faint" />
+      </label>
       {chips.length > 0 && (
         <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Pick a category to see it over time (this month's totals)">
           <button type="button" onClick={() => setCat(null)} aria-pressed={cat === null} className={chip(cat === null)}>All</button>
@@ -74,7 +93,24 @@ export function TransactionList({
           ))}
         </div>
       )}
-      {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} />}
+      {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} picked={period?.start ?? null} onPick={(b) => setPeriod(b ? { start: b.start, end: b.end, label: b.label } : null)} />}
+      {filtered && (
+        <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-surface-2/70 px-3 py-2" aria-live="polite">
+          <span className="min-w-0 text-sm text-muted">
+            <span className="font-semibold text-ink">{[cat, period?.label, query && `“${q.trim()}”`].filter(Boolean).join(" · ")}</span>
+            {" "}· {shown.length} {shown.length === 1 ? "transaction" : "transactions"}
+          </span>
+          <span className="flex shrink-0 items-center gap-2">
+            <span className="font-num text-lg leading-none text-display">
+              {outTotal > 0 && <Money cents={-outTotal} sign />}
+              {inTotal > 0 && <> {outTotal > 0 && " "}<Money cents={inTotal} sign tone="in" /></>}
+              {outTotal === 0 && inTotal === 0 && <Money cents={0} />}
+            </span>
+            <button type="button" onClick={() => { setPeriod(null); setQ(""); }} className="text-xs font-semibold text-brand">Clear</button>
+          </span>
+        </div>
+      )}
+      {filtered && shown.length === 0 && <p className="py-6 text-center text-sm text-muted">Nothing matches.</p>}
       <div className="space-y-3">
         {[...groups.entries()].slice(0, days).map(([date, list]) => {
           const dayOut = list.filter((t) => t.direction === "out").reduce((s, t) => s + t.amountCents, 0);

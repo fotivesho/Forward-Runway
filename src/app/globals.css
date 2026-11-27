@@ -344,3 +344,8 @@ input[type="date"] {
 input[type="date"]::-webkit-date-and-time-value {
   text-align: left;
 }
+
+/* Inputs inside a pill that shows its own focus (the pill's border) don't need a second ring. */
+.pill-input:focus-visible {
+  outline: none;
+}

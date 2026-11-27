@@ -23,6 +23,8 @@ export interface RecurringSuggestion {
   nextDate: ISODate;
   seen: number;
   lastDate: ISODate;
+  /** The charges it was found from, newest last (to check it really repeats). */
+  charges: Array<{ id: string; date: ISODate; cents: Cents; description: string }>;
 }
 
 /** "AMAZON PRIME*2K4 Seattle WA 03/12" and "Amazon Prime 2K8" → "amazon prime". */
@@ -143,6 +145,7 @@ export function findRecurring(
       nextDate: next,
       seen: dates.length,
       lastDate: last,
+      charges: sorted.slice(-8).map((t) => ({ id: t.id, date: t.date, cents: t.amountCents, description: t.description })),
     });
   }
   // Income first, then the biggest bills.

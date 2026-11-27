@@ -32,6 +32,7 @@ export function suggestionToRule(s: RecurringSuggestion): RecurringRule {
 /** "Found in your history": repeating money your bank shows, added with one tap. */
 export function RecurringSuggestions({ suggestions, accounts, today }: { suggestions: RecurringSuggestion[]; accounts: Account[]; today: ISODate }) {
   const [review, setReview] = useState<RecurringSuggestion | null>(null);
+  const [openKey, setOpenKey] = useState<string | null>(null);
   if (suggestions.length === 0) return null;
   return (
     <section className="mb-4 rounded-xl border border-info/40 bg-info/5 p-3" aria-labelledby="found-title">
@@ -41,14 +42,16 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
           <li key={s.key} className="rounded-xl bg-surface p-3">
             <div className="flex items-center gap-3">
               <Glyph name={s.kind === "income" ? "income" : s.category} size="md" />
-              <span className="min-w-0 flex-1">
+              <button type="button" onClick={() => setOpenKey(openKey === s.key ? null : s.key)} aria-expanded={openKey === s.key} className="min-w-0 flex-1 text-left">
                 <span className="block truncate text-sm font-semibold text-ink">{s.name}</span>
                 <span className="block text-xs text-muted">
                   <span className={s.kind === "income" ? "text-in" : "text-out"}>{s.kind === "income" ? "+" : ""}{s.varies ? "~" : ""}<Money cents={s.amountCents} whole /></span> {FREQ[s.frequency]} · next {formatShort(s.nextDate)}
                 </span>
-              </span>
+                <span className="mt-0.5 block text-[11px] font-semibold text-brand">{openKey === s.key ? "Hide" : `Seen ${s.seen} times ›`}</span>
+              </button>
               <QuickAction action={dismissRecurring} fields={{ key: s.key }} label={`Not repeating: ${s.name}`}>✕</QuickAction>
             </div>
+            {openKey === s.key && <Charges s={s} />}
             <div className="mt-2 flex items-center gap-2 pl-12">
               <ActionForm action={saveRule} aria-label={`Add ${s.name}`}>
                 <input type="hidden" name="kind" value={s.kind} />
@@ -75,5 +78,31 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
         </Modal>
       )}
     </section>
+  );
+}
+
+/** The charges behind a suggestion, so you can check it really repeats: bars, then each one. */
+function Charges({ s }: { s: RecurringSuggestion }) {
+  const max = Math.max(1, ...s.charges.map((c) => c.cents));
+  const tone = s.kind === "income" ? "bg-in" : "bg-out";
+  return (
+    <div className="fade-up mt-3 pl-12">
+      <div className="flex h-12 items-end gap-1" aria-hidden>
+        {s.charges.map((c) => <span key={c.id} className={`flex-1 rounded-t ${tone} opacity-70`} style={{ height: `${Math.max(8, (c.cents / max) * 100)}%` }} />)}
+        <span className={`flex-1 rounded-t border border-dashed ${s.kind === "income" ? "border-in" : "border-out"}`} style={{ height: `${Math.max(8, (s.amountCents / max) * 100)}%` }} />
+      </div>
+      <ul className="mt-2 divide-y divide-line rounded-xl border border-line text-xs">
+        {[...s.charges].reverse().map((c) => (
+          <li key={c.id} className="flex items-center justify-between gap-2 px-3 py-1.5">
+            <span className="min-w-0 truncate"><span className="font-semibold text-ink">{formatShort(c.date)}</span> <span className="text-muted">{c.description}</span></span>
+            <Money cents={s.kind === "income" ? c.cents : -c.cents} sign tone="auto" className="shrink-0 font-semibold" />
+          </li>
+        ))}
+        <li className="flex items-center justify-between gap-2 px-3 py-1.5 text-faint">
+          <span>{formatShort(s.nextDate)} · expected next</span>
+          <span>{s.varies ? "~" : ""}<Money cents={s.amountCents} /></span>
+        </li>
+      </ul>
+    </div>
   );
 }
