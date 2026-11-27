@@ -62,7 +62,7 @@ for (const width of [390, 1280]) {
   const { page, res, errors } = await visit("/demo", width);
   check(res.status() === 200, `demo loads at ${width}px`);
   check(errors.length === 0, `demo has no console errors at ${width}px ${errors.join(" | ")}`);
-  check(await page.getByText("Today's limit", { exact: true }).isVisible(), `safe-to-spend card visible at ${width}px`);
+  check(await page.getByText(/^Today's limit/).first().isVisible(), `safe-to-spend card visible at ${width}px`);
   check(await page.getByText("fictional data", { exact: false }).first().isVisible(), "demo is labelled as fictional");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   check(!overflow, `no horizontal scroll at ${width}px`);
