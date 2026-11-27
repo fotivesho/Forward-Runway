@@ -26,8 +26,9 @@ export function HistoryChart({
   // A line through identical bars (a fixed paycheck) says nothing: only show it when amounts vary.
   const spread = past.length ? Math.max(...past.map((b) => b.cents)) - Math.min(...past.map((b) => b.cents)) : 0;
   const avg = mean > 0 && spread > mean * 0.05 ? mean : 0;
-  const solid = tone === "in" ? "bg-in" : "bg-out";
   const color = tone === "in" ? "var(--color-in)" : "var(--color-out)";
+  const grad = `linear-gradient(to top, color-mix(in srgb, ${color} 50%, transparent), ${color})`;
+  const glow = `0 0 12px -2px color-mix(in srgb, ${color} 70%, transparent)`;
   const hatch = { backgroundImage: `repeating-linear-gradient(135deg, color-mix(in srgb, ${color} 28%, transparent) 0 3px, transparent 3px 7px)`, borderColor: color };
   const firstAhead = bars.findIndex((b) => b.kind !== "past");
   const sel = bars.find((b) => b.key === selected) ?? null;
@@ -69,15 +70,15 @@ export function HistoryChart({
                 </span>
               )}
               {b.kind === "past" && (
-                <span className={`block w-full rounded-t-md ${solid} transition ${on ? "opacity-100" : "opacity-55 group-hover:opacity-80"}`} style={{ height: `${h}%` }} />
+                <span className={`mx-auto block w-full max-w-[14px] rounded-full transition ${on ? "opacity-100" : "opacity-60 group-hover:opacity-85"}`} style={{ height: `${h}%`, background: grad, boxShadow: on ? glow : undefined }} />
               )}
               {b.kind === "ahead" && (
-                <span className={`block w-full rounded-t-md border border-dashed transition ${on ? "opacity-100" : "opacity-70"}`} style={{ height: `${h}%`, ...hatch }} />
+                <span className={`mx-auto block w-full max-w-[14px] rounded-full border border-dashed transition ${on ? "opacity-100" : "opacity-70"}`} style={{ height: `${h}%`, ...hatch }} />
               )}
               {b.kind === "now" && (
-                <span className={`flex w-full flex-col justify-end overflow-hidden rounded-t-md transition ${on ? "opacity-100" : "opacity-75"}`} style={{ height: `${h}%` }}>
-                  <span className="block w-full flex-1 border border-b-0 border-dashed" style={hatch} />
-                  <span className={`block w-full ${solid}`} style={{ height: `${((b.doneCents ?? 0) / Math.max(1, b.cents)) * 100}%` }} />
+                <span className={`mx-auto flex w-full max-w-[14px] flex-col justify-end overflow-hidden rounded-full transition ${on ? "opacity-100" : "opacity-75"}`} style={{ height: `${h}%`, boxShadow: on ? glow : undefined }}>
+                  <span className="block w-full flex-1 rounded-t-full border border-b-0 border-dashed" style={hatch} />
+                  <span className="block w-full" style={{ height: `${((b.doneCents ?? 0) / Math.max(1, b.cents)) * 100}%`, background: grad }} />
                 </span>
               )}
               {on && <span aria-hidden className="absolute -bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-ink" />}

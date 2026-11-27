@@ -83,23 +83,44 @@ export function RecurringSuggestions({ suggestions, accounts, today }: { suggest
 
 /** The charges behind a suggestion, so you can check it really repeats: bars, then each one. */
 function Charges({ s }: { s: RecurringSuggestion }) {
-  const max = Math.max(1, ...s.charges.map((c) => c.cents));
-  const tone = s.kind === "income" ? "bg-in" : "bg-out";
+  const max = Math.max(1, s.amountCents, ...s.charges.map((c) => c.cents));
+  const color = s.kind === "income" ? "var(--color-in)" : "var(--color-out)";
+  const h = (c: number) => `${Math.max(14, (c / max) * 100)}%`;
+  const mon = (d: string) => formatShort(d).split(" ")[0];
+  // Monthly: the month says it all. Weekly: the day, with the month only where it changes.
+  const dates = [...s.charges.map((c) => c.date), s.nextDate];
+  const label = (d: string, i: number) => {
+    if (s.frequency === "monthly") return mon(d);
+    const [m, day] = formatShort(d).split(" ");
+    return i === 0 || mon(dates[i - 1]!) !== m ? `${m} ${day}` : day;
+  };
   return (
     <div className="fade-up mt-3 pl-12">
-      <div className="flex h-12 items-end gap-1" aria-hidden>
-        {s.charges.map((c) => <span key={c.id} className={`flex-1 rounded-t ${tone} opacity-70`} style={{ height: `${Math.max(8, (c.cents / max) * 100)}%` }} />)}
-        <span className={`flex-1 rounded-t border border-dashed ${s.kind === "income" ? "border-in" : "border-out"}`} style={{ height: `${Math.max(8, (s.amountCents / max) * 100)}%` }} />
+      <div className="flex items-end justify-between gap-1 rounded-2xl bg-surface-2/50 px-3 pb-2 pt-3" aria-hidden>
+        {s.charges.map((c, k) => (
+          <span key={c.id} className="flex flex-1 flex-col items-center gap-1.5">
+            <span className="flex h-14 items-end">
+              <span className="w-2 rounded-full" style={{ height: h(c.cents), background: `linear-gradient(to top, color-mix(in srgb, ${color} 55%, transparent), ${color})`, boxShadow: `0 0 10px -2px color-mix(in srgb, ${color} 60%, transparent)` }} />
+            </span>
+            <span className="whitespace-nowrap text-[9px] uppercase tracking-wide text-faint">{label(c.date, k)}</span>
+          </span>
+        ))}
+        <span className="flex flex-1 flex-col items-center gap-1.5">
+          <span className="flex h-14 items-end">
+            <span className="w-2 rounded-full border border-dashed" style={{ height: h(s.amountCents), borderColor: color }} />
+          </span>
+          <span className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wide" style={{ color }}>{label(s.nextDate, dates.length - 1)}</span>
+        </span>
       </div>
       <ul className="mt-2 divide-y divide-line rounded-xl border border-line text-xs">
-        {[...s.charges].reverse().map((c) => (
+        {s.charges.map((c) => (
           <li key={c.id} className="flex items-center justify-between gap-2 px-3 py-1.5">
             <span className="min-w-0 truncate"><span className="font-semibold text-ink">{formatShort(c.date)}</span> <span className="text-muted">{c.description}</span></span>
             <Money cents={s.kind === "income" ? c.cents : -c.cents} sign tone="auto" className="shrink-0 font-semibold" />
           </li>
         ))}
         <li className="flex items-center justify-between gap-2 px-3 py-1.5 text-faint">
-          <span>{formatShort(s.nextDate)} · expected next</span>
+          <span><span className="font-semibold">{formatShort(s.nextDate)}</span> · expected next</span>
           <span>{s.varies ? "~" : ""}<Money cents={s.amountCents} /></span>
         </li>
       </ul>
