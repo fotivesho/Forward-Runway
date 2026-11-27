@@ -27,7 +27,7 @@ export class LoadError extends Error {}
  * the user's session, so it can only ever return their own rows.
  */
 export async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> {
-  const historyFrom = new Date(Date.now() - 400 * 86_400_000).toISOString().slice(0, 10);
+  const historyFrom = new Date(Date.now() - 760 * 86_400_000).toISOString().slice(0, 10);
   const [profile, settings, accounts, rules, overrides, txns, transfers, statements, goals, sources, events, corrections, decisions, scenarios] =
     await Promise.all([
       supabase.from("profiles").select("*").maybeSingle(),

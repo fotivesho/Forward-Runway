@@ -29,7 +29,7 @@ function plaidHttp(env: "sandbox" | "production", clientId: string, secret: stri
         user: { client_user_id: userId },
         ...(accessToken
           ? { access_token: accessToken }
-          : { products: ["transactions"], optional_products: ["liabilities"], transactions: { days_requested: 180 } }),
+          : { products: ["transactions"], optional_products: ["liabilities"], transactions: { days_requested: 730 } }),
         country_codes: ["US"],
         language: "en",
         ...(plaidEnv("PLAID_REDIRECT_URI") ? { redirect_uri: plaidEnv("PLAID_REDIRECT_URI") } : {}),
