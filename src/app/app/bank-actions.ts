@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { todayInZone } from "@/lib/dates";
 import { getUser } from "@/lib/supabase/server";
 import { plaidMode } from "@/lib/plaid/config";
-import { connectBank, disconnectBank, linkToken, syncBank } from "@/lib/plaid/sync";
+import { connectBank, disconnectBank, linkToken, refreshBankHistory, syncBank } from "@/lib/plaid/sync";
 
 export type BankResult = { ok: true; message: string; token?: string; refreshed?: boolean } | { ok: false; message: string };
 
@@ -93,4 +93,19 @@ export async function autoSyncBanks(): Promise<{ synced: number; added: number }
   } catch {
     return { synced: 0, added: 0 };
   }
+}
+
+/** Starts Plaid Link for a fresh connection to an existing bank (to reach back further). */
+export async function startHistoryRefresh(): Promise<BankResult> {
+  return startBankLink();
+}
+
+/** Link finished for a refresh: move the new connection onto this bank's accounts. */
+export async function finishHistoryRefresh(connectionId: string, publicToken: string): Promise<BankResult> {
+  if (plaidMode() === "off" || !uuid.test(connectionId)) return { ok: false, message: "Unknown connection." };
+  if (typeof publicToken !== "string" || publicToken.length > 300 || !/^public-/.test(publicToken)) return { ok: false, message: "That didn't come from Plaid." };
+  const { supabase, user, today } = await signedIn();
+  const r = await refreshBankHistory(supabase, user.id, connectionId, publicToken, today);
+  revalidatePath("/app", "layout");
+  return r.ok ? { ok: true, message: r.message } : { ok: false, message: r.message };
 }

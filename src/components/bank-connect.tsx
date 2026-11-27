@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { disconnectBankNow, finishBankLink, startBankLink, syncBankNow, type BankResult } from "@/app/app/bank-actions";
+import { disconnectBankNow, finishBankLink, finishHistoryRefresh, startBankLink, startHistoryRefresh, syncBankNow, type BankResult } from "@/app/app/bank-actions";
 import { Badge } from "./ui";
 import { Glyph } from "@/components/icon";
 import { Info } from "./info";
@@ -75,9 +75,9 @@ export function BankConnections({
   const [pending, start] = useTransition();
   const [note, setNote] = useState<BankResult | null>(null);
 
-  const openLink = async (token: string, connectionId: string | undefined, receivedRedirectUri?: string) => {
+  const openLink = async (token: string, connectionId: string | undefined, receivedRedirectUri?: string, refreshId?: string) => {
     try {
-      sessionStorage.setItem(RESUME_KEY, JSON.stringify({ token, connectionId: connectionId ?? null }));
+      sessionStorage.setItem(RESUME_KEY, JSON.stringify({ token, connectionId: connectionId ?? null, refreshId: refreshId ?? null }));
     } catch {
       // Without storage an OAuth bank can't resume, but every other bank still works.
     }
@@ -95,7 +95,7 @@ export function BankConnections({
           ...(receivedRedirectUri ? { receivedRedirectUri } : {}),
           onSuccess: (publicToken, metadata) => {
             start(async () => {
-              setNote(connectionId ? await syncBankNow(connectionId) : await finishBankLink(publicToken, metadata.institution?.name ?? null));
+              setNote(refreshId ? await finishHistoryRefresh(refreshId, publicToken) : connectionId ? await syncBankNow(connectionId) : await finishBankLink(publicToken, metadata.institution?.name ?? null));
             });
             handler.destroy();
             finish();
@@ -130,7 +130,7 @@ export function BankConnections({
     } catch {}
     const here = window.location.href;
     window.history.replaceState(null, "", window.location.pathname);
-    if (saved?.token) void openLink(saved.token, saved.connectionId ?? undefined, here);
+    if (saved?.token) void openLink(saved.token, saved.connectionId ?? undefined, here, (saved as { refreshId?: string | null }).refreshId ?? undefined);
     else setNote({ ok: false, message: "Your bank sent you back, but the connection had expired. Tap Connect your bank to try again." });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -158,6 +158,17 @@ export function BankConnections({
         return;
       }
       await openLink(t.token, connectionId);
+    });
+
+  // Refresh history: a fresh connection to the same bank (to reach back up to 2 years), moved onto these accounts.
+  const refresh = (connectionId: string) =>
+    start(async () => {
+      if (!window.confirm("Refresh history? You'll sign in to this bank again, and it can bring in up to 2 years of transactions. Your accounts, repeating items and categories stay as they are.")) return;
+      setNote(null);
+      const t = await startHistoryRefresh();
+      if (!t.ok || !t.token) return setNote(t);
+      if (mode === "mock") return setNote(await finishHistoryRefresh(connectionId, "public-mock-1"));
+      await openLink(t.token, undefined, undefined, connectionId);
     });
 
   const run = (fn: () => Promise<BankResult>) => start(async () => setNote(await fn()));
@@ -203,9 +214,10 @@ export function BankConnections({
               <div className="mt-2 flex flex-wrap gap-2">
                 {c.status === "needs_reauth" ? (
                   <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => link(c.id)}>Sign in again</button>
-                ) : (
+                ) : (<>
                   <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={() => syncFresh(c.id)}>{pending ? "Syncing…" : "Sync now"}</button>
-                )}
+                  <button type="button" className="btn btn-ghost btn-sm" disabled={pending} onClick={() => refresh(c.id)} title="Reconnect to bring in up to 2 years of history">Refresh history</button>
+                </>)}
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm text-danger"
