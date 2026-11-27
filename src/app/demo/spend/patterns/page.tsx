@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { PatternsPage } from "@/components/views/money-pages";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Patterns" };
+/** This moved: patterns now lives in Money's Trends tab. */
 export default function Page() {
-  return <PatternsPage {...getDemoSession()} />;
+  redirect("/demo/spend/trends");
 }

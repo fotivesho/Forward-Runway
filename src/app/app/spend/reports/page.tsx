@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { ReportsPage } from "@/components/views/money-pages";
-import { getAppSession } from "@/lib/data/session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Reports" };
-
-export default async function Page() {
-  return <ReportsPage {...await getAppSession()} />;
+/** This moved: reports now lives in Money's Trends tab. */
+export default function Page() {
+  redirect("/app/spend/trends");
 }

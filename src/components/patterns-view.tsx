@@ -38,6 +38,7 @@ export function PatternsView({
   spendingMoneyCents,
   learnedDays,
   explore,
+  hideAhead = false,
 }: {
   insights: Insight[];
   ahead: ReturnType<typeof lifeAhead>;
@@ -48,6 +49,8 @@ export function PatternsView({
   spendingMoneyCents: number;
   learnedDays: number;
   explore?: ExploreData;
+  /** On Trends, the next 30 days live in Forecast instead. */
+  hideAhead?: boolean;
 }) {
   if (!week) {
     return (
@@ -107,7 +110,7 @@ export function PatternsView({
       {explore && <PatternExplorer data={explore} />}
 
       {/* The next 30 days */}
-      <section className="card p-4" aria-labelledby="ahead-title">
+      {!hideAhead && <section className="card p-4" aria-labelledby="ahead-title">
         <div className="flex items-baseline justify-between gap-2">
           <h2 id="ahead-title" className="text-base font-bold text-ink">
             Next 30 days <Info label="Next 30 days">Everything you&apos;re likely to spend in the next month, in two kinds. <strong className="font-semibold">Scheduled:</strong> bills and plans on your calendar, things we know about. <strong className="font-semibold">Predicted:</strong> everyday spending nobody puts on a calendar (groceries, gas, coffee), estimated from your habits, plus big costs that tend to come around now. Your budget is built from both.</Info>
@@ -142,7 +145,7 @@ export function PatternsView({
             </ul>
           </>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

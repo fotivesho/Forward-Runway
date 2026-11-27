@@ -125,14 +125,14 @@ export interface FlowItem {
   cents: Cents;
   /** Already happened, or still to come this month. */
   when: "done" | "coming";
-  kind: "spending" | "bill" | "savings" | "income";
+  kind: "spending" | "bill" | "savings" | "income" | "plan";
 }
 
 /**
  * The same money cashFlow adds up for one period, item by item, so a total can be checked:
  * what came in, and what went out (spending, bills, savings moves), done or still coming.
  */
-export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowItem[]; out: FlowItem[] } {
+export function flowItems(s: Snapshot, today: ISODate, b: Bucket, plans: Array<{ id: string; title: string; date: ISODate; cents: Cents; category?: string | null }> = []): { in: FlowItem[]; out: FlowItem[] } {
   const bankAccounts = new Set(s.accounts.filter((a) => a.balanceSource === "bank").map((a) => a.id));
   const name = (id: string) => s.accounts.find((a) => a.id === id)?.name ?? "";
   const ins: FlowItem[] = [];
@@ -167,6 +167,11 @@ export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowIte
       when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" && !refund ? "income" : fixed ? "bill" : "spending",
     };
     (t.direction === "in" && !refund ? ins : outs).push(it);
+  }
+  // Calendar plans still ahead this month, at their estimated cost (past ones are already real charges above).
+  for (const p of plans) {
+    if (p.date < today || p.date < b.start || p.date > b.end || p.cents <= 0) continue;
+    outs.push({ key: `p-${p.id}`, date: p.date, label: p.title, category: p.category ?? null, account: "", cents: p.cents, when: "coming", kind: "plan" });
   }
   const byDate = (a: FlowItem, c: FlowItem) => (a.date < c.date ? 1 : a.date > c.date ? -1 : 0);
   return { in: ins.sort(byDate), out: outs.sort(byDate) };

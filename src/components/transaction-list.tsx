@@ -13,8 +13,8 @@ import { addMonths } from "@/lib/dates";
 import { ActionForm, DemoCtx, QuickAction, Submit } from "./form";
 import { centsToInput } from "@/lib/money";
 import { Modal } from "./modal";
-import { CategoryTrend } from "./spend-insights";
-import type { CategoryBucket } from "@/lib/view/spend";
+import { CategoryReport } from "./reports-view";
+import type { CategoryItem, SpendingReport } from "@/lib/view/budget";
 import { Money } from "./privacy";
 import { Badge, Disclosure, EmptyState } from "./ui";
 import { HistoryChart } from "./history-chart";
@@ -31,7 +31,8 @@ export function TransactionList({
   accounts,
   today,
   monthStart,
-  trends = {},
+  report = [],
+  catItems = {},
   categories = [],
   rules = [],
 }: {
@@ -40,7 +41,9 @@ export function TransactionList({
   today: ISODate;
   monthStart: ISODate;
   /** Per category: spending by month and by week, shown when you tap the category. */
-  trends?: Record<string, { month: CategoryBucket[]; week: CategoryBucket[] }>;
+  report?: SpendingReport;
+  /** Per category, what's counted in it (for the category pop-up). */
+  catItems?: Record<string, CategoryItem[]>;
   /** Your categories, most used first. */
   categories?: string[];
   /** Repeating items, to tell when a transaction already is one. */
@@ -53,6 +56,7 @@ export function TransactionList({
   const setCat = (c: string | null) => { setCatRaw(c); setPeriod(null); };
   const [open, setOpen] = useState<string | null>(null);
   const [startCat, setStartCat] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
   // Show the latest days first; older ones a tap away.
   const [days, setDays] = useState(10);
   const name = (id: string) => accounts.find((a) => a.id === id)?.name ?? "Deleted account";
@@ -104,7 +108,18 @@ export function TransactionList({
           <NewCategoryButton label="New" />
         </div>
       )}
-      {cat && trends[cat] && <CategoryTrend category={cat} month={trends[cat].month} week={trends[cat].week} picked={period?.start ?? null} onPick={(b) => setPeriod(b ? { start: b.start, end: b.end, label: b.label } : null)} />}
+      {cat && report.length > 0 && (
+        <button type="button" onClick={() => setCatOpen(true)} className="mb-3 flex w-full items-center gap-2 rounded-2xl border border-line px-3 py-2 text-left text-sm transition hover:border-brand/60">
+          <Glyph name={cat} size="sm" />
+          <span className="min-w-0 flex-1 text-muted"><b className="text-ink">{cat}</b> over time, average and trend</span>
+          <span aria-hidden className="text-faint">›</span>
+        </button>
+      )}
+      {cat && catOpen && (
+        <Modal open onClose={() => setCatOpen(false)} icon={cat} title={cat} subtitle="Last 6 months">
+          <CategoryReport cat={cat} data={report} items={catItems[cat] ?? []} />
+        </Modal>
+      )}
       {filtered && (
         <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-surface-2/70 px-3 py-2" aria-live="polite">
           <span className="min-w-0 text-sm text-muted">

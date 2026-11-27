@@ -8,8 +8,8 @@ import type { CategoryGroup } from "@/lib/data/snapshot";
 import { ActionForm, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
-import { AvgLine } from "./avg-line";
 import { NewCategoryButton } from "./new-category";
+import { CategoryReport } from "./reports-view";
 import { Money } from "./privacy";
 import { Glyph } from "@/components/icon";
 import { Badge } from "./ui";
@@ -77,11 +77,14 @@ export function BudgetView({
   demo,
   history,
   items,
+  compact = false,
 }: {
   plan: BudgetPlan;
   demo: boolean;
   /** Last months' spending per category (oldest first), for the category pop-up. */
   history: SpendingReport;
+  /** On the Month page: the plan header is replaced by Where it goes, so only the categories show. */
+  compact?: boolean;
   items: Record<string, CategoryItem[]>;
 }) {
   const [edit, setEdit] = useState<CategoryBudget | null>(null);
@@ -89,8 +92,20 @@ export function BudgetView({
   const spendingBudget = plan.groups.needs.budgetCents + plan.groups.wants.budgetCents;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+      {compact ? (
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="flex items-center text-base font-bold text-ink">
+            Budget
+            <Info label="How your budget works">
+              Built for this month, not copied from last month. Bills and calendar plans count as they&apos;re scheduled; everyday spending is predicted from your habits. If it all doesn&apos;t fit your income, needs keep their amount and wants shrink. A budget you set yourself always wins. The tick on each bar is where you&apos;d be spending evenly. Tap a category to see its history and set its budget.
+              {plan.notes.length > 0 && <span className="mt-2 block text-warn">{plan.notes.join(" ")}</span>}
+            </Info>
+          </h2>
+          <NewCategoryButton />
+        </div>
+      ) : null}
       {/* Where the month's income goes. */}
-      <section className="card p-4 sm:p-5" aria-labelledby="split-title">
+      {!compact && <section className="card p-4 sm:p-5" aria-labelledby="split-title">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 id="split-title" className="text-base font-bold text-ink">
             {monthName}'s plan
@@ -127,12 +142,12 @@ export function BudgetView({
             <LifeSplit life={plan.life} plans={plan.plans.map((p) => `${p.title} (${formatShort(p.date)})`)} />
           </>
         ) : (
-          <p className="mt-1 text-sm text-muted">No income yet <Info label="No income">Budgets start from what you earn. Add your paycheck as a repeating item (Money → Overview) and your budget will be built from it.</Info></p>
+          <p className="mt-1 text-sm text-muted">No income yet <Info label="No income">Budgets start from what you earn. Add your paycheck as a repeating item (Money → Bills) and your budget will be built from it.</Info></p>
         )}
 
-      </section>
+      </section>}
 
-      <div className="-mt-3 flex justify-end"><NewCategoryButton /></div>
+      {!compact && <div className="-mt-3 flex justify-end"><NewCategoryButton /></div>}
 
       {/* Each group and its categories. */}
       {GROUPS.filter((g) => g.id !== "savings").map((g) => {
@@ -186,8 +201,15 @@ export function BudgetView({
 
       {edit && (
         <Modal open onClose={() => setEdit(null)} icon={edit.category} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
-          <BudgetEditor key={edit.category} c={edit} history={history} demo={demo} onDone={() => setEdit(null)} />
-          <CategoryTransactions items={items[edit.category] ?? []} />
+          <CategoryReport cat={edit.category} data={history} items={items[edit.category] ?? []}>
+            <details className="group rounded-2xl border border-line">
+              <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold text-ink">
+                <span>Budget <Money cents={edit.budgetCents} whole className="font-normal text-muted" /> · <Money cents={edit.spentCents} whole className="font-normal text-muted" /> spent</span>
+                <span aria-hidden className="text-faint transition group-open:rotate-180">▾</span>
+              </summary>
+              <div className="border-t border-line p-3"><BudgetEditor key={edit.category} c={edit} history={history} demo={demo} onDone={() => setEdit(null)} /></div>
+            </details>
+          </CategoryReport>
         </Modal>
       )}
     </div>
@@ -251,63 +273,10 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
         <button type="button" className="text-brand underline" onClick={() => setValue("")}>Use smart</button>
       </p>
 
-      <div className="relative" aria-label="Spending by month">
-        <span className="pointer-events-none absolute inset-x-0 z-10 border-t-2 border-ink/70" style={{ bottom: line(budget) }} aria-hidden>
-          <span className="absolute -top-4 right-0 rounded bg-surface px-1 text-[10px] font-semibold text-ink">budget <Money cents={budget} whole /></span>
-        </span>
-        {c.usualCents > 0 && (
-          <AvgLine bottom={line(c.usualCents)} side="left" label={<>avg <Money cents={c.usualCents} whole /></>} />
-        )}
-        <ol className="grid items-end gap-1.5" style={{ gridTemplateColumns: `repeat(${vals.length}, minmax(0, 1fr))` }}>
-          {vals.map((v) => (
-            <li key={v.month} className="flex flex-col items-center">
-              <span className="flex h-28 w-full max-w-8 items-end">
-                <span className={`w-full rounded-t ${v.cents > budget ? "bg-warn" : "bg-brand"} ${v.current ? "opacity-60" : ""}`} style={{ height: `${Math.max(v.cents ? 3 : 0, (v.cents / top) * 100)}%` }} />
-              </span>
-              <span className={`mt-1 h-4 text-[10px] ${v.current ? "font-semibold text-ink" : "text-faint"}`}>{v.label}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <p className="-mt-1 text-[11px] text-muted">Amber = over budget · faded = this month</p>
 
       <SelectField name="group" label="Group" defaultValue={c.group} options={GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` }))} />
       <Submit>Save</Submit>
       {demo && <p className="text-xs text-muted">Demo: saving is off.</p>}
     </ActionForm>
-  );
-}
-
-/** Every transaction in the category, grouped by month with a subtotal. */
-function CategoryTransactions({ items }: { items: CategoryItem[] }) {
-  const byMonth = new Map<string, CategoryItem[]>();
-  for (const i of items) byMonth.set(i.date.slice(0, 7), [...(byMonth.get(i.date.slice(0, 7)) ?? []), i]);
-  if (items.length === 0) return <p className="mt-4 text-sm text-muted">No transactions in the last few months.</p>;
-  return (
-    <section className="mt-4 space-y-2" aria-label="Transactions">
-      {[...byMonth.entries()].map(([m, list], idx) => (
-        <details key={m} open={idx === 0} className="rounded-xl border border-line">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-3 py-2 text-sm [&::-webkit-details-marker]:hidden">
-            <span className="font-semibold text-ink">{monthName(`${m}-01`)} {m.slice(0, 4)} <span className="font-normal text-muted">· {list.length}</span></span>
-            <Money cents={list.reduce((t, i) => t + i.cents, 0)} whole className="font-semibold text-ink" />
-          </summary>
-          <ul className="divide-y divide-line border-t border-line">
-            {list.map((i, k) => (
-              <li key={`${i.date}-${k}`} className="flex items-center justify-between gap-2 px-3 py-1.5 text-sm">
-                <span className="min-w-0">
-                  <span className="block truncate text-ink">{i.label}</span>
-                  <span className="block text-[11px] text-muted">
-                    {formatLong(i.date)} · {i.account}
-                    {i.repeating && " · repeating"}
-                    {i.pending && " · pending"}
-                  </span>
-                </span>
-                <Money cents={-i.cents} sign tone="auto" className="shrink-0 tabular" />
-              </li>
-            ))}
-          </ul>
-        </details>
-      ))}
-    </section>
   );
 }

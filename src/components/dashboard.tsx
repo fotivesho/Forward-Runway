@@ -327,7 +327,7 @@ function SpendingVsBudget({ m, snapshot, today, base }: { m: ReturnType<typeof b
   const spent = budget.categories.reduce((t, c) => t + c.spentCents, 0);
   const total = budget.groups.needs.budgetCents + budget.groups.wants.budgetCents;
   return (
-    <Card title="Spending" action={<Link href={base + "/spend/budget"} className="text-xs font-medium text-faint hover:text-ink">Budget →</Link>}>
+    <Card title="Spending" action={<Link href={base + "/spend"} className="text-xs font-medium text-faint hover:text-ink">Budget →</Link>}>
       <p className="-mt-1 mb-3 text-sm text-faint">
         <Money cents={spent} whole className="font-semibold text-ink" /> of <Money cents={total} whole /> this month
       </p>
@@ -382,7 +382,7 @@ function PatternPulse({ m, snapshot, today, base }: { m: ReturnType<typeof build
   if (!life.pace && !life.insights.length) return null;
   const short = life.pace && life.pace.gapCents < 0;
   return (
-    <Link href={base + "/spend/patterns"} className="card block p-3 transition hover:border-brand/60">
+    <Link href={base + "/spend/trends"} className="card block p-3 transition hover:border-brand/60">
       {life.pace && (
         <p className="flex items-center justify-between gap-2 text-sm">
           <span className="font-bold text-ink">Usual spend to {formatShort(life.periodEnd)}</span>

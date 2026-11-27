@@ -74,7 +74,7 @@ for (const width of [390, 1280]) {
 }
 
 // Every other demo page renders cleanly and stays read-only
-for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions", "/demo/spend/reports", "/demo/spend/patterns", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
+for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions", "/demo/spend/bills", "/demo/spend/trends", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
   const { page, res, errors } = await visit(path);
   check(res.status() === 200 && errors.length === 0, `${path} loads without errors ${errors.join(" | ")}`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), `${path} has no horizontal scroll at 390px`);
@@ -148,7 +148,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
   }
   await page.goto(BASE + "/demo/forecast", { waitUntil: "networkidle" });
   check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
-  await page.goto(BASE + "/demo/spend/patterns", { waitUntil: "networkidle" });
+  await page.goto(BASE + "/demo/spend/trends", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Day", exact: true }).click();
   check(/on a usual/.test(await page.locator("main").innerText()), "patterns explorer drills into a weekday");
   await page.close();
@@ -157,9 +157,9 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
 // What if: one question, a plain answer, best time to buy, debit vs credit
 {
   {
-    const { page, errors } = await visit("/demo/spend/patterns", 390);
+    const { page, errors } = await visit("/demo/spend/trends", 390);
     const body = await page.locator("body").innerText();
-    check(errors.length === 0 && /Noticed/.test(body) && /Usual spend to/i.test(body) && /Next 30 days/.test(body), "patterns shows insights, pace and the next 30 days");
+    check(errors.length === 0 && /Noticed/.test(body) && /Usual spend to/i.test(body) && /Spending by group/.test(body), "trends shows the history chart, insights and pace");
     await page.close();
   }
   const { page, errors } = await visit("/demo/what-if", 390);

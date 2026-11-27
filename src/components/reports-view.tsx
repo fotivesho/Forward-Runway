@@ -180,7 +180,9 @@ function avgSince(periods: SpendingReport, c: string): number {
  * One category, up close: how it's trending, a bar for each period with the average as a dotted
  * line, and its transactions below. Tap a bar to list just that period.
  */
-function CategoryReport({ cat, data, items, by, periodName }: { cat: string; data: SpendingReport; items: CategoryItem[]; by: "month" | "period"; periodName: (m: SpendingReport[number]) => string }) {
+export const monthPeriodName = (m: SpendingReport[number]) => `${m.label} ${m.month.slice(0, 4)}`;
+
+export function CategoryReport({ cat, data, items, by = "month", periodName = monthPeriodName, children }: { cat: string; data: SpendingReport; items: CategoryItem[]; by?: "month" | "period"; periodName?: (m: SpendingReport[number]) => string; children?: React.ReactNode }) {
   const hide = useHideAmounts();
   const [pick, setPick] = useState<string | null>(null);
   const [all, setAll] = useState(false);
@@ -238,6 +240,7 @@ function CategoryReport({ cat, data, items, by, periodName }: { cat: string; dat
         </p>
       )}
 
+      {children}
       <div className="relative pt-2">
         {avg > 0 && <AvgLine bottom={`calc(1.5rem + ${(avg / max) * 8}rem)`} label={`avg ${hide ? "" : shortMoney(avg)}`} />}
         <ol className="grid items-end gap-1.5" style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(0, 1fr))` }} aria-label={`${cat} by ${unit}. Tap a bar to list it.`}>
@@ -249,7 +252,7 @@ function CategoryReport({ cat, data, items, by, periodName }: { cat: string; dat
               <li key={m.month}>
                 <button type="button" onClick={() => setPick(on ? null : m.month)} aria-pressed={on} aria-label={`${periodName(m)}: ${hide ? "hidden" : shortMoney(v)}`} className="flex w-full flex-col items-center">
                   <span className="flex h-32 w-full items-end justify-center">
-                    <span className={`w-full max-w-8 rounded-t transition ${v > avg * 1.1 && avg > 0 ? "bg-warn" : "bg-brand"} ${m.current ? "opacity-60" : ""} ${dim ? "opacity-25" : ""} ${on ? "ring-2 ring-ink/70 ring-offset-1 ring-offset-surface" : ""}`} style={{ height: `${Math.max(v ? 3 : 0, (v / max) * 100)}%` }} />
+                    <span className={`w-full max-w-[14px] rounded-full transition ${m.current ? "opacity-60" : ""} ${dim ? "opacity-25" : ""}`} style={{ height: `${Math.max(v ? 4 : 0, (v / max) * 100)}%`, background: `linear-gradient(to top, color-mix(in srgb, var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}) 50%, transparent), var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}))`, boxShadow: on ? "0 0 12px -2px var(--color-brand)" : undefined }} />
                   </span>
                   <span className={`mt-1 h-4 text-[10px] ${on ? "font-bold text-ink" : "text-faint"}`}>{by === "month" ? m.label : `${Number(m.month.slice(5, 7))}/${Number(m.month.slice(8))}`}</span>
                 </button>

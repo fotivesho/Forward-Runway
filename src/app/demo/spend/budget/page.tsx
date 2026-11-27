@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { BudgetPage } from "@/components/views/money-pages";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Budget" };
+/** This moved: budget now lives in Money's Month tab. */
 export default function Page() {
-  return <BudgetPage {...getDemoSession()} />;
+  redirect("/demo/spend");
 }

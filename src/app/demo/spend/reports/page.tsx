@@ -1,8 +1,6 @@
-import type { Metadata } from "next";
-import { ReportsPage } from "@/components/views/money-pages";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Reports" };
+/** This moved: reports now lives in Money's Trends tab. */
 export default function Page() {
-  return <ReportsPage {...getDemoSession()} />;
+  redirect("/demo/spend/trends");
 }

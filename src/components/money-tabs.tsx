@@ -3,15 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-/** Money's sub-tabs: Month · Budget · Patterns · Reports. */
+/** Money's sub-tabs: Month · Activity · Bills · Trends. */
 export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
   const path = usePathname();
   const tabs = [
     { href: `${base}/spend`, label: "Month" },
     { href: `${base}/spend/transactions`, label: "Activity" },
-    { href: `${base}/spend/budget`, label: "Budget" },
-    { href: `${base}/spend/patterns`, label: "Patterns" },
-    { href: `${base}/spend/reports`, label: "Reports" },
+    { href: `${base}/spend/bills`, label: "Bills" },
+    { href: `${base}/spend/trends`, label: "Trends" },
   ];
   return (
     <nav aria-label="Money" className="mb-4 flex rounded-xl border border-line bg-surface p-1">

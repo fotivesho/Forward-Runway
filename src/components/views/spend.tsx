@@ -12,8 +12,11 @@ import type { ViewProps } from "./types";
 import { addDays, diffDays, endOfMonth, formatShort, startOfMonth } from "@/lib/dates";
 import { predict, spendModel } from "@/lib/view/patterns";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
-import { categoryHistory, flowItems, monthBuckets, weekBuckets } from "@/lib/view/spend";
+import { flowItems, monthBuckets } from "@/lib/view/spend";
 import { MonthTiles } from "@/components/month-tiles";
+import { BudgetView } from "@/components/budget-view";
+import { buildBudget, categoryItems, spendingReport } from "@/lib/view/budget";
+import { buildDashboard } from "@/lib/view/dashboard";
 import { deleteTransfer } from "@/app/app/actions";
 
 const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
@@ -23,7 +26,8 @@ const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
 ];
 
 /** Spend: what repeats (tiles), cash flow, then every transaction with its category. Edits open in pop-ups. */
-export function SpendView({ snapshot, today, demo = false, section = "overview" }: ViewProps & { section?: "overview" | "transactions" }) {
+export function SpendView({ snapshot, today, nowIso, demo = false, section = "overview" }: ViewProps & { section?: "overview" | "transactions" | "bills" }) {
+  const base = demo ? "/demo" : "/app";
   const accountName = (id?: string | null) => snapshot.accounts.find((a) => a.id === id)?.name ?? "—";
   const accounts = snapshot.accounts;
   const hasAccounts = accounts.some((a) => !a.archived);
@@ -52,8 +56,6 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
 
   // Insights, computed on the server from your own data.
   const months = monthBuckets(today);
-  const weeks = weekBuckets(today);
-  const categories = [...new Set(snapshot.transactions.filter((t) => t.direction === "out").map((t) => t.category ?? "Other"))];
   // Your categories, most used first (for the category picker).
   const useCount = new Map<string, number>();
   for (const t of snapshot.transactions) if (t.category) useCount.set(t.category, (useCount.get(t.category) ?? 0) + 1);
@@ -63,23 +65,31 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
     snapshot.corrections.filter((c) => c.kind === "preference" && c.matchKey.startsWith("recurring_dismissed:")).map((c) => c.matchKey.slice("recurring_dismissed:".length)),
   );
   const suggestions = findRecurring(snapshot.transactions, snapshot.rules, today, dismissed);
-  const trends = Object.fromEntries(
-    categories.map((c) => [c, { month: categoryHistory(snapshot, c, months, today), week: categoryHistory(snapshot, c, weeks, today) }]),
-  );
+  // Calendar plans (with their estimated cost), shared by the month picture and the budget.
+  const dash = section === "overview" ? buildDashboard(snapshot, today, 30, new Date(nowIso)) : null;
+  const plans = dash ? dash.allEvents.map((v) => ({ id: v.event.id, title: v.event.title, date: v.event.date, cents: v.advice?.capCents ?? 0, category: v.event.category })) : [];
+  // Per-category history for the one category pop-up used everywhere.
+  const report = spendingReport(snapshot, today, 6);
+  const catItems = categoryItems(snapshot, today, report[0]!.month);
 
   return (
     <>
       <PageHeader
         title="Money"
         subtitle={section === "overview"
-          ? "This month at a glance, and everything that repeats: paychecks, rent, subscriptions, savings transfers. Tap any of them to change it."
-          : "Every purchase, payment and transfer. Tap one to change its name or category, or to make it repeating."}
+          ? "This month: what came in, where it's going, and how each category is doing against its budget. Tap anything to see what's in it."
+          : section === "bills"
+            ? "Everything that repeats (paychecks, rent, subscriptions, savings moves) and transfers between your accounts."
+            : "Every purchase and deposit. Search, filter by category, tap one to see its history or change it."}
       />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!)} today={today} expectedPerDayCents={section === "overview" ? expectedPerDay : undefined} />
-
         {section === "overview" && (<>
+        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!, plans)} today={today} expectedPerDayCents={expectedPerDay ?? 0} calendarHref={`${base}/calendar`} />
+        <BudgetView compact plan={buildBudget(snapshot, today, plans)} demo={demo} history={report} items={catItems} />
+        </>)}
+
+        {section === "bills" && (<>
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
           {!hasAccounts && <EmptyState title="Add an account first">Repeating items need an account to come from or go to.</EmptyState>}
           <RecurringSuggestions suggestions={suggestions} accounts={accounts} today={today} />
@@ -101,9 +111,11 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
 
         {section === "transactions" && (<>
         <Card title="Transactions" action={hasAccounts ? <AddButton what="transaction" accounts={accounts} today={today} /> : undefined}>
-          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} trends={trends} categories={yourCategories} rules={snapshot.rules} />
+          <TransactionList txns={txns} accounts={accounts} today={today} monthStart={monthStart} report={report} catItems={catItems} categories={yourCategories} rules={snapshot.rules} />
         </Card>
+        </>)}
 
+        {section === "bills" && (<>
         <Card title="Transfers & card payments" action={hasAccounts ? <AddButton what="transfer" accounts={accounts} today={today} /> : undefined}>
           {transfers.length === 0 ? (
             <p className="text-sm text-muted">No one-time transfers. Statement payments are scheduled automatically from your card statements.</p>

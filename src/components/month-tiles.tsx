@@ -18,7 +18,7 @@ type Which = "income" | "spent" | "net";
  * The month at a glance: Income, Spent, Net, each one tappable to see exactly what it's made of,
  * so a wrong number (a transfer counted as income) is easy to spot and fix.
  */
-export function MonthTiles({ month, items, today, expectedPerDayCents }: { month: string; items: { in: FlowItem[]; out: FlowItem[] }; today: string; expectedPerDayCents?: number }) {
+export function MonthTiles({ month, items, today, expectedPerDayCents, calendarHref }: { month: string; items: { in: FlowItem[]; out: FlowItem[] }; today: string; expectedPerDayCents?: number; calendarHref?: string }) {
   const [open, setOpen] = useState<Which | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const ins = items.in.filter((i) => !hidden.has(i.key));
@@ -50,7 +50,7 @@ export function MonthTiles({ month, items, today, expectedPerDayCents }: { month
         ))}
       </ul>
       {expectedPerDayCents !== undefined && (
-        <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} />
+        <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} calendarHref={calendarHref} />
       )}
       {open && (
         <Modal open onClose={() => setOpen(null)} icon={open === "income" ? "income" : open === "spent" ? "spend" : "📊"} title={`${tiles.find((t) => t.k === open)!.label} · ${month}`}
@@ -178,6 +178,7 @@ function NetList({ income, out }: { income: number; out: FlowItem[] }) {
     { label: "Bills", list: out.filter((i) => i.kind === "bill") },
     { label: "Savings moves", list: out.filter((i) => i.kind === "savings") },
     { label: "Planned purchases", list: out.filter((i) => i.kind === "spending" && i.when === "coming") },
+    { label: "Calendar plans", list: out.filter((i) => i.kind === "plan") },
   ].filter((p) => p.list.length > 0);
   const net = income - sum(out);
   return (
@@ -218,9 +219,15 @@ function Group({ title, items, children }: { title: string; items: FlowItem[]; c
  * you live on; part of that's already spent; the rest, spread over the days left, against what a
  * day usually costs you.
  */
-function WhereItGoes({ income, out, today, expectedPerDayCents }: { income: number; out: FlowItem[]; today: string; expectedPerDayCents: number }) {
-  const fixed = sum(out.filter((i) => i.kind !== "spending" || i.when === "coming"));
-  const spent = sum(out.filter((i) => i.kind === "spending" && i.when === "done"));
+function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: { income: number; out: FlowItem[]; today: string; expectedPerDayCents: number; calendarHref?: string }) {
+  const [drill, setDrill] = useState<string | null>(null);
+  const parts = [
+    { k: "Fixed", list: out.filter((i) => i.kind === "bill" || i.kind === "savings" || (i.kind === "spending" && i.when === "coming")), color: "bg-out/80", sign: -1 as const },
+    { k: "Plans", list: out.filter((i) => i.kind === "plan"), color: "bg-info", sign: -1 as const },
+    { k: "Spent", list: out.filter((i) => i.kind === "spending" && i.when === "done"), color: "bg-warn", sign: -1 as const },
+  ];
+  const fixed = sum(parts[0]!.list) + sum(parts[1]!.list);
+  const spent = sum(parts[2]!.list);
   const free = income - fixed;
   const left = free - spent;
   const y = Number(today.slice(0, 4));
@@ -231,26 +238,40 @@ function WhereItGoes({ income, out, today, expectedPerDayCents }: { income: numb
   const pct = (c: number) => `${Math.max(0, (c / scale) * 100)}%`;
   const ok = perDay >= expectedPerDayCents;
   const gap = Math.abs(perDay - expectedPerDayCents);
+  const open = parts.find((p) => p.k === drill);
   return (
     <div className="card mt-3 p-4">
       <p className="flex items-center text-sm font-bold text-ink">
         Where it goes
         <Info label="Where it goes">
-          <b>Fixed</b> is what&apos;s already spoken for this month: repeating bills, savings moves and planned purchases, paid or still coming. Income minus fixed is what you have to <b>live on</b>. Spending so far comes out of that, and what&apos;s <b>left</b> is spread over the days remaining. <b>A usual day</b> is what everyday life typically costs you on the days ahead, learned from your habits.
+          <b>Fixed</b> is what&apos;s already spoken for: repeating bills and savings moves, paid or still coming. <b>Plans</b> are the calendar plans still ahead this month, at their estimated cost. Income minus both is what you have to <b>live on</b>. Everyday spending so far comes out of that, and what&apos;s <b>left</b> is spread over the days remaining. <b>A usual day</b> is what everyday life typically costs you on the days ahead. Tap any part to see what&apos;s in it.
         </Info>
       </p>
       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
-        <span className="h-full bg-out/80" style={{ width: pct(fixed) }} />
-        <span className="h-full bg-warn" style={{ width: pct(spent) }} />
+        {parts.map((p) => <span key={p.k} className={`h-full ${p.color}`} style={{ width: pct(sum(p.list)) }} />)}
         <span className="h-full bg-brand" style={{ width: pct(Math.max(0, left)) }} />
       </div>
-      <ul className="mt-2 grid grid-cols-3 gap-2 text-xs">
-        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-out/80" />Fixed</span><Money cents={fixed} whole className="font-semibold text-ink" /></li>
-        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-warn" />Spent</span><Money cents={spent} whole className="font-semibold text-ink" /></li>
-        <li><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-brand" />Left</span><Money cents={left} whole className={`font-semibold ${left < 0 ? "text-danger" : "text-ink"}`} /></li>
+      <ul className="mt-2 grid grid-cols-4 gap-1.5 text-xs">
+        {parts.map((p) => (
+          <li key={p.k}>
+            <button type="button" onClick={() => setDrill(p.k)} disabled={p.list.length === 0} className="w-full rounded-lg px-1 py-1 text-left transition hover:bg-surface-2 disabled:opacity-60">
+              <span className="flex items-center gap-1 text-muted"><span className={`h-2 w-2 rounded-full ${p.color}`} />{p.k}{p.list.length > 0 && <span aria-hidden className="text-faint">›</span>}</span>
+              <Money cents={sum(p.list)} whole className="font-semibold text-ink" />
+            </button>
+          </li>
+        ))}
+        <li className="px-1 py-1"><span className="flex items-center gap-1 text-muted"><span className="h-2 w-2 rounded-full bg-brand" />Left</span><Money cents={left} whole className={`font-semibold ${left < 0 ? "text-danger" : "text-ink"}`} /></li>
       </ul>
+      {open && (
+        <Modal open onClose={() => setDrill(null)} icon={open.k === "Plans" ? "plan" : open.k === "Spent" ? "spend" : "bill"} title={open.k} subtitle={<span className="font-num text-2xl text-display"><Money cents={sum(open.list)} whole /></span>}>
+          <div className="space-y-3">
+            <Group title={open.k === "Plans" ? "Still ahead" : "This month"} items={open.list}>{(i) => <Row key={i.key} i={i} sign={open.sign} />}</Group>
+            {open.k === "Plans" && calendarHref && <a href={calendarHref} className="block text-center text-xs font-semibold text-brand">Open them in Calendar ›</a>}
+          </div>
+        </Modal>
+      )}
       <p className="mt-1 text-[11px] text-faint">
-        <Money cents={income} whole /> income − <Money cents={fixed} whole /> fixed = <Money cents={free} whole /> to live on
+        <Money cents={income} whole /> income − <Money cents={fixed} whole /> fixed &amp; plans = <Money cents={free} whole /> to live on
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-surface-2/60 px-3 py-2">

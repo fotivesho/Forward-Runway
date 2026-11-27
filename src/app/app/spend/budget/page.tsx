@@ -1,9 +1,6 @@
-import type { Metadata } from "next";
-import { BudgetPage } from "@/components/views/money-pages";
-import { getAppSession } from "@/lib/data/session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Budget" };
-
-export default async function Page() {
-  return <BudgetPage {...await getAppSession()} />;
+/** This moved: budget now lives in Money's Month tab. */
+export default function Page() {
+  redirect("/app/spend");
 }
