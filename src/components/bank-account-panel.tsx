@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui";
 import { setCardPayInFull } from "@/app/app/actions";
 import { diffDays, formatShort, type ISODate } from "@/lib/dates";
 import { Info } from "./info";
+import { SyncButton } from "./sync-button";
 import type { Account, CardProjection, CardStatement, OneTimeTransaction } from "@/lib/engine";
 
 function ago(iso: string | null, now: number): string {
@@ -50,6 +51,7 @@ export function BankAccountPanel({
   const pending = transactions.filter((t) => t.accountId === a.id && t.pending);
   const pendingNet = pending.reduce((s, t) => s + (t.direction === "out" ? t.amountCents : -t.amountCents), 0);
   const updated = <>from your bank · updated {ago(a.balanceUpdatedAt, nowMs)}</>;
+  const sync = a.bankConnectionId ? <div className="mt-2"><SyncButton connectionId={a.bankConnectionId} /></div> : null;
 
   if (a.kind !== "credit_card") {
     return (
@@ -59,6 +61,7 @@ export function BankAccountPanel({
           {a.kind === "loan" ? "Owed" : "Available now"} · {updated}
           {pending.length > 0 && a.kind !== "loan" && <> · includes {pending.length} pending</>}
         </p>
+        {sync}
       </div>
     );
   }
@@ -83,6 +86,7 @@ export function BankAccountPanel({
         {updated}
         {pendingNet > 0 && <> · includes <Money cents={pendingNet} /> pending</>}
       </p>
+      {sync}
 
       {/* What you owe, split: the statement to pay, what's been charged since, and what's left of your limit. */}
       <div className="mt-3 flex h-2.5 overflow-hidden rounded-full bg-surface-3" aria-hidden>
