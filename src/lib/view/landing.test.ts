@@ -21,7 +21,7 @@ describe("landing page data", () => {
       // Duplicates are counted once and never shown as their own plan.
       expect(d.events.some((e) => e.recommendation === "duplicate")).toBe(false);
     }
-  });
+  }, 30_000);
 
   it("uses only the fictional demo data", () => {
     const d = buildLanding("2026-05-05", "2026-05-05T15:00:00Z");

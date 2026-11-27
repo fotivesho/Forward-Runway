@@ -112,31 +112,38 @@ export function leanDays(s: Snapshot, today: ISODate, until: ISODate): Record<IS
   );
   const trips = dueTrips(s, today, until).filter((t) => LEAN_NEEDS.has(t.category));
   const tripCats = new Set(trips.map((t) => t.category));
-  // Everyday needs by weekday: the average for that weekday over the last 12 weeks.
-  const byWd: Record<string, number[]> = {};
+  // Everyday needs by weekday, habits only: a category counts on a weekday when it happened on that
+  // weekday in at least 4 of the last 12 weeks. Its amount is your typical (median) day for it,
+  // scaled by how often it happens.
+  const days: Record<string, Map<ISODate, number>> = {};
   for (const t of needs) {
     if (tripCats.has(t.category ?? "")) continue;
-    const w = dayOfWeek(t.date);
-    const k = `${t.category}|${w}`;
-    (byWd[k] ??= []).push(t.amountCents);
+    const k = `${t.category}|${dayOfWeek(t.date)}`;
+    const m = (days[k] ??= new Map());
+    m.set(t.date, (m.get(t.date) ?? 0) + t.amountCents);
   }
   const weeks = 12;
+  const habits: Array<{ cat: string; wd: number; cents: number; seen: number }> = [];
+  for (const [k, m] of Object.entries(days)) {
+    const seen = m.size;
+    if (seen < 4) continue;
+    const [cat, wd] = k.split("|");
+    const cents = median([...m.values()]) * Math.min(1, seen / weeks);
+    if (cents >= 100) habits.push({ cat: cat!, wd: Number(wd), cents, seen });
+  }
+  const usd = (c: number) => "$" + Math.round(c / 100);
   const out: Record<ISODate, { cents: Cents; reasons: string[] }> = {};
   for (const d of eachDay(today, until)) {
     const w = dayOfWeek(d);
     let cents = 0;
     const reasons: string[] = [];
-    for (const [k, list] of Object.entries(byWd)) {
-      const [cat, wd] = k.split("|");
-      if (Number(wd) !== w) continue;
-      const avg = list.reduce((a, b) => a + b, 0) / weeks;
-      if (avg < 100) continue;
-      cents += avg;
-      reasons.push(`${cat}: usual on ${WD[w]}`);
+    for (const h of habits.filter((x) => x.wd === w)) {
+      cents += h.cents;
+      reasons.push(`${h.cat} ${usd(h.cents)} · ${h.seen} of the last ${weeks} ${WD[w]}`);
     }
     for (const t of trips.filter((x) => x.date === d)) {
       cents += t.cents;
-      reasons.push(`${t.category} likely (about every ${t.everyDays} days)`);
+      reasons.push(`${t.category} ${usd(t.cents)} · due, usually every ${t.everyDays} days`);
     }
     out[d] = { cents: Math.round(cents / 100) * 100, reasons: reasons.length ? ["Lean: needs only", ...reasons] : ["Lean: needs only. Nothing routine today"] };
   }
