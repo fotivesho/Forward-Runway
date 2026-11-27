@@ -2,6 +2,7 @@ import { QuickAction } from "@/components/form";
 import { DeleteAccountForm, DeleteDataForm, ImportForm, PasswordForm, ProfileForm, SettingsForm } from "@/components/settings-forms";
 import { Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
+import { MorningToggle } from "@/components/morning-toggle";
 import type { ViewProps } from "./types";
 import { formatCents } from "@/lib/money";
 import { clearDecisions, deleteCorrection, setHideAmounts } from "@/app/app/actions";
@@ -23,6 +24,9 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
         <Card title="Profile"><ProfileForm snapshot={snapshot} /></Card>
         <Card title={<>Appearance <Info label="Appearance">&ldquo;Auto&rdquo; matches your phone or computer&apos;s light or dark setting. Whatever you pick is saved to your account and used on every device.</Info></>}>
           <ThemeToggle saved={snapshot.profile.theme} persist={!demo} showLabels />
+        </Card>
+        <Card title={<>Morning note <Info label="Morning note">Each morning, a notification with today&apos;s limit and the one thing worth knowing about the day (a plan, payday, a grocery run that&apos;s due). Tap it to open your day. It&apos;s set per device.</Info></>}>
+          <MorningToggle demo={demo} />
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
         <Card title={<>What {APP_NAME} remembers <Info label="What we remember">When you correct a cost or make a decision, we remember it so you don&apos;t have to repeat yourself next time. Remove anything you&apos;d rather we forget.</Info></>} id="memory">
