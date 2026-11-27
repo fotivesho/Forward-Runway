@@ -158,7 +158,7 @@ export function PlanCalendar({
         {selected && dayTotal(selected) != null && (
           <div className="mb-2 rounded-xl border border-brand/30 bg-brand/[0.06] px-3 py-2 text-sm">
             <p className="flex justify-between gap-2">
-              <span className="font-medium text-ink">Safe to spend</span>
+              <span className="font-medium text-ink">Limit</span>
               <Money cents={dayTotal(selected)!} className="text-base font-semibold text-brand" />
             </p>
             {planCaps(selected) > 0 && (

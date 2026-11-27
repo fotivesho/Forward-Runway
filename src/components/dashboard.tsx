@@ -52,8 +52,8 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           <div className="bg-gradient-to-br from-surface-3 to-surface px-5 pb-5 pt-5 sm:px-6">
             <div className="flex items-center justify-between gap-2">
               <h2 id="safe-title" className="text-sm font-bold text-muted">
-                Safe to spend today
-                <Info label="Safe to spend today">
+                Today&apos;s limit
+                <Info label="Today's limit">
                   How much you can spend today on everyday things (food, coffee, rides, shopping) and still have every bill, card payment, savings transfer and plan covered until payday.
                   <span className="mt-1.5 block">We take what&apos;s left of this paycheck after all of those, and spread it over the days until you&apos;re paid again. Spend less today and tomorrow&apos;s number goes up; spend more and it goes down.</span>
                   {plan.notes.filter((n) => n !== allowance.explanation[0]).length > 0 && (
@@ -190,7 +190,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
   );
 }
 
-/** The week's daily caps: the selected day is unmistakable, the amounts scan at a glance. */
+/** The week's daily limits: the selected day is unmistakable, the amounts scan at a glance. */
 function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: ISODate }) {
   const days = m.plan.days;
   const [showAll, setShowAll] = useState(false);
@@ -203,14 +203,14 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
   return (
     <section className="card p-4 sm:p-5" aria-labelledby="caps-title">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 id="caps-title" className="text-base font-bold text-ink">Daily caps<Info label="Daily caps">A reasonable most to spend each day until payday. It starts from what you have left after bills and savings, adds room on days with a plan (blue dot), and follows your habits: busier weekdays and payday get more, quiet days less, and a trip that&apos;s due (like groceries, when it&apos;s been a while) gets room on the day it&apos;s likely (small spark). Spend less one day and the rest rolls into the days ahead.</Info></h2>
+        <h2 id="caps-title" className="text-base font-bold text-ink">Daily limits<Info label="Daily limits">A reasonable most to spend each day until payday. It starts from what you have left after bills and savings, adds room on days with a plan (blue dot), and follows your habits: busier weekdays and payday get more, quiet days less, and a trip that&apos;s due (like groceries, when it&apos;s been a while) gets room on the day it&apos;s likely (small spark). Spend less one day and the rest rolls into the days ahead.</Info></h2>
         {days.length > 7 && (
           <button type="button" className="text-xs font-medium text-faint hover:text-ink" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
             {showAll ? "Next 7 days" : `All ${days.length} days`}
           </button>
         )}
       </div>
-      <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} aria-label="Daily spending caps">
+      <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} aria-label="Daily limits">
         {visible.map((d) => {
           const on = selected === d.date;
           return (

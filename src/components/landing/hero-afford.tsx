@@ -143,7 +143,7 @@ export function HeroAfford({
       {/* The number, on deep green */}
       <div className="relative px-5 pb-3 pt-4" style={{ background: "radial-gradient(120% 140% at 100% 0%,#2f6b47 0%,#1f4531 55%,#183a29 100%)", color: "#f1e9cf" }}>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold opacity-80">Safe to spend today</span>
+          <span className="text-xs font-semibold opacity-80">Today&apos;s limit</span>
           <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-[#ddefbf]">Sample</span>
         </div>
         <div className="mt-1 flex items-end justify-between gap-3">

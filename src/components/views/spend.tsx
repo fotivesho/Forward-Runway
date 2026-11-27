@@ -89,7 +89,7 @@ export function SpendView({ snapshot, today, nowIso, demo = false, section = "ov
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {section === "overview" && (<>
-        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!, plans)} today={today} expectedPerDayCents={expectedPerDay ?? 0} calendarHref={`${base}/calendar`} />
+        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!, plans)} today={today} expectedPerDayCents={expectedPerDay ?? 0} calendarHref={`${base}/calendar`} limit={dash ? { cents: dash.plan.todayCap.capCents, until: formatShort(dash.plan.allowance.current.end), href: base } : undefined} />
         <BudgetView compact plan={buildBudget(snapshot, today, plans)} demo={demo} history={report} items={catItems} />
         </>)}
 

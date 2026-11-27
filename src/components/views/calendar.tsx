@@ -38,7 +38,7 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
         <div className="flex flex-col gap-4">
           {m.coverage.incomplete && (
             <Notice tone="warn" title={m.coverage.status === "none" ? "No calendars connected" : "Calendar coverage is incomplete"}>
-              {m.coverage.notes.join(" ")} Until every calendar syncs, a buffer is held back from your daily caps.
+              {m.coverage.notes.join(" ")} Until every calendar syncs, a buffer is held back from your daily limits.
             </Notice>
           )}
           <Card

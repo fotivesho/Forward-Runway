@@ -99,7 +99,7 @@ export default async function Image() {
           >
             <div style={{ display: "flex", flexDirection: "column", padding: "24px 26px 18px", background: "linear-gradient(135deg, #2f6b47, #1f4531)", color: CREAM }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: 16, color: "#c4d4bf" }}>Safe to spend today</span>
+                <span style={{ fontSize: 16, color: "#c4d4bf" }}>Today's limit</span>
                 <span style={{ display: "flex", fontSize: 13, color: PALE, background: "rgba(255,255,255,0.12)", padding: "4px 10px", borderRadius: 999 }}>On track</span>
               </div>
               <div style={{ fontFamily: "Gelasio", fontWeight: 700, fontSize: 66, lineHeight: 1.05, marginTop: 6, display: "flex" }}>$34.62</div>

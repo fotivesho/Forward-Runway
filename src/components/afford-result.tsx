@@ -502,7 +502,7 @@ function ChosenBanner({ chosen, demo, card }: { chosen: { option: AffordCheck["a
     if (a.skipEventIds?.length) lines.push(`${a.skipEventIds.length === 1 ? "Other plan" : "Other plans"} skipped`);
     if (a.capCents) lines.push(`Capped at ${dollars(a.capCents)}`);
     if (a.newDate) lines.push(`Moved to ${formatShort(a.newDate)}`);
-    if (chosen.option.kind === "lean") lines.push("Daily caps tighten until then");
+    if (chosen.option.kind === "lean") lines.push("Daily limits tighten until then");
   }
   return (
     <div className={`mt-2 rounded-xl border p-3 ${chosen.decline ? "border-line bg-surface-2" : "border-brand/50 bg-brand/[0.08]"}`} role="status">

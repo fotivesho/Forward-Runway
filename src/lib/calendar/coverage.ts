@@ -31,7 +31,7 @@ export function calendarCoverage(sources: CalendarSourceState[], now: Date = new
     return {
       status: "none",
       incomplete: true,
-      notes: ["No calendars connected, so upcoming plans are unknown. Daily caps include a buffer for plans we can't see."],
+      notes: ["No calendars connected, so upcoming plans are unknown. Daily limits include a buffer for plans we can't see."],
     };
   }
   const notes: string[] = [];

@@ -391,7 +391,7 @@ export function pickQuestion(issues: ForecastIssue[], events: EventView[], today
     return {
       key: `event:${unknown.event.id}`,
       text: `About how much do you expect to spend at "${unknown.event.title}"?`,
-      why: "There's no basis for an estimate yet, so it isn't in your daily caps. Your answer is remembered for similar events.",
+      why: "There's no basis for an estimate yet, so it isn't in your daily limits. Your answer is remembered for similar events.",
       kind: "event_estimate",
       eventId: unknown.event.id,
     };

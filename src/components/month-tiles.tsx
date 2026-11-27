@@ -19,7 +19,7 @@ type Which = "income" | "spent" | "net";
  * The month at a glance: Income, Spent, Net, each one tappable to see exactly what it's made of,
  * so a wrong number (a transfer counted as income) is easy to spot and fix.
  */
-export function MonthTiles({ month, items, today, expectedPerDayCents, calendarHref }: { month: string; items: { in: FlowItem[]; out: FlowItem[] }; today: string; expectedPerDayCents?: number; calendarHref?: string }) {
+export function MonthTiles({ month, items, today, expectedPerDayCents, calendarHref, limit }: { month: string; items: { in: FlowItem[]; out: FlowItem[] }; today: string; expectedPerDayCents?: number; calendarHref?: string; limit?: { cents: number; until: string; href: string } }) {
   const [open, setOpen] = useState<Which | null>(null);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
   const ins = items.in.filter((i) => !hidden.has(i.key));
@@ -51,7 +51,7 @@ export function MonthTiles({ month, items, today, expectedPerDayCents, calendarH
         ))}
       </ul>
       {expectedPerDayCents !== undefined && (
-        <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} calendarHref={calendarHref} />
+        <WhereItGoes income={income} out={items.out} today={today} expectedPerDayCents={expectedPerDayCents} calendarHref={calendarHref} limit={limit} />
       )}
       {open && (
         <Modal open onClose={() => setOpen(null)} icon={open === "income" ? "income" : open === "spent" ? "spend" : "📊"} title={`${tiles.find((t) => t.k === open)!.label} · ${month}`}
@@ -208,7 +208,7 @@ function Group({ title, items, children }: { title: string; items: FlowItem[]; c
  * you live on; part of that's already spent; the rest, spread over the days left, against what a
  * day usually costs you.
  */
-function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: { income: number; out: FlowItem[]; today: string; expectedPerDayCents: number; calendarHref?: string }) {
+function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref, limit }: { income: number; out: FlowItem[]; today: string; expectedPerDayCents: number; calendarHref?: string; limit?: { cents: number; until: string; href: string } }) {
   const [drill, setDrill] = useState<string | null>(null);
   const parts = [
     { k: "Fixed", list: out.filter((i) => i.kind === "bill" || i.kind === "savings" || (i.kind === "spending" && i.when === "coming")), color: "bg-out/80", sign: -1 as const },
@@ -222,7 +222,8 @@ function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: 
   const y = Number(today.slice(0, 4));
   const m = Number(today.slice(5, 7));
   const daysLeft = new Date(Date.UTC(y, m, 0)).getUTCDate() - Number(today.slice(8)) + 1;
-  const perDay = Math.round(Math.max(0, left) / daysLeft);
+  // Today's limit comes from the same plan as Today (payday, floor and card payments included).
+  const perDay = limit ? limit.cents : Math.round(Math.max(0, left) / daysLeft);
   const scale = Math.max(1, income, fixed + spent);
   const pct = (c: number) => `${Math.max(0, (c / scale) * 100)}%`;
   const ok = perDay >= expectedPerDayCents;
@@ -233,7 +234,7 @@ function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: 
       <p className="flex items-center text-sm font-bold text-ink">
         Where it goes
         <Info label="Where it goes">
-          <b>Fixed</b> is what&apos;s already spoken for: repeating bills and savings moves, paid or still coming. <b>Plans</b> are the calendar plans still ahead this month, at their estimated cost. Income minus both is what you have to <b>live on</b>. Everyday spending so far comes out of that, and what&apos;s <b>left</b> is spread over the days remaining. <b>A usual day</b> is what everyday life typically costs you on the days ahead. Tap any part to see what&apos;s in it.
+          <b>Fixed</b> is what&apos;s already spoken for: repeating bills and savings moves, paid or still coming. <b>Plans</b> are the calendar plans still ahead this month, at their estimated cost. Income minus both is what you have to <b>live on</b>. Everyday spending so far comes out of that, and what&apos;s <b>left</b> is spread over the days remaining. <b>Today&apos;s limit</b> is the same number as on Today: a reasonable most to spend today, after bills, plans, card payments and your floor until payday. <b>A usual day</b> is what everyday life typically costs you. Tap any part to see what&apos;s in it.
         </Info>
       </p>
       <div className="mt-3 flex h-3 overflow-hidden rounded-full bg-surface-3" aria-hidden>
@@ -264,7 +265,7 @@ function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: 
       </p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         <div className="rounded-xl bg-surface-2/60 px-3 py-2">
-          <p className="text-[11px] text-faint">Left per day · {daysLeft} {daysLeft === 1 ? "day" : "days"}</p>
+          <p className="text-[11px] text-faint">Today&apos;s limit</p>
           <p className={`font-num text-2xl leading-tight ${ok ? "text-display" : "text-warn"}`}><Money cents={perDay} whole /></p>
         </div>
         <div className="rounded-xl bg-surface-2/60 px-3 py-2">
@@ -273,8 +274,9 @@ function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref }: 
         </div>
       </div>
       <p className={`mt-2 text-xs ${ok ? "text-brand" : "text-warn"}`}>
-        {left <= 0 ? "Nothing left for the rest of the month at this pace." : ok ? <>On track: about <Money cents={gap} whole /> a day of room.</> : <>Tight: about <Money cents={gap} whole /> a day less than usual.</>}
+        {perDay <= 0 ? "Nothing to spare today." : ok ? <>On track: about <Money cents={gap} whole /> more than a usual day.</> : <>Tight: about <Money cents={gap} whole /> less than a usual day.</>}
       </p>
+      {limit && <a href={limit.href} className="mt-1 block text-xs font-semibold text-brand">Every day to {limit.until} ›</a>}
     </div>
   );
 }

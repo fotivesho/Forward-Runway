@@ -136,11 +136,11 @@ export function Story({ d }: { d: LandingData }) {
         </Frame>
       </Step>
 
-      <Step n={tradeoff ? 5 : 4} kicker="The result" title="A budget for the month ahead." body="Built from your plans and your habits, not last month's copy. And every morning, one calm number: what's safe to spend today.">
+      <Step n={tradeoff ? 5 : 4} kicker="The result" title="A budget for the month ahead." body="Built from your plans and your habits, not last month's copy. And every morning, one calm number: today's limit.">
         <Frame>
           <div className="flex items-end justify-between gap-3 rounded-2xl bg-gradient-to-br from-surface-3 to-surface p-3">
             <div>
-              <p className="text-[11px] font-bold text-muted">Safe to spend today</p>
+              <p className="text-[11px] font-bold text-muted">Today&apos;s limit</p>
               <p className="font-num text-4xl leading-none text-display">{usd(d.hero.safeTodayCents)}</p>
             </div>
             <p className="text-right text-[11px] text-faint">every bill, plan and<br />savings move covered</p>
