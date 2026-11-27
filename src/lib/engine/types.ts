@@ -186,6 +186,8 @@ export interface EngineInput {
   settings: ForecastSettings;
   /** How everyday purchases are paid: "auto" (from history), "debit", or a card's id. */
   everydayPay?: string;
+  /** Calendar plans ahead with their cost, and the card they're going on (if any). */
+  plans?: Array<{ date: ISODate; cents: Cents; paymentAccountId: string | null }>;
 }
 
 export type ItemSource =

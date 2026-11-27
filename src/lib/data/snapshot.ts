@@ -127,6 +127,10 @@ export function toEngineInput(s: Snapshot, today: ISODate): EngineInput {
     statements: s.statements,
     goals: s.goals,
     settings: s.settings,
+    plans: s.calendarEvents
+      .filter((e) => !e.cancelled && !e.duplicateOf && e.date >= today && e.decision !== "skip" && e.decision !== "postpone" && e.estimateSource !== "not_spending")
+      .map((e) => ({ date: e.date, cents: Math.max(0, e.capCents ?? e.estimateCents ?? 0), paymentAccountId: e.paymentAccountId }))
+      .filter((p) => p.cents > 0),
     everydayPay: String((s.corrections.find((c) => c.kind === "preference" && c.matchKey === "pay_everyday_with")?.value as { with?: string } | undefined)?.with ?? "auto"),
   };
 }

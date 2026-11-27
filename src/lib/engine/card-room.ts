@@ -36,8 +36,11 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
     const isBill = (it: { kind: string; postings: Array<{ accountId: string }>; date: ISODate }) => it.kind === "card_payment" && it.date === st.dueDate && it.postings.some((p) => p.accountId === accountId);
     // Everyday purchases you'll still make on this card before it closes land in this bill: count
     // them in the bill (like What if does), and not a second time as everyday spending.
+    // Everyday purchases and plans you'll put on this card before it closes are in this bill: count
+    // them there, and not a second time below.
     const onCard = Math.round(cash.onStatement.get(`${accountId}|${st.dueDate}`) ?? 0);
-    const bill = -f.days[di]!.items.filter(isBill).reduce((t, it) => t + it.cashEffectCents, 0) + onCard;
+    const plansOnCard = Math.round(cash.plansOnStatement.get(`${accountId}|${st.dueDate}`) ?? 0);
+    const bill = -f.days[di]!.items.filter(isBill).reduce((t, it) => t + it.cashEffectCents, 0) + onCard + plansOnCard;
     let paydays = 0;
     let bills = 0;
     let usual = 0;
@@ -50,7 +53,8 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
       }
     }
     // Everyday spending that leaves cash by the due date, not counting what's inside this bill.
-    usual = Math.max(0, cash.cumulative[di]! - onCard);
+    const plansBy = Math.max(0, cash.plansCumulative[di]! - plansOnCard);
+    usual = Math.max(0, cash.cumulative[di]! - cash.plansCumulative[di]! - onCard);
     const beforeBill = f.startingCashCents + paydays - bills - usual;
     const nextPay = f.days.findIndex((d, i) => i > di && d.items.some((it) => it.kind === "income" && it.cashEffectCents > 0));
     const until = nextPay < 0 ? Math.min(f.days.length - 1, di + 30) : nextPay - 1;
@@ -59,7 +63,8 @@ export function cardRoomFor(input: EngineInput, accountId: string, f: Forecast =
     const lines = [
       { label: "Cash now", cents: f.startingCashCents },
       { label: `Paychecks by ${st.dueDate.slice(5).replace("-", "/")}`, cents: paydays },
-      { label: "Bills, card payments & plans before then", cents: -bills },
+      { label: "Bills & card payments before then", cents: -bills },
+      { label: "Plans before then", cents: -plansBy },
       { label: "Everyday spending until then", cents: -Math.round(usual), note: onCard > 0 ? "usual, not counting what goes on this card" : "usual" },
       { label: nextPay < 0 ? "Still needed in the 30 days after" : "Still needed until the next payday", cents: -Math.round(stillNeeded) },
       { label: "Your cushion", cents: -f.floorCents },

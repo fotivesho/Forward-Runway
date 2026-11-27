@@ -26,4 +26,17 @@ describe("when everyday spending leaves cash", () => {
     expect(c.cumulative[i]).toBeGreaterThan(0);
     expect(c.cumulative[i - 1]).toBe(0);
   });
+
+  it("plans leave cash on their date from checking, or on the card's due date", () => {
+    const chk = s.accounts.find((a) => a.kind === "checking")!;
+    const base = { ...toEngineInput(s, today), everydayPay: "debit" };
+    const f = buildForecast(base, 60);
+    const i = f.days.findIndex((d) => d.date === "2026-11-30");
+    const debit = everydayCash({ ...base, plans: [{ date: "2026-11-30", cents: 7_000, paymentAccountId: chk.id }] }, f, () => 0);
+    expect(debit.cumulative[i]).toBe(7_000);
+    expect(debit.cumulative[i - 1]).toBe(0);
+    const onCard = everydayCash({ ...base, plans: [{ date: "2026-11-30", cents: 7_000, paymentAccountId: card.id }] }, f, () => 0);
+    expect(onCard.cumulative[i]).toBe(0);
+    expect(onCard.plansOnStatement.size).toBe(1);
+  });
 });
