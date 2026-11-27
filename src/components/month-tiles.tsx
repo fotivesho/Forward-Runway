@@ -282,7 +282,7 @@ function WhereItGoes({ income, out, today, expectedPerDayCents, calendarHref, li
         </div>
       </div>
       <p className={`mt-2 text-xs ${ok ? "text-brand" : "text-warn"}`}>
-        {perDay <= 0 ? "Nothing to spare today." : ok ? <>On track: about <Money cents={gap} whole /> more than a usual day.</> : <>Tight: about <Money cents={gap} whole /> less than a usual day.</>}
+        {perDay <= 0 ? "Nothing to spare today." : gap < 500 ? "Right around a usual day." : ok ? <>On track: about <Money cents={gap} whole /> more than a usual day.</> : <>Tight: about <Money cents={gap} whole /> less than a usual day.</>}
       </p>
       {limit && <a href={limit.href} className="mt-1 block text-xs font-semibold text-brand">Every day to {limit.until} ›</a>}
     </div>

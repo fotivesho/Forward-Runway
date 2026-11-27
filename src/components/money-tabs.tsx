@@ -13,7 +13,7 @@ export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
     { href: `${base}/spend/trends`, label: "Trends" },
   ];
   return (
-    <nav aria-label="Money" className="mb-4 flex rounded-xl border border-line bg-surface p-1">
+    <nav aria-label="Money" className="mb-4 hidden rounded-xl border border-line bg-surface p-1 lg:flex">
       {tabs.map((t) => {
         const active = path === t.href;
         return (

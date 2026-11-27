@@ -4,6 +4,7 @@
 @theme {
   --color-bg: #f6f1e4;
   --color-surface: #fffcf4;
+  --color-dock: #fffdf7;
   --color-surface-2: #f1ebdb;
   --color-surface-3: #e4eedc;
   --color-line: #ddd3bb;
@@ -38,6 +39,7 @@
     color-scheme: dark;
     --color-bg: #121a15;
     --color-surface: #18231c;
+    --color-dock: #0c130f;
     --color-surface-2: #1f2c24;
     --color-surface-3: #253a2c;
     --color-line: #34483b;
@@ -61,6 +63,7 @@
   color-scheme: dark;
   --color-bg: #121a15;
   --color-surface: #18231c;
+  --color-dock: #0c130f;
   --color-surface-2: #1f2c24;
   --color-surface-3: #253a2c;
   --color-line: #34483b;
@@ -348,4 +351,9 @@ input[type="date"]::-webkit-date-and-time-value {
 /* Inputs inside a pill that shows its own focus (the pill's border) don't need a second ring. */
 .pill-input:focus-visible {
   outline: none;
+}
+
+/* The bottom menu: solid, a step apart from the page, with a hairline on top. */
+.dock {
+  background: var(--color-dock);
 }

@@ -12,12 +12,19 @@ const LINKS: Array<{ href: string; label: string; Icon: LucideIcon }> = [
   { href: "/app/accounts", label: "Accounts", Icon: Landmark },
   { href: "/app/settings", label: "Settings", Icon: Settings },
 ];
+const MONEY = [
+  { href: "/spend", label: "Month" },
+  { href: "/spend/transactions", label: "Activity" },
+  { href: "/spend/bills", label: "Bills" },
+  { href: "/spend/trends", label: "Trends" },
+];
 const MOBILE = ["/app", "/app/spend", "/app/calendar", "/app/what-if", "/app/forecast", "/app/accounts"];
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();
   const to = (href: string) => base + href.slice(4);
   const active = (href: string) => (href === "/app" ? path === base : path.startsWith(to(href)));
+  const inMoney = path.startsWith(`${base}/spend`);
   return (
     <>
       <nav aria-label="Main" className="hidden lg:block">
@@ -37,22 +44,35 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
         </ul>
       </nav>
 
-      {/* Phones: a calm floating dock. Every tab is equal; the current one sits on a soft tile. */}
-      <nav aria-label="Main" className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 lg:hidden">
-        <ul className="mx-auto grid max-w-md grid-cols-6 rounded-[28px] border border-line/70 bg-surface/90 p-1.5 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+      {/* Phones: docked to the bottom edge, solid, never blending into the page. In Money, its four
+          sections sit as pills just above the tabs. */}
+      <nav aria-label="Main" className="dock fixed inset-x-0 bottom-0 z-40 border-t border-line pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)] lg:hidden">
+        {inMoney && (
+          <ul aria-label="Money" className="flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
+            {MONEY.map((m) => {
+              const href = base + m.href;
+              const on = m.href === "/spend" ? path === href : path.startsWith(href);
+              return (
+                <li key={m.href}>
+                  <Link href={href} aria-current={on ? "page" : undefined}
+                    className={`block whitespace-nowrap rounded-full px-3.5 py-1.5 text-[13px] font-semibold transition ${on ? "bg-brand text-brand-ink" : "bg-surface-2 text-muted hover:text-ink"}`}>
+                    {m.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        <ul className="mx-auto grid max-w-md grid-cols-6 px-1 pb-1.5 pt-1.5">
           {LINKS.filter((l) => MOBILE.includes(l.href)).map(({ href, label, Icon }) => {
             const on = active(href);
             return (
               <li key={href}>
-                <Link
-                  href={to(href)}
-                  aria-current={on ? "page" : undefined}
-                  className="group flex flex-col items-center gap-0.5 py-1"
-                >
-                  <span className={`flex h-9 w-12 items-center justify-center rounded-2xl transition ${on ? "bg-brand/25 text-ink" : "text-muted group-hover:text-ink"}`}>
-                    <Icon aria-hidden size={20} strokeWidth={on ? 2.2 : 1.8} />
+                <Link href={to(href)} aria-current={on ? "page" : undefined} className="group flex flex-col items-center gap-0.5 py-0.5">
+                  <span className={`flex h-8 w-12 items-center justify-center rounded-full transition ${on ? "bg-brand/20 text-brand" : "text-faint group-hover:text-ink"}`}>
+                    <Icon aria-hidden size={20} strokeWidth={on ? 2.3 : 1.9} />
                   </span>
-                  <span className={`text-[10.5px] leading-tight ${on ? "font-semibold text-ink" : "text-muted"}`}>{label}</span>
+                  <span className={`text-[10.5px] leading-tight ${on ? "font-bold text-brand" : "text-faint"}`}>{label}</span>
                 </Link>
               </li>
             );

@@ -19,7 +19,7 @@ export default function DemoLayout({ children }: { children: React.ReactNode }) 
     <PrivacyProvider hide={false}>
      <CategoryStylesProvider styles={{}}>
       <DemoProvider demo>
-        <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-32 pt-4 sm:px-6 lg:pb-10">
+        <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-40 pt-4 sm:px-6 lg:pb-10">
           <div role="note" className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-info/40 bg-info/5 p-3 text-sm">
             <p>
               <strong>Demo with fictional data.</strong>{" "}
