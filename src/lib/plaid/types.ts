@@ -58,6 +58,10 @@ export interface BankApi {
   getLiabilities(accessToken: string): Promise<PlaidCreditLiability[]>;
   syncTransactions(accessToken: string, cursor: string | null): Promise<SyncPage>;
   removeItem(accessToken: string): Promise<void>;
+  /** Ask the bank for new activity now (Plaid's Transactions Refresh). False when it isn't available. */
+  refreshTransactions?(accessToken: string): Promise<boolean>;
+  /** When Plaid last got new activity from the bank, and any problem it reports. */
+  itemStatus?(accessToken: string): Promise<{ lastSuccess: string | null; lastFailure: string | null; error: string | null }>;
 }
 
 /** A Plaid API error, with Plaid's own error code (e.g. ITEM_LOGIN_REQUIRED). */

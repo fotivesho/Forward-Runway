@@ -60,6 +60,29 @@ function plaidHttp(env: "sandbox" | "production", clientId: string, secret: stri
     async removeItem(accessToken) {
       await call("/item/remove", { access_token: accessToken });
     },
+    async refreshTransactions(accessToken) {
+      try {
+        await call("/transactions/refresh", { access_token: accessToken });
+        return true;
+      } catch (e) {
+        // Not switched on for this Plaid account, or asked too often: the normal sync still runs.
+        if (e instanceof PlaidError) return false;
+        throw e;
+      }
+    },
+    async itemStatus(accessToken) {
+      try {
+        const r = await call<{ item: { error?: { error_code?: string; display_message?: string | null; error_message?: string } | null }; status?: { transactions?: { last_successful_update?: string | null; last_failed_update?: string | null } | null } | null }>("/item/get", { access_token: accessToken });
+        const err = r.item.error;
+        return {
+          lastSuccess: r.status?.transactions?.last_successful_update ?? null,
+          lastFailure: r.status?.transactions?.last_failed_update ?? null,
+          error: err?.error_code ? String(err.display_message || err.error_message || err.error_code) : null,
+        };
+      } catch {
+        return { lastSuccess: null, lastFailure: null, error: null };
+      }
+    },
   };
 }
 

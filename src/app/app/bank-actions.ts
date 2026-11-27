@@ -6,7 +6,7 @@ import { getUser } from "@/lib/supabase/server";
 import { plaidMode } from "@/lib/plaid/config";
 import { connectBank, disconnectBank, linkToken, syncBank } from "@/lib/plaid/sync";
 
-export type BankResult = { ok: true; message: string; token?: string } | { ok: false; message: string };
+export type BankResult = { ok: true; message: string; token?: string; refreshed?: boolean } | { ok: false; message: string };
 
 async function signedIn() {
   const { supabase, user } = await getUser();
@@ -44,12 +44,13 @@ export async function finishBankLink(publicToken: string, institutionName: strin
   }
 }
 
-export async function syncBankNow(connectionId: string): Promise<BankResult> {
+/** Sync now: asks the bank for its newest activity first (when Plaid allows it), then pulls it in. */
+export async function syncBankNow(connectionId: string, refresh = true): Promise<BankResult> {
   if (plaidMode() === "off" || !uuid.test(connectionId)) return { ok: false, message: "Unknown connection." };
   const { supabase, user, today } = await signedIn();
-  const r = await syncBank(supabase, user.id, connectionId, today);
+  const r = await syncBank(supabase, user.id, connectionId, today, { refresh: refresh === true });
   revalidatePath("/app", "layout");
-  return { ok: r.ok, message: r.message };
+  return r.ok ? { ok: true, message: r.message, refreshed: r.refreshed } : { ok: false, message: r.message };
 }
 
 export async function disconnectBankNow(connectionId: string, removeAccounts = false): Promise<BankResult> {

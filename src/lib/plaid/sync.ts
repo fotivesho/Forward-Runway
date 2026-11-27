@@ -21,6 +21,16 @@ function admin() {
 
 const key = () => tokenKey(plaidEnv("PLAID_TOKEN_KEY"), plaidMode() === "mock");
 
+/** "12 minutes ago", "3 hours ago", "2 days ago". */
+function agoText(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+  if (mins < 2) return "just now";
+  if (mins < 60) return `${mins} minutes ago`;
+  const h = Math.round(mins / 60);
+  if (h < 36) return `${h} hour${h === 1 ? "" : "s"} ago`;
+  return `${Math.round(h / 24)} days ago`;
+}
+
 function api(): BankApi {
   const b = bankApi();
   if (!b) throw new Error("Bank connections aren't set up on this server.");
@@ -72,18 +82,22 @@ export async function connectBank(supabase: AppSupabaseClient, userId: string, p
 export interface SyncResult {
   ok: boolean;
   message: string;
+  /** The bank was asked for fresh activity: worth checking again in a little while. */
+  refreshed?: boolean;
   accounts: number;
   added: number;
 }
 
 /** Balances, card statements and new transactions for one connection. Safe to run any time. */
-export async function syncBank(supabase: AppSupabaseClient, userId: string, connectionId: string, today: string): Promise<SyncResult> {
+export async function syncBank(supabase: AppSupabaseClient, userId: string, connectionId: string, today: string, opts: { refresh?: boolean } = {}): Promise<SyncResult> {
   const db = admin();
   const { data: secret } = await db.from("bank_secrets").select("access_token_enc, sync_cursor").eq("connection_id", connectionId).eq("user_id", userId).maybeSingle();
   if (!secret) return { ok: false, message: "That bank connection no longer exists.", accounts: 0, added: 0 };
   try {
     const token = decryptToken(String(secret.access_token_enc), key());
     const bank = api();
+    // Asked for by you (Sync now): have the bank send its newest activity, pending included.
+    const refreshed = opts.refresh && bank.refreshTransactions ? await bank.refreshTransactions(token) : false;
     const { accounts: bankAccounts, institutionName } = await bank.getAccounts(token);
     const liabilities = bankAccounts.some((a) => a.type === "credit") ? await bank.getLiabilities(token) : [];
     const now = new Date().toISOString();
@@ -195,7 +209,18 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       .update({ status: "ok", last_synced_at: now, last_error: null, ...(institutionName ? { institution_name: institutionName } : {}) })
       .eq("id", connectionId)
       .eq("user_id", userId);
-    return { ok: true, message: `Synced ${idFor.size} account${idFor.size === 1 ? "" : "s"}${added ? ` and ${added} transaction${added === 1 ? "" : "s"}` : ""}.`, accounts: idFor.size, added };
+    // Say how fresh the bank's own data is, so "nothing new" is easy to read.
+    const st = bank.itemStatus ? await bank.itemStatus(token) : null;
+    const bankName = institutionName ?? "Your bank";
+    const fresh = st?.lastSuccess ? ` ${bankName} last sent new activity ${agoText(st.lastSuccess)}.` : "";
+    const problem = st?.error ? ` ${bankName} reports: ${st.error}` : "";
+    return {
+      ok: true,
+      message: `Synced ${idFor.size} account${idFor.size === 1 ? "" : "s"}${added ? ` and ${added} new transaction${added === 1 ? "" : "s"}` : ", nothing new yet"}.${fresh}${problem}`,
+      accounts: idFor.size,
+      added,
+      refreshed,
+    };
   } catch (e) {
     const { status, message } = bankErrorMessage(e);
     await db.from("bank_connections").update({ status, last_error: message }).eq("id", connectionId).eq("user_id", userId);

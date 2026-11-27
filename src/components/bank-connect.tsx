@@ -135,6 +135,19 @@ export function BankConnections({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync now: the bank is asked for its newest activity, which takes a moment to arrive, so look again shortly after.
+  const syncFresh = (id: string) =>
+    start(async () => {
+      setNote(null);
+      const first = await syncBankNow(id);
+      setNote(first);
+      if (first.ok && first.refreshed) {
+        setNote({ ok: true, message: `${first.message} Asked for the newest activity; checking again in a moment…` });
+        await new Promise((r) => setTimeout(r, 20_000));
+        setNote(await syncBankNow(id, false));
+      }
+    });
+
   const link = (connectionId?: string) =>
     start(async () => {
       setNote(null);
@@ -191,7 +204,7 @@ export function BankConnections({
                 {c.status === "needs_reauth" ? (
                   <button type="button" className="btn btn-primary btn-sm" disabled={pending} onClick={() => link(c.id)}>Sign in again</button>
                 ) : (
-                  <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={() => run(() => syncBankNow(c.id))}>Sync now</button>
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={pending} onClick={() => syncFresh(c.id)}>{pending ? "Syncing…" : "Sync now"}</button>
                 )}
                 <button
                   type="button"
