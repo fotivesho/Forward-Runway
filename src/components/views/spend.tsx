@@ -96,15 +96,9 @@ export function SpendView({ snapshot, today, nowIso, demo = false, section = "ov
           // Fixed costs: each repeating item as a monthly amount, against a month of income.
           const live = snapshot.rules.filter((r) => r.active !== false && r.kind !== "card_payment" && r.kind !== "transfer");
           const incomeCents = live.filter((r) => r.kind === "income").reduce((t, r) => t + monthlyEquivalent(r), 0);
-          const isCard = (id: string) => accounts.find((a) => a.id === id)?.kind === "credit_card";
-          // Bills charged to a card are paid through the card bill: shown, but counted inside it, never twice.
-          const bills: BillShare[] = live.filter((r) => r.kind !== "income" && r.kind !== "expense").map((r) => ({ name: r.name, category: r.category ?? null, monthlyCents: monthlyEquivalent(r), kind: r.kind === "savings_transfer" ? "savings" : r.kind === "loan_payment" ? "debt" : "bill", onCard: isCard(r.accountId) && !r.toAccountId }));
-          // Each card's monthly bill: the average of its last three statements.
-          for (const c of accounts.filter((a) => a.kind === "credit_card" && !a.archived)) {
-            const recent = snapshot.statements.filter((st) => st.accountId === c.id && st.closingDate <= today).sort((a, b) => (a.closingDate < b.closingDate ? 1 : -1)).slice(0, 3);
-            const avg = recent.length ? Math.round(recent.reduce((t, st) => t + st.statementBalanceCents, 0) / recent.length) : 0;
-            if (avg > 0) bills.push({ name: `${c.name} bill`, category: null, monthlyCents: avg, kind: "card", note: recent.length > 1 ? `avg of last ${recent.length}` : "last statement" });
-          }
+          // Fixed = every repeating bill, whichever account pays it. A card statement isn't a cost: it's
+          // the payment for things already counted (on-card bills here, everyday purchases elsewhere).
+          const bills: BillShare[] = live.filter((r) => r.kind !== "income" && r.kind !== "expense").map((r) => ({ name: r.name, category: r.category ?? null, monthlyCents: monthlyEquivalent(r), kind: r.kind === "savings_transfer" ? "savings" : r.kind === "loan_payment" ? "debt" : "bill", note: accounts.find((a) => a.id === r.accountId)?.kind === "credit_card" && !r.toAccountId ? "on card" : undefined }));
           // Over time: six months back, the next two ahead.
           const next = [1, 2].map((k) => { const m = addMonths(startOfMonth(today), k); return { label: MONTH_NAMES[Number(m.slice(5, 7)) - 1]!.slice(0, 3), start: m, end: endOfMonth(m), current: false }; });
           const fixedOf = (items: FlowItem[]) => items.filter((i) => i.kind === "bill" || i.kind === "savings");

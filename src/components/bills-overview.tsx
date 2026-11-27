@@ -43,7 +43,7 @@ export function BillsOverview({ incomeCents, bills, months, byMonth }: { incomeC
         <h2 id="fixed-title" className="flex items-center text-base font-bold text-ink">
           Where fixed money goes
           <Info label="Fixed costs">
-            Everything that repeats (rent, loans, utilities, subscriptions, savings moves) as a monthly amount, plus each card&apos;s bill (the average of its last three statements). Paychecks that come twice a month are added up to a month. Subscriptions charged to a card are already inside that card&apos;s bill, so they aren&apos;t counted twice. The card bill also holds everyday purchases you made on the card. <b>Share of income</b> shows how much of a typical month&apos;s income each one takes, and what&apos;s left for everyday life. <b>Over time</b> shows what fixed costs actually came to each month, with the next ones ahead dashed. Tap a month to see what made it up.
+            Everything that repeats (rent, loans, utilities, subscriptions, savings moves) as a monthly amount, whichever account pays it. Paychecks that come twice a month are added up to a month. Card statements aren&apos;t counted: they pay for things already here (bills on the card) or everyday purchases. What&apos;s left is what you have for everyday life. <b>Share of income</b> shows how much of a typical month&apos;s income each one takes, and what&apos;s left for everyday life. <b>Over time</b> shows what fixed costs actually came to each month, with the next ones ahead dashed. Tap a month to see what made it up.
           </Info>
         </h2>
         <div role="group" aria-label="View" className="flex self-start rounded-full border border-line p-0.5">
