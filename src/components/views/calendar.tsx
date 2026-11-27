@@ -98,8 +98,8 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
             <div className="mt-3">
               <Disclosure summary="Where do I find the secret iCal address?">
                 <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
-                  <li><strong className="text-ink">Google Calendar:</strong> Settings → choose the calendar (including calendars shared with you) → “Integrate calendar” → “Secret address in iCal format”.</li>
-                  <li><strong className="text-ink">Apple iCloud:</strong> Calendar app → share icon next to the calendar → “Public Calendar” → copy the webcal:// link.</li>
+                  <li><strong className="text-ink">Google Calendar:</strong> not in the phone app — open calendar.google.com in a browser (on a phone, choose “Desktop site”). ⚙ Settings → under “Settings for my calendars” tap the calendar → “Integrate calendar” → copy “Secret address in iCal format”. Missing? A work or school account may have it turned off by the admin.</li>
+                  <li><strong className="text-ink">Apple (iCloud):</strong> iPhone Calendar app → “Calendars” at the bottom → ⓘ next to the calendar → turn on “Public Calendar” → “Share Link…” → Copy. On a Mac: right-click the calendar → “Share Calendar…” → tick “Public Calendar”. Only iCloud calendars have this; “On My iPhone” or Google calendars shown in Apple’s app don’t.</li>
                   <li><strong className="text-ink">Outlook.com / Microsoft 365:</strong> Settings → Calendar → Shared calendars → “Publish a calendar” → copy the ICS link.</li>
                   <li>Add each calendar you want included — your own and shared ones. Only calendars you add here are read.</li>
                 </ul>
