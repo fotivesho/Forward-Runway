@@ -8,7 +8,7 @@ import type { Cents } from "../money";
 import { ruleOccurrences, type RecurringRule } from "../engine";
 import type { Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
-import { isNotSpending } from "../categories";
+import { isNotSpending, isRefund } from "../categories";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const monthLabel = (d: ISODate, today: ISODate) => (parts(d).y === parts(today).y ? MONTHS[parts(d).m - 1]! : `${MONTHS[parts(d).m - 1]} ’${String(parts(d).y).slice(2)}`);
@@ -101,7 +101,9 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
       if (t.status === "planned" && t.date < today) continue;
       if (t.status !== "planned" && t.date > today) continue;
       if (isNotSpending(t.category)) continue;
-      if (t.direction === "in") inC += t.amountCents;
+      // A refund (money back under a spending category) lowers spending; it isn't income.
+      if (isRefund(t)) outC -= t.amountCents;
+      else if (t.direction === "in") inC += t.amountCents;
       else outC += t.amountCents;
     }
     return { ...b, inCents: inC, outCents: outC, savingsCents: saved };
@@ -151,11 +153,13 @@ export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowIte
     if (t.status === "planned" && t.date < today) continue;
     if (t.status !== "planned" && t.date > today) continue;
     if (isNotSpending(t.category)) continue;
+    const refund = isRefund(t);
     const it: FlowItem = {
-      key: `t-${t.id}`, txnId: t.id, date: t.date, label: t.description, category: t.category ?? null, account: name(t.accountId), cents: t.amountCents,
-      when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" ? "income" : "spending",
+      key: `t-${t.id}`, txnId: t.id, date: t.date, label: refund ? `${t.description} (refund)` : t.description, category: t.category ?? null, account: name(t.accountId),
+      cents: refund ? -t.amountCents : t.amountCents,
+      when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" && !refund ? "income" : "spending",
     };
-    (t.direction === "in" ? ins : outs).push(it);
+    (t.direction === "in" && !refund ? ins : outs).push(it);
   }
   const byDate = (a: FlowItem, c: FlowItem) => (a.date < c.date ? 1 : a.date > c.date ? -1 : 0);
   return { in: ins.sort(byDate), out: outs.sort(byDate) };

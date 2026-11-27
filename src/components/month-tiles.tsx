@@ -7,6 +7,7 @@ import { formatShort } from "@/lib/dates";
 import type { FlowItem } from "@/lib/view/spend";
 import { DemoCtx } from "./form";
 import { Glyph } from "@/components/icon";
+import { CATEGORY_LIST, INCOME_CATEGORIES, NOT_SPENDING } from "@/lib/categories";
 import { Info } from "./info";
 import { Modal } from "./modal";
 import { Money } from "./privacy";
@@ -76,40 +77,59 @@ function Row({ i, sign = 1, children }: { i: FlowItem; sign?: 1 | -1; children?:
   );
 }
 
-/** Income, item by item. A move from your own account counted as income can be relabelled in one tap. */
+/** Income, item by item. Each one's category is a tap away: a refund goes back to its spending category, a move between your accounts becomes a transfer. */
 function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string) => void }) {
   const demo = useContext(DemoCtx);
   const router = useRouter();
   const [busy, start] = useTransition();
   const [note, setNote] = useState<string | null>(null);
-  const notIncome = (i: FlowItem) =>
+  const [picking, setPicking] = useState<string | null>(null);
+  const [cats, setCats] = useState<Record<string, string>>({});
+  const choose = (i: FlowItem, c: string) =>
     start(async () => {
-      if (demo) {
-        onHide(i.key);
-        return setNote("Demo: changes aren't saved.");
+      setPicking(null);
+      if (!demo) {
+        const r = await setTransactionCategory(i.txnId!, c);
+        if (!r.ok) return setNote(r.error ?? "Couldn't save that.");
       }
-      const r = await setTransactionCategory(i.txnId!, "Transfer");
-      if (!r.ok) return setNote(r.error ?? "Couldn't save that.");
-      onHide(i.key);
-      setNote(`“${i.label}” is now a transfer, so it's no longer counted as income.`);
-      router.refresh();
+      setCats((x) => ({ ...x, [i.key]: c }));
+      const stays = INCOME_CATEGORIES.has(c);
+      if (!stays) onHide(i.key);
+      setNote(
+        (demo ? "Demo: not saved. " : "") +
+          (stays ? `“${i.label}” is now ${c}.` : NOT_SPENDING.has(c) ? `“${i.label}” is now a transfer, so it's not income.` : `“${i.label}” is now a ${c} refund: it lowers your ${c} spending instead of counting as income.`),
+      );
+      if (!demo) router.refresh();
     });
   const done = items.filter((i) => i.when === "done");
   const coming = items.filter((i) => i.when === "coming");
+  const order = ["Income", "Salary", "Interest", "Transfer", ...CATEGORY_LIST.filter((c) => !["Income", "Transfer", "Card payment", "Other"].includes(c))];
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">
-        Not really income? Tap <b>Not income</b>.
-        <Info label="Not income">Money you moved from your own savings or another account of yours isn&apos;t income. Tapping Not income relabels it as a transfer, so it stops counting here, in your budget and in your forecast.</Info>
+        Tap a category to fix it.
+        <Info label="Fixing income">A refund (like money back from DoorDash) belongs to its spending category, so pick Dining and it lowers your Dining spending instead. Money moved from your own savings or another account of yours is a Transfer. Anything else stays as income.</Info>
       </p>
       {note && <p className="rounded-xl bg-surface-2/70 px-3 py-2 text-xs text-muted" aria-live="polite">{note}</p>}
       <Group title="Came in" items={done}>
         {(i) => (
           <Row key={i.key} i={i}>
             {i.txnId && (
-              <button type="button" disabled={busy} onClick={() => notIncome(i)} className="mt-1 rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-muted transition hover:border-warn/60 hover:text-ink">
-                Not income
-              </button>
+              <>
+                <button type="button" disabled={busy} onClick={() => setPicking(picking === i.key ? null : i.key)} aria-expanded={picking === i.key}
+                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-line px-2 py-0.5 text-[11px] font-semibold text-ink transition hover:border-brand/60">
+                  <Glyph name={cats[i.key] ?? i.category ?? "Income"} size="xs" bare /> {cats[i.key] ?? i.category ?? "Income"} <span aria-hidden className="text-faint">▾</span>
+                </button>
+                {picking === i.key && (
+                  <span className="fade-up mt-2 flex flex-wrap gap-1">
+                    {order.map((c) => (
+                      <button key={c} type="button" onClick={() => choose(i, c)} className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] ${c === (cats[i.key] ?? i.category ?? "Income") ? "border-brand bg-brand text-brand-ink" : "border-line text-muted hover:border-brand/60"}`}>
+                        <Glyph name={c} size="xs" bare /> {c}
+                      </button>
+                    ))}
+                  </span>
+                )}
+              </>
             )}
           </Row>
         )}

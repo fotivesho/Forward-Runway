@@ -17,7 +17,7 @@
 import { addDays, addMonths, daysInMonth, endOfMonth, parts, startOfMonth, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { ruleOccurrences, spendingByCategory } from "../engine";
-import { isNotSpending } from "../categories";
+import { isNotSpending, isRefund } from "../categories";
 import { toEngineInput, type CategoryGroup, type Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
 import { payPeriodBuckets } from "./spend";
@@ -326,7 +326,7 @@ export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Recor
     if (!a || a.kind === "loan") continue;
     const cat = t.category?.trim() || "Uncategorized";
     if (t.direction === "out") add(cat, { date: t.date, label: t.description, cents: t.amountCents, account: a.name, repeating: false, pending: t.pending });
-    else if (a.kind === "credit_card") add(cat, { date: t.date, label: `${t.description} (refund)`, cents: -t.amountCents, account: a.name, repeating: false });
+    else if (a.kind === "credit_card" || isRefund(t)) add(cat, { date: t.date, label: `${t.description} (refund)`, cents: -t.amountCents, account: a.name, repeating: false });
   }
   for (const r of s.rules) {
     if (r.active === false || (r.toAccountId && r.kind !== "loan_payment")) continue;

@@ -52,3 +52,17 @@ describe("month breakdown", () => {
     expect(items.in.some((i) => i.when === "coming")).toBe(true);
   });
 });
+
+describe("refunds", () => {
+  it("money back under a spending category lowers spending instead of counting as income", () => {
+    const b = monthBuckets(today);
+    const m = b[b.length - 1]!;
+    const refund = { id: "rf", accountId: s.accounts[0]!.id, direction: "in" as const, amountCents: 1_500, description: "DD DOORDASH", date: today, status: "posted" as const, category: "Dining" };
+    const before = cashFlow(s, today, [m])[0]!;
+    const after = cashFlow({ ...s, transactions: [...s.transactions, refund] }, today, [m])[0]!;
+    expect(after.inCents).toBe(before.inCents);
+    expect(after.outCents).toBe(before.outCents - 1_500);
+    const items = flowItems({ ...s, transactions: [...s.transactions, refund] }, today, m);
+    expect(items.out.find((i) => i.txnId === "rf")!.cents).toBe(-1_500);
+  });
+});
