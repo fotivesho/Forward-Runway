@@ -27,7 +27,7 @@ function placeFor(el: HTMLElement, height = 160): Place {
  * The bubble: frosted glass, rendered on top of the page (a portal), so nothing can clip it or
  * push it off screen. Grows softly from the ⓘ; fades out on close.
  */
-export function InfoBubble({ id, label, place, closing, onClose, children, bubbleRef }: {
+export function InfoBubble({ id, label, place, closing, onClose, children, bubbleRef, container }: {
   id?: string;
   label: string;
   place: Place;
@@ -35,6 +35,9 @@ export function InfoBubble({ id, label, place, closing, onClose, children, bubbl
   onClose: () => void;
   children: React.ReactNode;
   bubbleRef?: React.Ref<HTMLDivElement>;
+  /** Where to render it. Inside a pop-up it must be the pop-up itself: an open <dialog> sits above
+   *  everything else on the page and makes the rest untappable, so a bubble on the page would be hidden. */
+  container?: Element | null;
 }) {
   return createPortal(
     <div
@@ -52,7 +55,7 @@ export function InfoBubble({ id, label, place, closing, onClose, children, bubbl
         <X size={12} strokeWidth={2.2} aria-hidden />
       </button>
     </div>,
-    document.body,
+    container ?? document.body,
   );
 }
 
@@ -140,7 +143,7 @@ export function Info({ children, label = "More info", className = "", color }: {
         i
       </span>
       {place && (
-        <InfoBubble bubbleRef={bubble} id={id} label={label} place={place} closing={closing} onClose={close}>
+        <InfoBubble bubbleRef={bubble} id={id} label={label} place={place} closing={closing} onClose={close} container={trigger.current?.closest("dialog[open]")}>
           {children}
         </InfoBubble>
       )}
