@@ -17,6 +17,8 @@ import {
   mapTransfer,
 } from "./mappers";
 import { DEFAULT_SETTINGS, type Snapshot } from "./snapshot";
+import { autoPosted } from "./match";
+import { todayInZone } from "../dates";
 
 export class LoadError extends Error {}
 
@@ -60,14 +62,20 @@ export async function loadSnapshot(supabase: SupabaseClient): Promise<Snapshot> 
         monthlyBudgetCents: r.monthly_budget_cents == null ? null : Number(r.monthly_budget_cents),
       }));
 
+  const prof = mapProfile(profile.data);
+  const ruleList = (rules.data ?? []).map(mapRule);
+  const overrideList = (overrides.data ?? []).map(mapOverride);
+  const txnList = (txns.data ?? []).map(mapTransaction);
+  // A repeating item's real charge (any amount close enough) marks that date as done, so it's never counted twice.
+  const auto = autoPosted(ruleList, txnList, overrideList, todayInZone(prof.timezone || "America/New_York"));
   return {
     categorySettings,
-    profile: mapProfile(profile.data),
+    profile: prof,
     settings: mapSettings(settings.data, DEFAULT_SETTINGS),
     accounts: (accounts.data ?? []).map(mapAccount),
-    rules: (rules.data ?? []).map(mapRule),
-    overrides: (overrides.data ?? []).map(mapOverride),
-    transactions: (txns.data ?? []).map(mapTransaction),
+    rules: ruleList,
+    overrides: [...overrideList, ...auto],
+    transactions: txnList,
     transfers: (transfers.data ?? []).map(mapTransfer),
     statements: (statements.data ?? []).map(mapStatement),
     goals: (goals.data ?? []).map(mapGoal),

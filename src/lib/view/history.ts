@@ -1,6 +1,7 @@
 import { addDays, addMonths, daysInMonth, diffDays, parts, startOfMonth, type ISODate } from "@/lib/dates";
 import { ruleOccurrences, type OccurrenceOverride, type OneTimeTransaction, type Occurrence, type RecurringRule } from "@/lib/engine";
 import { cleanName } from "./recurring";
+import { looksLike } from "@/lib/data/match";
 
 /** One bar: what happened (past), this month so far plus the rest (now), or what's expected (ahead). */
 export interface HistBar {
@@ -148,17 +149,27 @@ const LOOKBACK: Record<string, number> = { weekly: 42, biweekly: 84, semimonthly
  */
 export function ruleHistory(rule: RecurringRule, txns: OneTimeTransaction[], overrides: OccurrenceOverride[], today: ISODate, ahead: Occurrence[]): HistoryView {
   const look = LOOKBACK[rule.schedule.frequency] ?? 400;
-  const from = rule.schedule.startDate > addDays(today, -look) ? rule.schedule.startDate : addDays(today, -look);
-  const pastOcc = from < today ? ruleOccurrences(rule, overrides, from, addDays(today, -1)).slice(-6) : [];
-  const dir = rule.kind === "income" ? "in" : "out";
-  const bars: HistBar[] = pastOcc.map((o) => {
-    // The real charge, if it's in your history.
-    const hit = txns.find((t) => t.direction === dir && Math.abs(diffDays(o.date, t.date)) <= 4 && sameThing(t.description, rule.name));
-    return { key: `p-${o.originalDate}`, label: short(o.date), title: short(o.date), cents: hit?.amountCents ?? o.amountCents, kind: "past" as const };
-  });
-  for (const o of ahead.filter((x) => x.date >= today).slice(0, 4)) {
+  // The real charges first, from before you even set it up, whatever they came to.
+  const real = txns
+    .filter((t) => t.date <= today && t.date > addDays(today, -look) && looksLike(rule, t))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+    .slice(-6);
+  let bars: HistBar[];
+  let count: number;
+  if (real.length > 0) {
+    bars = real.map((t) => ({ key: `p-${t.id}`, label: short(t.date), title: short(t.date), cents: t.amountCents, kind: "past" as const }));
+    count = real.length;
+  } else {
+    // Nothing found yet: show the schedule's own past dates.
+    const from = rule.schedule.startDate > addDays(today, -look) ? rule.schedule.startDate : addDays(today, -look);
+    const pastOcc = from < today ? ruleOccurrences(rule, overrides, from, addDays(today, -1)).slice(-6) : [];
+    bars = pastOcc.map((o) => ({ key: `p-${o.originalDate}`, label: short(o.date), title: short(o.date), cents: o.amountCents, kind: "past" as const }));
+    count = pastOcc.length;
+  }
+  // Coming up: the dates not already paid (a charge that came early already counts above).
+  for (const o of ahead.filter((x) => x.date >= today && !x.posted).slice(0, 4)) {
     bars.push({ key: `a-${o.originalDate}`, label: short(o.date), title: short(o.date), cents: o.amountCents, kind: "ahead", occurrence: o });
   }
   const amounts = bars.map((b) => b.cents);
-  return { bars: compact(bars), unit: "charge", count: pastOcc.length, usualCents: median(amounts), totalCents: amounts.reduce((s, c) => s + c, 0) };
+  return { bars: compact(bars), unit: "charge", count, usualCents: median(amounts), totalCents: amounts.reduce((s, c) => s + c, 0) };
 }
