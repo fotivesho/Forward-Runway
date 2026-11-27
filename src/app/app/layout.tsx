@@ -8,6 +8,8 @@ import { formatLong } from "@/lib/dates";
 import { setHideAmounts, signOut } from "./actions";
 import { Glyph } from "@/components/icon";
 import { Logo } from "@/components/logo";
+import { BankAutoSync } from "@/components/bank-auto-sync";
+import { plaidMode } from "@/lib/plaid/config";
 
 export const metadata: Metadata = { title: "Today", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -17,6 +19,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hide = snapshot.profile.hideAmounts;
   return (
     <PrivacyProvider hide={hide}>
+      {plaidMode() !== "off" && <BankAutoSync />}
       <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-32 pt-4 sm:px-6 lg:pb-10">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Link href="/app" className="flex items-center">

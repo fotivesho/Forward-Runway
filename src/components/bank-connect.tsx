@@ -184,6 +184,7 @@ export function BankConnections({
               </div>
               <p className="mt-0.5 text-xs text-muted">
                 {c.accountNames.length ? c.accountNames.join(" · ") : "No accounts yet"} · last synced {ago(c.lastSyncedAt)}
+                <Info label="How syncing works">Your bank sends new purchases to us a few times a day, usually within a few hours of the purchase (pending ones too). We pick them up every time you open the app, and you can tap Sync now any time. A bank that asks you to sign in again stops sending until you do.</Info>
               </p>
               {c.lastError && c.status !== "ok" && <p className="mt-1 text-xs text-warn">{c.lastError}</p>}
               <div className="mt-2 flex flex-wrap gap-2">

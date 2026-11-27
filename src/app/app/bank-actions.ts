@@ -61,3 +61,35 @@ export async function disconnectBankNow(connectionId: string, removeAccounts = f
     ? { ok: true, message: "Removed the bank and its accounts." }
     : { ok: true, message: "Disconnected. Your accounts and history stay, and you can keep them up to date by hand." };
 }
+
+/** How long a bank's data counts as fresh before opening the app syncs it again. */
+const FRESH_MINUTES = 30;
+
+/**
+ * Runs quietly when you open the app: every connected bank not synced in the last half hour is
+ * synced now (banks that need you to sign in again are left for you). Returns how many new
+ * transactions came in, so the page only refreshes when something changed.
+ */
+export async function autoSyncBanks(): Promise<{ synced: number; added: number }> {
+  if (plaidMode() === "off") return { synced: 0, added: 0 };
+  try {
+    const { supabase, user, today } = await signedIn();
+    const cutoff = new Date(Date.now() - FRESH_MINUTES * 60_000).toISOString();
+    const { data } = await supabase
+      .from("bank_connections")
+      .select("id, status, last_synced_at")
+      .neq("status", "needs_reauth")
+      .or(`last_synced_at.is.null,last_synced_at.lt.${cutoff}`);
+    let synced = 0;
+    let added = 0;
+    for (const c of data ?? []) {
+      const r = await syncBank(supabase, user.id, String(c.id), today);
+      if (r.ok) synced++;
+      added += r.added;
+    }
+    if (synced) revalidatePath("/app", "layout");
+    return { synced, added };
+  } catch {
+    return { synced: 0, added: 0 };
+  }
+}
