@@ -6,10 +6,9 @@ import { useCategoryStyles } from "./custom-glyph";
 import { NewCategoryButton, NewCategoryForm } from "./new-category";
 import { looksLike } from "@/lib/data/match";
 import { createCategory, deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
-import { addDays, formatLong, formatShort, type ISODate } from "@/lib/dates";
+import { addDays, addMonths, formatLong, formatShort, type ISODate } from "@/lib/dates";
 import { describeSchedule, nextOccurrence, type Account, type OneTimeTransaction, type RecurringRule } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
-import { addMonths } from "@/lib/dates";
 import { ActionForm, DemoCtx, QuickAction, Submit } from "./form";
 import { centsToInput } from "@/lib/money";
 import { Modal } from "./modal";
@@ -53,6 +52,8 @@ export function TransactionList({
   const [cat, setCatRaw] = useState<string | null>(null);
   const [period, setPeriod] = useState<{ start: ISODate; end: ISODate; label: string } | null>(null);
   const [q, setQ] = useState("");
+  const [acct, setAcct] = useState<string>("");
+  const [range, setRange] = useState<string>("");
   const setCat = (c: string | null) => { setCatRaw(c); setPeriod(null); };
   const [open, setOpen] = useState<string | null>(null);
   const [startCat, setStartCat] = useState(false);
@@ -64,14 +65,6 @@ export function TransactionList({
   const repeats = (t: OneTimeTransaction) => live.some((r) => looksLike(r, t));
   const onCard = (id: string) => accounts.find((a) => a.id === id)?.kind === "credit_card";
 
-  // Chips: this month's spending per category, biggest first.
-  const totals = new Map<string, number>();
-  for (const t of txns) {
-    if (t.direction !== "out" || t.status !== "posted" || t.date < monthStart || t.date > today || isNotSpending(t.category)) continue;
-    const c = t.category ?? "Other";
-    totals.set(c, (totals.get(c) ?? 0) + t.amountCents);
-  }
-  const chips = [...totals.entries()].sort((a, b) => b[1] - a[1]);
   const query = q.trim().toLowerCase();
   const matches = (t: OneTimeTransaction) =>
     !query ||
@@ -79,8 +72,33 @@ export function TransactionList({
     (t.category ?? "").toLowerCase().includes(query) ||
     name(t.accountId).toLowerCase().includes(query) ||
     (/^[\d.,$]+$/.test(query) && (t.amountCents / 100).toFixed(2).includes(query.replace(/[$,]/g, "")));
-  const shown = txns.filter((t) => (!cat || (t.category ?? "Other") === cat) && (!period || (t.date >= period.start && t.date <= period.end)) && matches(t));
-  const filtered = !!(period || query);
+  // Time range: a quick pick, unless a bar in a chart already chose a period.
+  const ranges: Record<string, { label: string; from: ISODate; to: ISODate }> = {
+    month: { label: "This month", from: monthStart, to: "9999-12-31" },
+    last: { label: "Last month", from: addMonths(monthStart, -1), to: addDays(monthStart, -1) },
+    "90": { label: "Last 90 days", from: addDays(today, -89), to: "9999-12-31" },
+    year: { label: "This year", from: `${today.slice(0, 4)}-01-01`, to: "9999-12-31" },
+  };
+  const r = range ? ranges[range] : null;
+  const acctName = acct ? name(acct) : null;
+  // Chips: spending per category for the chosen account and time (this month by default), biggest first.
+  const chipFrom = r?.from ?? monthStart;
+  const totals = new Map<string, number>();
+  for (const t of txns) {
+    if (t.direction !== "out" || t.status !== "posted" || t.date < chipFrom || t.date > today || (r && t.date > r.to) || (acct && t.accountId !== acct) || isNotSpending(t.category)) continue;
+    const c = t.category ?? "Other";
+    totals.set(c, (totals.get(c) ?? 0) + t.amountCents);
+  }
+  const chips = [...totals.entries()].sort((a, b) => b[1] - a[1]);
+  const shown = txns.filter(
+    (t) =>
+      (!cat || (t.category ?? "Other") === cat) &&
+      (!period || (t.date >= period.start && t.date <= period.end)) &&
+      (!r || (t.date >= r.from && t.date <= r.to)) &&
+      (!acct || t.accountId === acct) &&
+      matches(t),
+  );
+  const filtered = !!(period || query || r || acct);
   const outTotal = shown.filter((t) => t.direction === "out").reduce((a, t) => a + t.amountCents, 0);
   const inTotal = shown.filter((t) => t.direction === "in").reduce((a, t) => a + t.amountCents, 0);
   const current = open ? (txns.find((t) => t.id === open) ?? null) : null;
@@ -97,8 +115,12 @@ export function TransactionList({
         <span className="sr-only">Search transactions</span>
         <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by name, category or amount" className="pill-input min-w-0 flex-1 bg-transparent py-2.5 text-sm text-ink outline-none placeholder:text-faint" />
       </label>
+      <div className="-mt-1 mb-3 flex gap-2">
+        <FilterSelect label="Account" value={acct} onChange={setAcct} options={[{ value: "", label: "All accounts" }, ...accounts.filter((a) => !a.archived && txns.some((t) => t.accountId === a.id)).map((a) => ({ value: a.id, label: a.name }))]} />
+        <FilterSelect label="Time" value={range} onChange={(v) => { setRange(v); setPeriod(null); }} options={[{ value: "", label: "Any time" }, ...Object.entries(ranges).map(([k, v]) => ({ value: k, label: v.label }))]} />
+      </div>
       {(
-        <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Pick a category to see it over time (this month's totals)">
+        <div className="-mx-1 mb-3 flex gap-1.5 overflow-x-auto px-1 pb-1" role="group" aria-label="Categories, with totals for the chosen account and time">
           <button type="button" onClick={() => setCat(null)} aria-pressed={cat === null} className={chip(cat === null)}>All</button>
           {chips.map(([c, cents]) => (
             <button key={c} type="button" onClick={() => setCat(cat === c ? null : c)} aria-pressed={cat === c} className={chip(cat === c)}>
@@ -123,7 +145,7 @@ export function TransactionList({
       {filtered && (
         <div className="mb-3 flex items-center justify-between gap-2 rounded-2xl bg-surface-2/70 px-3 py-2" aria-live="polite">
           <span className="min-w-0 text-sm text-muted">
-            <span className="font-semibold text-ink">{[cat, period?.label, query && `“${q.trim()}”`].filter(Boolean).join(" · ")}</span>
+            <span className="font-semibold text-ink">{[cat, acctName, period?.label ?? r?.label, query && `“${q.trim()}”`].filter(Boolean).join(" · ")}</span>
             {" "}· {shown.length} {shown.length === 1 ? "transaction" : "transactions"}
           </span>
           <span className="flex shrink-0 items-center gap-2">
@@ -132,7 +154,7 @@ export function TransactionList({
               {inTotal > 0 && <> {outTotal > 0 && " "}<Money cents={inTotal} sign tone="in" /></>}
               {outTotal === 0 && inTotal === 0 && <Money cents={0} />}
             </span>
-            <button type="button" onClick={() => { setPeriod(null); setQ(""); }} className="text-xs font-semibold text-brand">Clear</button>
+            <button type="button" onClick={() => { setPeriod(null); setQ(""); setAcct(""); setRange(""); }} className="text-xs font-semibold text-brand">Clear</button>
           </span>
         </div>
       )}
@@ -494,3 +516,17 @@ function Stat({ label, value, sub, small, tone }: { label: string; value: React.
 
 const chip = (active: boolean) =>
   `inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs transition ${active ? "border-brand bg-brand text-brand-ink" : "border-line bg-surface text-muted hover:border-brand/60"}`;
+
+/** A slim pill-shaped dropdown for filtering. Highlighted when something other than "all" is chosen. */
+function FilterSelect({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: Array<{ value: string; label: string }> }) {
+  return (
+    <label className="relative min-w-0 flex-1">
+      <span className="sr-only">{label}</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}
+        className={`w-full appearance-none truncate rounded-full border py-1.5 pl-3 pr-7 text-xs font-semibold transition ${value ? "border-brand bg-brand/10 text-ink" : "border-line bg-surface text-muted"}`}>
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      <span aria-hidden className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-faint">▾</span>
+    </label>
+  );
+}
