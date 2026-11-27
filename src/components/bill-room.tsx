@@ -53,7 +53,7 @@ export function BillRoom({
   label?: string;
   /** Where "borrowed" comes from, behind ⓘ. */
   borrowNote?: React.ReactNode;
-  /** What "max" means, behind ⓘ. */
+  /** What "room" means, behind ⓘ. */
   maxNote?: React.ReactNode;
   /** Renders an ⓘ bubble (the app and the landing page each have their own). */
   info?: (label: string, text: React.ReactNode) => React.ReactNode;
@@ -90,7 +90,7 @@ export function BillRoom({
         <span className="absolute -inset-y-1 w-0.5 rounded" style={{ left: pct(capCents), background: p.ink }} />
       </div>
       <p className="mt-1.5 text-[10px] leading-tight" style={{ color: p.muted }}>
-        Bill {usd(withCents)} · max {usd(capCents)}
+        Bill {usd(withCents)} · room {usd(capCents)}
         {maxNote && info?.("What max means", maxNote)}
       </p>
     </div>

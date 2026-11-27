@@ -10,6 +10,8 @@ import { diffDays, formatShort } from "@/lib/dates";
 import { archiveAccount, deleteAccount, deleteGoal, deleteStatement, markStatementPaid } from "@/app/app/actions";
 import { ReplaceWithBankForm } from "@/components/replace-with-bank";
 import { BankAccountPanel } from "@/components/bank-account-panel";
+import { CardRoomView } from "@/components/card-room";
+import { cardRoom } from "@/lib/view/card-room";
 import { avgDailyCardSpend, buildForecast } from "@/lib/engine";
 import { toEngineInput } from "@/lib/data/snapshot";
 import { CashPath } from "@/components/cash-path";
@@ -72,7 +74,12 @@ export function AccountsView({
       const projection = forecast.cards.find((c) => c.accountId === a.id);
       const next = projection?.statements.find((st) => st.isProjected);
       const usual = a.kind === "credit_card" && next ? avgDailyCardSpend(input, a.id) * Math.max(0, diffDays(today, next.closingDate)) : 0;
-      return <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />;
+      return (
+        <div className="grid gap-4">
+          <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />
+          {a.kind === "credit_card" && <CardRoomView rooms={cardRoom(snapshot, today, a.id)} />}
+        </div>
+      );
     }
     const options = active.filter((b) => b.bankConnectionId && fam(b.kind) === fam(a.kind));
     return (

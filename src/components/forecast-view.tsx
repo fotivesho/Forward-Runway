@@ -11,6 +11,8 @@ import { Info } from "./info";
 import { Money } from "./privacy";
 import { EmptyState, PageHeader } from "./ui";
 import { buildDashboard } from "@/lib/view/dashboard";
+import { CardRoomView } from "./card-room";
+import { cardRoom } from "@/lib/view/card-room";
 import { ChevronDown, Sparkles } from "lucide-react";
 
 const KIND_GLYPH: Record<string, string> = { income: "income", bill: "bill", subscription: "Subscriptions", loan_payment: "Debt", card_payment: "card", savings_transfer: "save", expense: "spend" };
@@ -118,7 +120,10 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
         </section>
 
         {f.cards.map((c) => (
-          <CardBillForecast key={c.accountId} card={c} snapshot={snapshot} today={today} realOn={realOn} />
+          <div key={c.accountId} className="grid gap-3">
+            <CardBillForecast card={c} snapshot={snapshot} today={today} realOn={realOn} />
+            <CardRoomView rooms={cardRoom(snapshot, today, c.accountId)} />
+          </div>
         ))}
 
         <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} />

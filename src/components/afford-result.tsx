@@ -246,7 +246,7 @@ function doableTitle(a: AffordCheck["action"]): string {
   }
 }
 
-/** The two ⓘ notes on a card bill, written to teach: where "from next pay" comes from, and what "max" is made of. */
+/** The two ⓘ notes on a card bill, written to teach: where "from next pay" comes from, and what "room" is made of. */
 export function billNotes(check: AffordCheck): { borrow: React.ReactNode; max: React.ReactNode } {
   const r = check.room;
   const c = check.card;
