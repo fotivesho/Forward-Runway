@@ -14,6 +14,8 @@ export function looksLike(rule: RecurringRule, t: OneTimeTransaction): boolean {
   if (t.direction !== (rule.kind === "income" ? "in" : "out")) return false;
   const ratio = t.amountCents / Math.max(1, rule.amountCents);
   if (sameName(t.description, rule.name)) return ratio >= 0.5 && ratio <= 2;
+  // Paychecks rarely arrive under the name you gave them ("ACME PAYROLL" for "Paycheck"): the same amount into the same account is enough.
+  if (rule.kind === "income") return Math.abs(ratio - 1) <= 0.03;
   return !!rule.category && t.category === rule.category && Math.abs(ratio - 1) <= 0.15;
 }
 

@@ -234,5 +234,5 @@ export function ruleHistory(rule: RecurringRule, txns: OneTimeTransaction[], ove
     bars.push({ key: `a-${o.originalDate}`, label: short(o.date), title: short(o.date), cents: o.amountCents, kind: "ahead", occurrence: o });
   }
   const amounts = bars.map((b) => b.cents);
-  return { bars: compact(bars), unit: "charge", count, usualCents: median(amounts), totalCents: amounts.reduce((s, c) => s + c, 0) };
+  return { items: real.map(item), bars: compact(bars), unit: "charge", count, usualCents: median(amounts), totalCents: amounts.reduce((s, c) => s + c, 0) };
 }

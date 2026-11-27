@@ -180,71 +180,79 @@ export function RuleForm({
   const fromOptions = kind === "income" ? cash : transferKind ? all.filter((a) => !isLiability(a)) : all.filter((a) => a.isSpendable || a.kind === "credit_card");
   const toOptions =
     kind === "card_payment" ? all.filter((a) => a.kind === "credit_card") : kind === "loan_payment" ? all.filter((a) => a.kind === "loan") : kind === "savings_transfer" ? all.filter((a) => a.kind === "savings") : all;
+  const FREQS = [
+    { value: "weekly", label: "Weekly" },
+    { value: "biweekly", label: "Every 2 weeks" },
+    { value: "semimonthly", label: "Twice a month" },
+    { value: "monthly", label: "Monthly" },
+    { value: "once", label: "Once" },
+  ] as const;
   return (
-    <ActionForm demoPreview action={saveRule} onSuccess={onDone} className="grid grid-cols-2 gap-3" resetOnSuccess={!rule} aria-label={rule ? `Edit ${rule.name}` : "Add recurring item"}>
+    <ActionForm demoPreview action={saveRule} onSuccess={onDone} className="grid gap-4" resetOnSuccess={!rule} aria-label={rule ? `Edit ${rule.name}` : "Add recurring item"}>
       {rule && <input type="hidden" name="id" value={rule.id} />}
-      <SelectField name="kind" label="What is it?" value={kind} onChange={(e) => setKind(e.target.value as RecurringRule["kind"])} options={RULE_KINDS} />
-      <Field name="name" label="Name" defaultValue={base?.name} placeholder={kind === "income" ? "Paycheck" : "Rent"} required maxLength={80} />
-      <MoneyField name="amount" label="Amount" defaultValue={centsToInput(base?.amountCents)} required />
-      <SelectField
-        name="accountId"
-        label={kind === "income" ? "Paid into" : transferKind ? "From" : "Paid with"}
-        defaultValue={base?.accountId ?? fromOptions[0]?.id}
-        options={opt(fromOptions)}
-        hint={!transferKind && kind !== "income" ? "Choose a card if it's charged to a card — it's then paid with the statement, not twice." : undefined}
-        wrapperClassName="col-span-2"
-      />
-      {transferKind && <SelectField name="toAccountId" label="To" defaultValue={base?.toAccountId ?? toOptions[0]?.id ?? ""} options={[{ value: "", label: "Choose…" }, ...opt(toOptions)]} />}
-      <CategoryField label="Category (optional)" defaultValue={base?.category} />
-      <datalist id="rule-categories">
-        {["Housing", "Utilities", "Insurance", "Subscriptions", "Debt", "Savings", "Groceries", "Transport", "Salary", ...SPEND_CATEGORIES].map((c) => (
-          <option key={c} value={c} />
-        ))}
-      </datalist>
-      <SelectField
-        name="frequency"
-        label="How often"
-        value={freq}
-        onChange={(e) => setFreq(e.target.value as typeof freq)}
-        options={[
-          { value: "once", label: "Once" },
-          { value: "weekly", label: "Every week" },
-          { value: "biweekly", label: "Every 2 weeks" },
-          { value: "semimonthly", label: "Twice a month" },
-          { value: "monthly", label: "Monthly" },
-        ]}
-      />
-      <Field name="startDate" type="date" label={freq === "once" ? "Date" : freq === "weekly" || freq === "biweekly" ? "Next (or a past) date it happens" : "Starts"} defaultValue={base?.schedule.startDate ?? today} required />
-      {(freq === "monthly" || freq === "semimonthly") && (
+      <input type="hidden" name="frequency" value={freq} />
+      {/* The two things that matter most: what it is and how much. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_8.5rem] gap-3">
+        <Field name="name" label="Name" defaultValue={base?.name} placeholder={kind === "income" ? "Paycheck" : "Rent"} required maxLength={80} />
+        <MoneyField name="amount" label="Amount" defaultValue={centsToInput(base?.amountCents)} required />
+      </div>
+      <div>
+        <p className="mb-1.5 text-sm font-medium text-ink">How often</p>
+        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="How often">
+          {FREQS.map((f) => (
+            <button key={f.value} type="button" role="radio" aria-checked={freq === f.value} onClick={() => setFreq(f.value)}
+              className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${freq === f.value ? "border-brand bg-brand text-brand-ink" : "border-line text-muted hover:border-brand/60"}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field name="startDate" type="date" label={freq === "once" ? "Date" : rule ? "Starting from" : "First one"} defaultValue={base?.schedule.startDate ?? today} required />
         <SelectField
-          name="dayOfMonth"
-          label={freq === "semimonthly" ? "First day" : "Day of month"}
-          defaultValue={base?.schedule.dayOfMonth != null ? String(base.schedule.dayOfMonth) : freq === "semimonthly" ? "1" : ""}
-          options={dayOptions(freq === "monthly" ? "Same day as start date" : "1")}
-          hint="If you pick the 31st, months with fewer days use their last day instead."
+          name="accountId"
+          label={kind === "income" ? "Paid into" : transferKind ? "From" : "Paid with"}
+          defaultValue={base?.accountId ?? fromOptions[0]?.id}
+          options={opt(fromOptions)}
         />
-      )}
-      {freq === "semimonthly" && (
-        <SelectField name="secondDayOfMonth" label="Second day" defaultValue={base?.schedule.secondDayOfMonth != null ? String(base.schedule.secondDayOfMonth) : "15"} options={dayOptions("15")} />
-      )}
-      {freq !== "once" && <Field name="endDate" type="date" label="Ends (optional)" defaultValue={base?.schedule.endDate ?? ""} />}
-      <SelectField
-        name="weekendAdjust"
-        label="If it falls on a weekend"
-        wrapperClassName="col-span-2"
-        defaultValue={base?.schedule.weekendAdjust ?? (kind === "income" ? "before" : "none")}
-        options={[
-          { value: "none", label: "Keep the date" },
-          { value: "before", label: "Move to the Friday before" },
-          { value: "after", label: "Move to the Monday after" },
-        ]}
-      />
-      <div className="col-span-2">
-        <CheckboxField name="isEstimate" label="Amount is an estimate" defaultChecked={base?.isEstimate} />
       </div>
-      <div className="col-span-2">
-        <Submit>{rule ? "Save changes" : "Add"}</Submit>
-      </div>
+      {transferKind && <SelectField name="toAccountId" label="To" defaultValue={base?.toAccountId ?? toOptions[0]?.id ?? ""} options={[{ value: "", label: "Choose…" }, ...opt(toOptions)]} />}
+      {/* Everything else, folded away. */}
+      <details className="group rounded-2xl border border-line">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between px-3 text-sm font-medium text-muted">
+          More options <span aria-hidden className="text-faint transition group-open:rotate-180">▾</span>
+        </summary>
+        <div className="grid grid-cols-2 gap-3 border-t border-line p-3">
+          <SelectField name="kind" label="What is it?" value={kind} onChange={(e) => setKind(e.target.value as RecurringRule["kind"])} options={RULE_KINDS} />
+          <CategoryField label="Category" defaultValue={base?.category} />
+          {(freq === "monthly" || freq === "semimonthly") && (
+            <SelectField
+              name="dayOfMonth"
+              label={freq === "semimonthly" ? "First day" : "Day of month"}
+              defaultValue={base?.schedule.dayOfMonth != null ? String(base.schedule.dayOfMonth) : freq === "semimonthly" ? "1" : ""}
+              options={dayOptions(freq === "monthly" ? "Same as the date" : "1")}
+            />
+          )}
+          {freq === "semimonthly" && (
+            <SelectField name="secondDayOfMonth" label="Second day" defaultValue={base?.schedule.secondDayOfMonth != null ? String(base.schedule.secondDayOfMonth) : "15"} options={dayOptions("15")} />
+          )}
+          {freq !== "once" && <Field name="endDate" type="date" label="Ends (optional)" defaultValue={base?.schedule.endDate ?? ""} />}
+          <SelectField
+            name="weekendAdjust"
+            label="On a weekend"
+            defaultValue={base?.schedule.weekendAdjust ?? (kind === "income" ? "before" : "none")}
+            options={[
+              { value: "none", label: "Keep the date" },
+              { value: "before", label: "Friday before" },
+              { value: "after", label: "Monday after" },
+            ]}
+          />
+          <div className="col-span-2">
+            <CheckboxField name="isEstimate" label="The amount varies (an estimate)" defaultChecked={base?.isEstimate} />
+          </div>
+        </div>
+      </details>
+      <Submit className="w-full">{rule ? "Save changes" : "Add"}</Submit>
     </ActionForm>
   );
 }

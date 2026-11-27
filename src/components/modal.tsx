@@ -15,6 +15,7 @@ export function Modal({
   subtitle,
   icon,
   tone = "neutral",
+  action,
   children,
 }: {
   open: boolean;
@@ -24,6 +25,8 @@ export function Modal({
   icon?: React.ReactNode;
   /** Tints the header: income green, spending warm, neutral otherwise. */
   tone?: "neutral" | "in" | "out";
+  /** A small button in the header, beside the close button (e.g. Edit). */
+  action?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -64,6 +67,7 @@ export function Modal({
                 <h2 id={titleId} className="text-lg font-bold leading-tight text-ink">{title}</h2>
                 {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}
               </div>
+              {action}
               <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-surface-3/70 text-muted transition hover:bg-surface-3 hover:text-ink">
                 <X size={16} strokeWidth={2.4} aria-hidden />
               </button>

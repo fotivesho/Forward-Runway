@@ -6,7 +6,7 @@ import { centsToInput } from "@/lib/money";
 import { ActionForm, Field, MoneyField, Submit } from "./form";
 
 /** Per-date controls: already posted, skip, change, or reset to the schedule. */
-export function OccurrenceControls({ ruleId, originalDate, date, amountCents, overridden }: { ruleId: string; originalDate: string; date: string; amountCents: number; overridden: boolean }) {
+export function OccurrenceControls({ ruleId, originalDate, date, amountCents, overridden, income = false }: { ruleId: string; originalDate: string; date: string; amountCents: number; overridden: boolean; income?: boolean }) {
   const [editing, setEditing] = useState(false);
   const hidden = (
     <>
@@ -32,15 +32,15 @@ export function OccurrenceControls({ ruleId, originalDate, date, amountCents, ov
         <ActionForm key={a} action={setOverride} aria-label={a === "posted" ? "Mark as already in balance" : "Skip this date"}>
           {hidden}
           <input type="hidden" name="action" value={a} />
-          <Submit variant="secondary" className="btn-sm" pendingLabel="…">{a === "posted" ? "Happened" : "Skip"}</Submit>
+          <Submit variant="secondary" className="btn-sm" pendingLabel="…">{a === "posted" ? (income ? "Already got it" : "Already paid") : "Skip it"}</Submit>
         </ActionForm>
       ))}
-      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Change</button>
+      <button type="button" className="btn btn-secondary btn-sm" onClick={() => setEditing(true)}>Change it</button>
       {overridden && (
         <ActionForm action={setOverride} aria-label="Reset to schedule">
           {hidden}
           <input type="hidden" name="action" value="reset" />
-          <Submit variant="secondary" className="btn-sm" pendingLabel="…">Reset</Submit>
+          <Submit variant="secondary" className="btn-sm" pendingLabel="…">Undo</Submit>
         </ActionForm>
       )}
     </div>
