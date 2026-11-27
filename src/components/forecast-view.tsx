@@ -126,7 +126,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           </div>
         ))}
 
-        <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} />
+        <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} horizon={horizon} setHorizon={setHorizon} />
         {(f.issues.length > 0 || f.assumptions.length > 0) && (
           <p className="px-1 text-xs text-muted">
             {f.complete ? "Inputs complete" : `${f.issues.filter((i) => i.makesIncomplete).length} input(s) missing or stale`}
@@ -249,7 +249,7 @@ function CardBillForecast({ card, snapshot, today, realOn }: { card: ReturnType<
  * Every day ahead, one quiet line each: the day, its limit, and where your balance lands. Tap a day
  * for the rest: why the limit is what it is, plans, bills and paychecks, and usual everyday spending.
  */
-function DayByDay({ f, snapshot, today, realOn, usualOn }: { f: ReturnType<typeof buildForecast>; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null; usualOn: (d: ISODate) => number }) {
+function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: { f: ReturnType<typeof buildForecast>; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null; usualOn: (d: ISODate) => number; horizon: number; setHorizon: (h: number) => void }) {
   const m = useMemo(() => buildDashboard(snapshot, today, 30, new Date()), [snapshot, today]);
   const [open, setOpen] = useState<ISODate | null>(null);
   const [all, setAll] = useState(false);
@@ -265,10 +265,20 @@ function DayByDay({ f, snapshot, today, realOn, usualOn }: { f: ReturnType<typeo
   const days = all ? f.days : f.days.slice(0, 14);
   return (
     <section className="card p-4" aria-labelledby="days-title">
+      <div className="flex items-center justify-between gap-2">
       <h2 id="days-title" className="flex items-center text-base font-bold text-ink">
         Day by day
         <Info label="Day by day">Each day&apos;s <b>limit</b> (a reasonable most to spend that day, the same as on Today) and where your balance <b>lands</b> that night. Limits after your next payday are a first look (~) and settle as you get closer. Tap a day for what&apos;s behind it.</Info>
       </h2>
+        <div role="group" aria-label="How far ahead" className="flex rounded-full border border-line p-0.5">
+          {HORIZONS.map((h) => (
+            <button key={h} type="button" onClick={() => { setHorizon(h); setAll(true); }} aria-pressed={horizon === h}
+              className={`min-h-7 rounded-full px-2.5 text-[11px] font-bold transition ${horizon === h ? "bg-surface-3 text-ink" : "text-faint hover:text-ink"}`}>
+              {h}d
+            </button>
+          ))}
+        </div>
+      </div>
       <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 px-1 text-[10px] font-semibold uppercase tracking-wide text-faint">
         <span>Day</span><span className="w-16 text-right">Limit</span><span className="w-20 text-right">Lands at</span>
       </div>

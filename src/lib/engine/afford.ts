@@ -1,5 +1,5 @@
 import { cardRoomFor } from "./card-room";
-import { addMonths, diffDays, formatShort, maxDate, parts as dateParts, type ISODate } from "../dates";
+import { addMonths, dayOfWeek, diffDays, formatShort, maxDate, parts as dateParts, type ISODate } from "../dates";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const formatMonthYear = (d: ISODate) => `${MONTHS[dateParts(d).m - 1]} ${dateParts(d).y}`;
@@ -7,8 +7,8 @@ import { formatCents, friendlyRoundDown, type Cents } from "../money";
 import { planDailySpending, type PlannedEvent } from "./advisor";
 import { buildForecast } from "./forecast";
 import { planPurchase, purchaseItem, type PurchasePlan } from "./purchase";
-import { avgDailyCardSpend } from "./spending";
-import type { EngineInput } from "./types";
+import { avgDailyCardSpend, spendingBaseline } from "./spending";
+import type { EngineInput, Forecast } from "./types";
 
 /**
  * "Can I afford it?"
@@ -55,6 +55,8 @@ export interface AffordCheck {
   /** `borrowed`: a small amount taken from the next pay period(s) in a plain "yes". */
   room: { start: ISODate; end: ISODate; before: Cents; after: Cents; shortfall: Cents; borrowed: Cents };
   lowest: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
+  /** The same, with your usual everyday spending in it (the line Forecast draws, and what max assumes). */
+  lowestUsual?: { before: { cents: Cents; date: ISODate }; after: { cents: Cents; date: ISODate } };
   /** Your cash floor, for showing how much cushion the lowest point keeps. */
   floorCents: Cents;
   /** When the money actually leaves your cash. */
@@ -76,6 +78,8 @@ export interface AffordCheck {
     usualCents: Cents;
     withCents: Cents;
     capCents: Cents;
+    /** How max adds up, line by line (the same lines Accounts and Forecast show). */
+    capLines?: Array<{ label: string; cents: Cents; note?: string }>;
   } | null;
   action: AffordAction;
   alternatives: AffordAction[];
@@ -165,18 +169,21 @@ export function checkAffordability(ctx: AffordContext, req: AffordRequest): Affo
   if (card && !cash.beyondHorizon) {
     const r = cardRoomFor(input, payAcct!.id, base).find((x) => x.due === card!.due);
     card.capCents = (r ? r.maxCents : card.usualCents + pot.free) + reserved;
+    if (r) card.capLines = reserved ? [...r.lines, { label: "Already set aside for this plan", cents: reserved }] : r.lines;
   }
   // How much would have to come from savings: on a card, whatever the bill goes over max; in cash,
   // whatever this pay period's free money doesn't cover.
   const shortfall = card && !cash.beyondHorizon ? Math.max(0, card.withCents - card.capCents) : Math.max(0, amt - pot.free);
   const room = { start: pot.start, end: pot.end, before: pot.free, after: Math.max(0, pot.free - amt), shortfall, borrowed: 0 };
   const lowest = { before: base.lowest, after: withPurchase.lowest };
+  const lowestUsual = { before: usualLow(input, base), after: usualLow(input, withPurchase) };
 
   const result = (verdict: AffordVerdict, headline: string, action: AffordAction, alternatives: AffordAction[]): AffordCheck => ({
     verdict,
     headline,
     room,
     lowest,
+    lowestUsual,
     floorCents: floor,
     cash,
     card,
@@ -386,6 +393,20 @@ export function previewOption(ctx: AffordContext, req: AffordRequest, option: Af
   const room = { ...c.room, after: c.room.after + Math.max(0, extra - c.room.shortfall), shortfall };
   const card = c.card ? { ...c.card, capCents: c.card.capCents + extra } : null;
   const lowest = { ...c.lowest, after: { ...c.lowest.after, cents: c.lowest.after.cents + extra } };
+  const lowestUsual = c.lowestUsual && { ...c.lowestUsual, after: { ...c.lowestUsual.after, cents: c.lowestUsual.after.cents + extra } };
   const fits = shortfall === 0 && (!card || card.withCents <= card.capCents) && lowest.after.cents >= c.floorCents;
-  return { ...c, room, card, lowest, verdict: fits ? "yes" : c.verdict };
+  return { ...c, room, card, lowest, lowestUsual, verdict: fits ? "yes" : c.verdict };
+}
+
+/** The lowest your balance gets with your usual everyday spending in it (same estimate as max). */
+function usualLow(input: EngineInput, f: Forecast): { cents: Cents; date: ISODate } {
+  const b = spendingBaseline(input);
+  let everyday = 0;
+  let low = { cents: Number.POSITIVE_INFINITY, date: f.startDate };
+  for (const d of f.days) {
+    everyday += b.reliable ? b.byWeekday[dayOfWeek(d.date)]! : b.avgDailyCents;
+    const c = d.closingCents - everyday;
+    if (c < low.cents) low = { cents: c, date: d.date };
+  }
+  return Number.isFinite(low.cents) ? low : { cents: f.startingCashCents, date: f.startDate };
 }

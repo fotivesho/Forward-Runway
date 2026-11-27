@@ -97,7 +97,7 @@ export function BillRoom({
         </div>
         <div className="flex justify-between gap-2">
           <dt className="min-w-0">Max from cash</dt>
-          <dd className="flex shrink-0 items-center font-semibold tabular" style={{ color: p.ink }}>{usd(capCents)}{maxNote && info?.("What max means", maxNote)}</dd>
+          <dd className="flex shrink-0 items-center font-semibold tabular" style={{ color: capCents < 0 ? p.bad : p.ink }}>{capCents < 0 ? "−" : ""}{usd(capCents)}{maxNote && info?.("What max means", maxNote)}</dd>
         </div>
       </dl>
     </div>

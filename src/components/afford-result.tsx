@@ -92,7 +92,8 @@ export function AffordTiles({
 }) {
   const onCard = !!result.card && !result.cash.beyondHorizon;
   const first = tile1After ?? (onCard ? result.card!.withCents : result.room.after);
-  const lowest = lowestAfter ?? result.lowest.after.cents;
+  const low = result.lowestUsual ?? result.lowest;
+  const lowest = lowestAfter ?? low.after.cents;
   return (
     <>
       <div className={`grid grid-cols-2 gap-2 ${compact ? "" : "sm:gap-3"}`}>
@@ -151,15 +152,15 @@ export function AffordTiles({
         )}
         {(() => {
           const floor = result.floorCents;
-          const cushionAfter = result.lowest.after.cents - floor;
+          const cushionAfter = low.after.cents - floor;
           const below = cushionAfter < 0;
           // Floor at the line; the space to its right is the cushion you had before this purchase.
-          const cushionBefore = result.lowest.before.cents - floor;
-          const pos = gauge(result.lowest.after.cents, floor, cushionBefore > 0 ? cushionBefore : floor);
+          const cushionBefore = low.before.cents - floor;
+          const pos = gauge(low.after.cents, floor, cushionBefore > 0 ? cushionBefore : floor);
           return (
             <Tile
               compact={compact}
-              label={<>Lowest<span className={compact ? "hidden" : "hidden sm:inline"}> balance</span>, 90 days · {formatShort(result.lowest.after.date)}</>}
+              label={<>Lowest<span className={compact ? "hidden" : "hidden sm:inline"}> balance</span> · {formatShort(low.after.date)}</>}
               value={dollars(lowest)}
               aside={`floor ${dollars(floor)}`}
               tone={below ? "bad" : "good"}
@@ -267,14 +268,19 @@ export function billNotes(check: AffordCheck): { borrow: React.ReactNode; max: R
     ),
     max: c ? (
       <>
-        The most you can pay off in full on <B>{formatShort(c.due)}</B> without dipping into savings. It&apos;s two things added together:
+        The biggest bill on <B>{formatShort(c.due)}</B> you can pay from cash and paychecks without savings. It&apos;s what&apos;s left after everything else:
+        {c.capLines ? (
+          <span className="mt-1.5 block space-y-0.5">
+            {c.capLines.map((l) => (
+              <span key={l.label} className="flex justify-between gap-3"><span>{l.label}</span><span className="shrink-0 whitespace-nowrap tabular">{l.cents < 0 ? "−" : "+"}{dollars(Math.abs(l.cents))}</span></span>
+            ))}
+            <span className="flex justify-between gap-3 border-t border-current/20 pt-0.5 font-semibold"><span>Max</span><span className="tabular">{c.capCents < 0 ? "−" : ""}{dollars(Math.abs(c.capCents))}</span></span>
+          </span>
+        ) : null}
         <span className="mt-1.5 block">
-          <B>1. Your usual bill, {dollars(c.usualCents)}.</B> What&apos;s already on the card{c.typicalCents > 0 ? <>, plus about {dollars(c.typicalCents)} of your normal card spending (groceries, gas, lunch) until the statement closes {formatShort(c.closes)}</> : null}.
+          The bill, <B>{dollars(c.withCents)}</B>, is what&apos;s on the card{c.typicalCents > 0 ? <> plus about {dollars(c.typicalCents)} of usual card spending until it closes {formatShort(c.closes)}</> : null}, plus this purchase.
+          {c.capCents < 0 ? <> Max is below zero: cash is already short before this bill, so all of it, and a bit more to get back to your cushion, would come from savings.</> : <> Anything over max would come from savings.</>}
         </span>
-        <span className="mt-1 block">
-          <B>2. Your free money, {dollars(free)}.</B> What&apos;s left from the {span(r.start, r.end)} paycheck after bills, savings and plans.
-        </span>
-        <span className="mt-1.5 block">Stay under max and the card is paid in full, so you pay no interest. Anything you add uses that free money, so your daily spending limits for {span(r.start, r.end)} get smaller.</span>
       </>
     ) : null,
   };
@@ -285,7 +291,7 @@ export function explain(check: AffordCheck, reservedCents = 0): { title: string;
   const r = check.room;
   const period = span(r.start, r.end);
   const floor = check.floorCents;
-  const after = check.lowest.after.cents;
+  const after = (check.lowestUsual ?? check.lowest).after.cents;
   const below = after < floor;
   const card = check.card && !check.cash.beyondHorizon ? check.card : null;
 
@@ -339,8 +345,9 @@ export function PlanImpact({
   const r = { ...check.room, before: check.room.before + reservedCents };
   const used = r.before - r.after + r.shortfall + r.borrowed;
   const floor = check.floorCents;
-  const after = check.lowest.after.cents;
-  const cushionBefore = check.lowest.before.cents - floor;
+  const lowU = check.lowestUsual ?? check.lowest;
+  const after = lowU.after.cents;
+  const cushionBefore = lowU.before.cents - floor;
   const { title, why } = explain(check, reservedCents);
   const [chosen, setChosen] = useState<{ option: AffordCheck["action"]; payWith?: string | null; decline?: boolean } | null>(null);
   const demo = useContext(DemoCtx);
@@ -356,7 +363,7 @@ export function PlanImpact({
           {check.cash.viaCard && !check.cash.beyondHorizon && <> On {check.cash.viaCard.split(" ")[0]}, cash leaves {formatShort(check.cash.date)}.</>}
           <span className="mt-2 block text-muted">
             <strong className="font-semibold">Spending money</strong> is what&apos;s truly free this pay period: your paycheck minus bills, savings and other plans.
-            <span className="mt-1 block"><strong className="font-semibold">Lowest balance</strong> is the lowest your bank account will dip in the next 90 days, once everything scheduled has happened.</span>
+            <span className="mt-1 block"><strong className="font-semibold">Lowest balance</strong> is the lowest your bank account will dip in the next 90 days with everything scheduled and your usual everyday spending: the same line Forecast draws.</span>
             <span className="mt-1 block"><strong className="font-semibold">Cushion</strong> ({dollars(floor)}) is a safety amount you never want your account to drop below.</span>
           </span>
         </Info>
@@ -385,7 +392,7 @@ export function PlanImpact({
         )}
         <Meter
           label="Lowest balance"
-          when={formatShort(check.lowest.after.date)}
+          when={formatShort(lowU.after.date)}
           value={dollars(after)}
           pos={gauge(after, floor, cushionBefore > 0 ? cushionBefore : floor)}
           tone={after < floor ? "bad" : "good"}
