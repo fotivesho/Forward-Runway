@@ -87,6 +87,8 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
         if (o.date < b.start || o.date > b.end) continue;
         if (pastSkipsEstimate && o.date < today) continue;
         if (o.date < today && bankAccounts.has(r.accountId)) continue;
+        // Its real deposit or charge is already in the bank's transactions (counted below).
+        if (o.posted && bankAccounts.has(r.accountId)) continue;
         if (r.kind === "income") inC += o.amountCents;
         else {
           outC += o.amountCents;
@@ -104,6 +106,59 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
     }
     return { ...b, inCents: inC, outCents: outC, savingsCents: saved };
   });
+}
+
+export interface FlowItem {
+  key: string;
+  /** Set for a real transaction (so it can be relabelled); empty for a scheduled date. */
+  txnId?: string;
+  date: ISODate;
+  label: string;
+  category: string | null;
+  account: string;
+  cents: Cents;
+  /** Already happened, or still to come this month. */
+  when: "done" | "coming";
+  kind: "spending" | "bill" | "savings" | "income";
+}
+
+/**
+ * The same money cashFlow adds up for one period, item by item, so a total can be checked:
+ * what came in, and what went out (spending, bills, savings moves), done or still coming.
+ */
+export function flowItems(s: Snapshot, today: ISODate, b: Bucket): { in: FlowItem[]; out: FlowItem[] } {
+  const bankAccounts = new Set(s.accounts.filter((a) => a.balanceSource === "bank").map((a) => a.id));
+  const name = (id: string) => s.accounts.find((a) => a.id === id)?.name ?? "";
+  const ins: FlowItem[] = [];
+  const outs: FlowItem[] = [];
+  for (const r of s.rules) {
+    if (r.active === false || r.kind === "card_payment" || r.kind === "transfer") continue;
+    for (const o of ruleOccurrences(r, s.overrides, b.start, b.end)) {
+      if (o.date < b.start || o.date > b.end) continue;
+      if (r.kind === "expense" && o.date < today) continue;
+      if (o.date < today && bankAccounts.has(r.accountId)) continue;
+      if (o.posted && bankAccounts.has(r.accountId)) continue;
+      const it: FlowItem = {
+        key: `r-${r.id}-${o.originalDate}`, date: o.date, label: r.name, category: r.category ?? null, account: name(r.accountId), cents: o.amountCents,
+        when: o.date < today || o.posted ? "done" : "coming",
+        kind: r.kind === "income" ? "income" : r.kind === "savings_transfer" ? "savings" : "bill",
+      };
+      (r.kind === "income" ? ins : outs).push(it);
+    }
+  }
+  for (const t of s.transactions) {
+    if (t.date < b.start || t.date > b.end) continue;
+    if (t.status === "planned" && t.date < today) continue;
+    if (t.status !== "planned" && t.date > today) continue;
+    if (isNotSpending(t.category)) continue;
+    const it: FlowItem = {
+      key: `t-${t.id}`, txnId: t.id, date: t.date, label: t.description, category: t.category ?? null, account: name(t.accountId), cents: t.amountCents,
+      when: t.status === "planned" ? "coming" : "done", kind: t.direction === "in" ? "income" : "spending",
+    };
+    (t.direction === "in" ? ins : outs).push(it);
+  }
+  const byDate = (a: FlowItem, c: FlowItem) => (a.date < c.date ? 1 : a.date > c.date ? -1 : 0);
+  return { in: ins.sort(byDate), out: outs.sort(byDate) };
 }
 
 export interface CategoryBucket extends Bucket {

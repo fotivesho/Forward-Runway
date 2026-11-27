@@ -11,7 +11,8 @@ import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import type { ViewProps } from "./types";
 import { addDays, formatShort, startOfMonth } from "@/lib/dates";
 import { ruleOccurrences, type RecurringRule } from "@/lib/engine";
-import { cashFlow, categoryHistory, monthBuckets, weekBuckets } from "@/lib/view/spend";
+import { categoryHistory, flowItems, monthBuckets, weekBuckets } from "@/lib/view/spend";
+import { MonthTiles } from "@/components/month-tiles";
 import { deleteTransfer } from "@/app/app/actions";
 
 const GROUPS: Array<{ title: string; kinds: RecurringRule["kind"][] }> = [
@@ -27,10 +28,6 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
   const hasAccounts = accounts.some((a) => !a.archived);
   const monthStart = startOfMonth(today);
   const active = snapshot.rules.filter((r) => r.active !== false);
-  const spentThisMonth = snapshot.transactions
-    // Card payments and transfers between your own accounts aren't spending: the purchases already counted.
-    .filter((t) => t.direction === "out" && t.status === "posted" && t.date >= monthStart && t.date <= today && !isNotSpending(t.category))
-    .reduce((s, t) => s + t.amountCents, 0);
   const txns = [...snapshot.transactions].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0)).slice(0, 2000);
   const transfers = [...snapshot.transfers].sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 100);
 
@@ -57,9 +54,6 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
   for (const t of snapshot.transactions) if (t.category) useCount.set(t.category, (useCount.get(t.category) ?? 0) + 1);
   for (const r of snapshot.rules) if (r.category) useCount.set(r.category, (useCount.get(r.category) ?? 0) + 1);
   const yourCategories = [...new Set([...(snapshot.categorySettings ?? []).filter((c) => c.icon).map((c) => c.name), ...[...useCount.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c).slice(0, 12)])];
-  // This month so far plus what's scheduled, the same numbers as the cash-flow chart.
-  const flowMonths = cashFlow(snapshot, today, months);
-  const thisMonth = flowMonths[flowMonths.length - 1]!;
   const dismissed = new Set(
     snapshot.corrections.filter((c) => c.kind === "preference" && c.matchKey.startsWith("recurring_dismissed:")).map((c) => c.matchKey.slice("recurring_dismissed:".length)),
   );
@@ -78,11 +72,7 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
       />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <ul className="grid grid-cols-3 gap-2 sm:gap-3">
-          <Summary label="Spent this month" value={<Money cents={spentThisMonth} whole />} />
-          <Summary label="In this month" value={<Money cents={thisMonth.inCents} whole tone="in" />} />
-          <Summary label="Net this month" value={<Money cents={thisMonth.inCents - thisMonth.outCents} whole sign tone="auto" />} />
-        </ul>
+        <MonthTiles month={monthTitle(today)} items={flowItems(snapshot, today, months[months.length - 1]!)} />
 
         {section === "overview" && (<>
         <Card title="Repeating" action={hasAccounts ? <AddButton what="rule" accounts={accounts} today={today} /> : undefined}>
@@ -129,11 +119,5 @@ export function SpendView({ snapshot, today, demo = false, section = "overview" 
   );
 }
 
-function Summary({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <li className="card min-w-0 p-2.5 sm:p-4">
-      <p className="truncate text-[11px] text-faint sm:text-xs">{label}</p>
-      <p className="mt-0.5 truncate text-lg font-bold tabular text-ink sm:text-2xl">{value}</p>
-    </li>
-  );
-}
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const monthTitle = (d: string) => `${MONTH_NAMES[Number(d.slice(5, 7)) - 1]} ${d.slice(0, 4)}`;

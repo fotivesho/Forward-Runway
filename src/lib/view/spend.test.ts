@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { demoSnapshot } from "../data/demo";
 import { addDays } from "../dates";
-import { cashFlow, categoryHistory, monthBuckets, payPeriodBuckets, weekBuckets } from "./spend";
+import { cashFlow, categoryHistory, flowItems, monthBuckets, payPeriodBuckets, weekBuckets } from "./spend";
 
 const today = "2026-11-25";
 const s = demoSnapshot(today, `${today}T15:00:00Z`);
@@ -39,5 +39,16 @@ describe("spend insights", () => {
       .filter((t) => t.category === "Dining" && t.direction === "out" && t.status === "posted" && t.date >= weeks[0]!.start && t.date <= today)
       .reduce((a, t) => a + t.amountCents, 0);
     expect(hist.reduce((a, b) => a + b.cents, 0)).toBe(direct);
+  });
+});
+
+describe("month breakdown", () => {
+  it("adds up to exactly the month's income and money out", () => {
+    const b = monthBuckets(today);
+    const [flow] = cashFlow(s, today, [b[b.length - 1]!]);
+    const items = flowItems(s, today, b[b.length - 1]!);
+    expect(items.in.reduce((t, i) => t + i.cents, 0)).toBe(flow!.inCents);
+    expect(items.out.reduce((t, i) => t + i.cents, 0)).toBe(flow!.outCents);
+    expect(items.in.some((i) => i.when === "coming")).toBe(true);
   });
 });
