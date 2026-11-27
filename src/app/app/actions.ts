@@ -1,5 +1,9 @@
 "use server";
 
+import { findRecurring } from "@/lib/view/recurring";
+import { getAppSession } from "@/lib/data/session";
+import { centsToInput } from "@/lib/money";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -293,6 +297,44 @@ export async function setTransactionCategory(id: string, category: string): Prom
   if (error) return { ok: false, error: "Couldn't save that. Try again." };
   revalidatePath("/app", "layout");
   return { ok: true };
+}
+
+/** "How did it go?": confirm a plan's matched charge, say it wasn't that one, or that nothing was spent. */
+export async function checkPlan(eventId: string, ok: boolean, txnId: string | null): Promise<{ ok: boolean }> {
+  const { supabase } = await session();
+  if (!/^[0-9a-f-]{36}$/i.test(eventId) || (txnId && !/^[0-9a-f-]{36}$/i.test(txnId))) return { ok: false };
+  const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: `plan_check:${eventId}`, value: { ok, txnId } }, { onConflict: "user_id,kind,match_key" });
+  if (error) return { ok: false };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
+/** Add the repeating items you ticked in "We found what repeats" (and remember the review is done). */
+export async function addFoundRepeats(keys: string[]): Promise<{ ok: boolean; added: number }> {
+  const { supabase } = await session();
+  const { snapshot, today } = await getAppSession();
+  const dismissed = new Set(snapshot.corrections.filter((c) => c.kind === "preference" && c.matchKey.startsWith("recurring_dismissed:")).map((c) => c.matchKey.slice(20)));
+  const found = findRecurring(snapshot.transactions, snapshot.rules, today, dismissed).filter((x) => keys.includes(x.key));
+  let added = 0;
+  for (const x of found) {
+    const f = new FormData();
+    f.set("kind", x.kind);
+    f.set("name", x.name);
+    f.set("amount", centsToInput(x.amountCents));
+    f.set("accountId", x.accountId);
+    f.set("category", x.category ?? "");
+    f.set("frequency", x.frequency);
+    f.set("startDate", x.nextDate);
+    if (x.dayOfMonth != null) f.set("dayOfMonth", String(x.dayOfMonth));
+    if (x.secondDayOfMonth != null) f.set("secondDayOfMonth", String(x.secondDayOfMonth));
+    f.set("weekendAdjust", x.kind === "income" ? "before" : "none");
+    if (x.varies) f.set("isEstimate", "on");
+    const r = await saveRule(null, f);
+    if (r?.ok) added++;
+  }
+  await supabase.from("corrections").upsert({ kind: "preference", match_key: "setup:repeats_reviewed", value: { at: today } }, { onConflict: "user_id,kind,match_key" });
+  revalidatePath("/app", "layout");
+  return { ok: true, added };
 }
 
 /** "Not repeating": stop suggesting this one (remembered, so it doesn't come back). */

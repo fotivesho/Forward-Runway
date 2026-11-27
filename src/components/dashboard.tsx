@@ -3,7 +3,9 @@
 import { Sparkles } from "lucide-react";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useContext, useMemo, useState, useTransition } from "react";
+import { addFoundRepeats, checkPlan } from "@/app/app/actions";
+import { DemoCtx } from "./form";
 import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
 import type { Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
@@ -95,6 +97,8 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           </div>
         </section>
 
+        {m.found.length > 0 && <FoundRepeats items={m.found} />}
+        {m.checkins.length > 0 && <PlanCheckins items={m.checkins} />}
         <DailyCaps m={m} today={today} />
 
         {/* Plans */}
@@ -187,6 +191,98 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
       </div>
     </div>
     </PlanProvider>
+  );
+}
+
+/** Right after connecting a bank: everything that looks like it repeats, ticked, added in one tap. */
+function FoundRepeats({ items }: { items: ReturnType<typeof buildDashboard>["found"] }) {
+  const [on, setOn] = useState<Set<string>>(new Set(items.map((x) => x.key)));
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+  const freq: Record<string, string> = { weekly: "weekly", biweekly: "every 2 weeks", semimonthly: "twice a month", monthly: "monthly" };
+  const save = (keys: string[]) =>
+    start(async () => {
+      const r = await addFoundRepeats(keys);
+      setMsg(keys.length ? `Added ${r.added}. They're counted ahead in your limits and forecast now.` : "Okay. You'll still find suggestions under Money → Bills.");
+    });
+  if (msg) return <p className="card p-4 text-sm text-brand" aria-live="polite">{msg}</p>;
+  return (
+    <section className="card p-4" aria-labelledby="found-repeats">
+      <h2 id="found-repeats" className="flex items-center text-base font-bold text-ink">
+        We found what repeats
+        <Info label="What repeats">From your bank history: paychecks, rent, bills and subscriptions that come on a rhythm. Add them and they&apos;re counted ahead of time, so your daily limit already makes room for them. Untick anything that isn&apos;t really repeating.</Info>
+      </h2>
+      <ul className="mt-2 divide-y divide-line rounded-xl border border-line">
+        {items.map((x) => {
+          const checked = on.has(x.key);
+          return (
+            <li key={x.key}>
+              <label className="flex cursor-pointer items-center gap-3 px-3 py-2">
+                <input type="checkbox" checked={checked} onChange={() => setOn((s) => { const n = new Set(s); if (n.has(x.key)) n.delete(x.key); else n.add(x.key); return n; })} className="h-4 w-4 accent-[var(--color-brand)]" />
+                <Glyph name={x.kind === "income" ? "income" : x.category} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-medium text-ink">{x.name}</span>
+                  <span className="block text-[11px] text-muted">{freq[x.frequency] ?? x.frequency} · next {formatShort(x.nextDate)} · seen {x.seen}×</span>
+                </span>
+                <Money cents={x.kind === "income" ? x.amountCents : -x.amountCents} sign tone="auto" whole={x.amountCents >= 10_000} className={`shrink-0 text-sm font-semibold ${checked ? "" : "opacity-40"}`} />
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+      <div className="mt-3 flex items-center gap-2">
+        <button type="button" disabled={busy || on.size === 0} onClick={() => save([...on])} className="btn btn-primary btn-sm">{busy ? "Adding…" : `Add ${on.size}`}</button>
+        <button type="button" disabled={busy} onClick={() => save([])} className="btn btn-ghost btn-sm">Not now</button>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * "How did it go?": a recent plan, what it was estimated at, and the charge we think was it.
+ * One tap to confirm (estimates learn from it) or to say it wasn't that one.
+ */
+function PlanCheckins({ items }: { items: ReturnType<typeof buildDashboard>["checkins"] }) {
+  const demo = useContext(DemoCtx);
+  const [done, setDone] = useState<Record<string, string>>({});
+  const [busy, start] = useTransition();
+  const answer = (r: (typeof items)[number], ok: boolean | null) =>
+    start(async () => {
+      if (!demo) await checkPlan(r.eventId, ok !== false, ok === null ? null : r.actual!.txnId);
+      setDone((d) => ({ ...d, [r.eventId]: ok === true ? "Thanks: estimates for plans like this will follow it." : ok === false ? "Got it: that charge isn't counted for it." : "Got it: nothing spent." }));
+    });
+  return (
+    <section className="card p-4" aria-labelledby="checkin-title">
+      <h2 id="checkin-title" className="flex items-center text-base font-bold text-ink">
+        How did it go?
+        <Info label="How did it go?">After a plan, we look for the charge that was probably it. Confirming teaches the app what plans like this really cost you, so the next estimate is closer.</Info>
+      </h2>
+      <ul className="mt-2 space-y-2">
+        {items.map((r) => {
+          const over = (r.diffCents ?? 0) > 0;
+          return (
+            <li key={r.eventId} className="rounded-2xl bg-surface-2/60 p-3">
+              <p className="flex items-baseline justify-between gap-2 text-sm">
+                <span className="min-w-0 truncate font-semibold text-ink">{r.title}</span>
+                <span className="shrink-0 text-xs text-faint">{formatShort(r.date)}</span>
+              </p>
+              <p className="mt-0.5 text-xs text-muted">
+                Planned <Money cents={r.plannedCents} whole className="font-semibold text-ink" /> · came to <Money cents={r.actual!.cents} className={`font-semibold ${over ? "text-warn" : "text-brand"}`} /> <span className="text-faint">({r.actual!.description})</span>
+              </p>
+              {done[r.eventId] ? (
+                <p className="mt-2 text-xs text-brand" aria-live="polite">{demo ? "Demo: not saved. " : ""}{done[r.eventId]}</p>
+              ) : (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button type="button" disabled={busy} onClick={() => answer(r, true)} className="btn btn-primary btn-sm">That&apos;s it</button>
+                  <button type="button" disabled={busy} onClick={() => answer(r, false)} className="btn btn-ghost btn-sm">Not this one</button>
+                  <button type="button" disabled={busy} onClick={() => answer(r, null)} className="btn btn-ghost btn-sm">Didn&apos;t spend</button>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

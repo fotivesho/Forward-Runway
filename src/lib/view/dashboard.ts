@@ -26,6 +26,8 @@ import {
 } from "../engine";
 import { toEngineInput, type CalendarEvent, type Snapshot } from "../data/snapshot";
 import { dayShape } from "./day-shape";
+import { planResults } from "./actuals";
+import { findRecurring } from "./recurring";
 
 export interface EventView {
   event: CalendarEvent;
@@ -96,6 +98,9 @@ export interface DashboardModel {
   spending: { month: CategoryTotal[]; monthTotal: Cents; period: CategoryTotal[]; periodTotal: Cents; periodStart: ISODate };
   upcoming: ForecastItem[];
   nextPayday: ISODate | null;
+  /** Recent plans with a likely charge, for "How did it go?". */
+  checkins: import("./actuals").PlanResult[];
+  found: import("./recurring").RecurringSuggestion[];
   /**
    * Everyday safe-to-spend for each day of the forecast, before any plan that day: what's left in
    * its pay period after bills, savings and plans, spread over the days. This pay period uses the
@@ -344,6 +349,13 @@ export function buildDashboard(s: Snapshot, today: ISODate, horizon: number, now
     },
     upcoming,
     nextPayday,
+    // Plans from the last ten days with a charge we think was theirs, waiting for a yes or no.
+    checkins: planResults(s, today, 10).filter((r) => r.actual && !r.confirmed).slice(0, 3),
+    // Just connected a bank: what repeats in its history, to review once.
+    found:
+      s.accounts.some((a) => a.balanceSource === "bank") && !s.corrections.some((c) => c.kind === "preference" && c.matchKey === "setup:repeats_reviewed")
+        ? findRecurring(s.transactions, s.rules, today, new Set(s.corrections.filter((c) => c.kind === "preference" && c.matchKey.startsWith("recurring_dismissed:")).map((c) => c.matchKey.slice(20)))).slice(0, 12)
+        : [],
     baselineByDay,
     payPeriods,
   };

@@ -16,7 +16,9 @@ export interface PlanResult {
   category: string;
   plannedCents: Cents;
   /** The charge it was matched to, or null if none was found. */
-  actual: { cents: Cents; description: string; date: ISODate } | null;
+  actual: { cents: Cents; description: string; date: ISODate; txnId: string } | null;
+  /** You confirmed the match ("That's it"). */
+  confirmed?: boolean;
   /** actual − planned (negative = under plan). */
   diffCents: Cents | null;
 }
@@ -40,13 +42,20 @@ export function planResults(s: Snapshot, today: ISODate, days = 60): PlanResult[
   const events = s.calendarEvents
     .filter((e) => !e.cancelled && !e.duplicateOf && e.decision !== "skip" && e.date >= from && e.date < today)
     .sort((a, b) => (a.date < b.date ? -1 : 1));
+  // Your answers to "How did it go?": a confirmed match, or a charge that wasn't it.
+  const checks = new Map<string, { ok?: boolean; txnId?: string }>();
+  for (const c of s.corrections) if (c.kind === "preference" && c.matchKey.startsWith("plan_check:")) checks.set(c.matchKey.slice(11), c.value as { ok?: boolean; txnId?: string });
   for (const e of events) {
     const planned = e.capCents ?? e.estimateCents;
+    const check = checks.get(e.id);
+    if (check?.ok === false && !check.txnId) continue; // "Didn't spend": nothing to learn from.
     if (!planned || planned <= 0 || e.estimateSource === "not_spending") continue;
     const category = e.category ?? readTitle(e.title).category;
     const words = norm(`${e.title} ${e.location ?? ""}`).split(" ").filter((w) => w.length > 3 && !STOP.has(w));
     let best: { id: string; score: number; cents: Cents; description: string; date: ISODate } | null = null;
     for (const t of s.transactions) {
+      if (check?.ok === false && check.txnId === t.id) continue;
+      if (check?.ok === true && check.txnId && check.txnId !== t.id) continue;
       if (used.has(t.id) || t.status !== "posted" || t.direction !== "out" || isNotSpending(t.category)) continue;
       const gap = diffDays(e.date, t.date);
       if (gap < -1 || gap > 2) continue;
@@ -65,7 +74,8 @@ export function planResults(s: Snapshot, today: ISODate, days = 60): PlanResult[
       date: e.date,
       category,
       plannedCents: planned,
-      actual: best && { cents: best.cents, description: best.description, date: best.date },
+      actual: best && { cents: best.cents, description: best.description, date: best.date, txnId: best.id },
+      confirmed: check?.ok === true,
       diffCents: best ? best.cents - planned : null,
     });
   }
