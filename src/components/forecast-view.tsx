@@ -9,8 +9,9 @@ import { CashPath } from "./cash-path";
 import { Glyph } from "./icon";
 import { Info } from "./info";
 import { Money } from "./privacy";
-import { Timeline } from "./timeline";
-import { Disclosure, EmptyState, PageHeader } from "./ui";
+import { EmptyState, PageHeader } from "./ui";
+import { buildDashboard } from "@/lib/view/dashboard";
+import { ChevronDown, Sparkles } from "lucide-react";
 
 const KIND_GLYPH: Record<string, string> = { income: "income", bill: "bill", subscription: "Subscriptions", loan_payment: "Debt", card_payment: "card", savings_transfer: "save", expense: "spend" };
 
@@ -27,7 +28,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
     let usual = 0;
     const real = f.days.map((d) => d.closingCents - (usual += p?.byDay[d.date] ?? 0));
     const low = real.reduce((b, c, i) => (c < real[b]! ? i : b), 0);
-    return { real, everyday: usual, low: { cents: real[low]!, date: f.days[low]!.date }, hasModel: !!p };
+    return { real, everyday: usual, low: { cents: real[low]!, date: f.days[low]!.date }, hasModel: !!p, byDay: p?.byDay ?? {} };
   }, [model, f, today]);
   if (snapshot.accounts.length === 0) return <EmptyState title="No accounts yet">Add an account to see a forecast.</EmptyState>;
 
@@ -120,9 +121,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           <CardBillForecast key={c.accountId} card={c} snapshot={snapshot} today={today} realOn={realOn} />
         ))}
 
-        <Disclosure summary="Every day">
-          <Timeline days={f.days} mode="balance" />
-        </Disclosure>
+        <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} />
         {(f.issues.length > 0 || f.assumptions.length > 0) && (
           <p className="px-1 text-xs text-muted">
             {f.complete ? "Inputs complete" : `${f.issues.filter((i) => i.makesIncomplete).length} input(s) missing or stale`}
@@ -237,6 +236,102 @@ function CardBillForecast({ card, snapshot, today, realOn }: { card: ReturnType<
           )}
         </span>
       </div>
+    </section>
+  );
+}
+
+/**
+ * Every day ahead, one quiet line each: the day, its limit, and where your balance lands. Tap a day
+ * for the rest: why the limit is what it is, plans, bills and paychecks, and usual everyday spending.
+ */
+function DayByDay({ f, snapshot, today, realOn, usualOn }: { f: ReturnType<typeof buildForecast>; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null; usualOn: (d: ISODate) => number }) {
+  const m = useMemo(() => buildDashboard(snapshot, today, 30, new Date()), [snapshot, today]);
+  const [open, setOpen] = useState<ISODate | null>(null);
+  const [all, setAll] = useState(false);
+  const capOf = new Map(m.plan.days.map((d) => [d.date, d]));
+  const plansOn = (d: ISODate) => m.allEvents.filter((v) => v.event.date === d);
+  const limit = (d: ISODate) => {
+    const c = capOf.get(d);
+    if (c) return { cents: c.capCents, firm: true, reasons: c.reasons ?? [] };
+    const base = m.baselineByDay[d];
+    if (base == null) return null;
+    return { cents: base + plansOn(d).reduce((t, v) => t + (v.advice?.capCents ?? 0), 0), firm: false, reasons: [] as string[] };
+  };
+  const days = all ? f.days : f.days.slice(0, 14);
+  return (
+    <section className="card p-4" aria-labelledby="days-title">
+      <h2 id="days-title" className="flex items-center text-base font-bold text-ink">
+        Day by day
+        <Info label="Day by day">Each day&apos;s <b>limit</b> (a reasonable most to spend that day, the same as on Today) and where your balance <b>lands</b> that night. Limits after your next payday are a first look (~) and settle as you get closer. Tap a day for what&apos;s behind it.</Info>
+      </h2>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_auto] gap-x-3 px-1 text-[10px] font-semibold uppercase tracking-wide text-faint">
+        <span>Day</span><span className="w-16 text-right">Limit</span><span className="w-20 text-right">Lands at</span>
+      </div>
+      <ul className="mt-1 divide-y divide-line">
+        {days.map((d) => {
+          const l = limit(d.date);
+          const plans = plansOn(d.date);
+          const on = open === d.date;
+          const land = realOn(d.date);
+          const marks = d.items.length + plans.length;
+          return (
+            <li key={d.date}>
+              <button type="button" onClick={() => setOpen(on ? null : d.date)} aria-expanded={on} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 px-1 py-2 text-left">
+                <span className="flex min-w-0 items-center gap-1.5 text-sm">
+                  <span className={`font-semibold ${d.date === today ? "text-brand" : "text-ink"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
+                  <span className="text-xs text-faint">{formatShort(d.date)}</span>
+                  {plans.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-info" aria-label="plan" />}
+                  {d.items.some((i) => i.cashEffectCents > 0) && <span className="h-1.5 w-1.5 rounded-full bg-in" aria-label="money in" />}
+                  {d.items.some((i) => i.cashEffectCents < 0) && <span className="h-1.5 w-1.5 rounded-full bg-out" aria-label="bill" />}
+                  {l?.reasons.some((r) => / likely/.test(r)) && <Sparkles size={11} className="text-warn" aria-label="usual trip likely" />}
+                </span>
+                <span className="w-16 text-right font-num text-base text-display">{l ? <>{l.firm ? "" : "~"}<Money cents={l.cents} whole /></> : "—"}</span>
+                <span className="flex w-20 items-center justify-end gap-1 text-right text-xs tabular text-muted">
+                  {land != null && <Money cents={land} whole className={land < f.floorCents ? "text-warn" : ""} />}
+                  <ChevronDown size={12} className={`text-faint transition ${on ? "rotate-180" : ""}`} aria-hidden />
+                </span>
+              </button>
+              {on && (
+                <div className="fade-up mb-2 space-y-2 rounded-2xl bg-surface-2/60 p-3 text-sm">
+                  {l && l.reasons.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {l.reasons.map((r) => <li key={r} className="flex items-center gap-1.5 text-xs text-muted"><Sparkles size={12} className="shrink-0 text-brand" aria-hidden />{r}</li>)}
+                    </ul>
+                  )}
+                  {marks === 0 && <p className="text-xs text-muted">Nothing scheduled. Just everyday life.</p>}
+                  {plans.length > 0 && (
+                    <ul className="space-y-1">
+                      {plans.map((v) => (
+                        <li key={v.event.id} className="flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-2"><Glyph name="plan" size="xs" /><span className="truncate text-ink">{v.event.title}</span></span>
+                          <Money cents={-(v.advice?.capCents ?? v.estimate.cents)} sign tone="auto" whole className="shrink-0 font-semibold" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {d.items.length > 0 && (
+                    <ul className="space-y-1">
+                      {d.items.map((it) => (
+                        <li key={it.id} className="flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-2"><Glyph name={it.cashEffectCents > 0 ? "income" : (KIND_GLYPH[it.kind] ?? it.category ?? "bill")} size="xs" /><span className="truncate text-ink">{it.label}</span></span>
+                          <Money cents={it.cashEffectCents} sign tone="auto" className="shrink-0 font-semibold" />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <dl className="grid grid-cols-2 gap-2 border-t border-line pt-2 text-xs">
+                    <div><dt className="text-faint">Usual everyday</dt><dd className="font-semibold text-ink">~<Money cents={usualOn(d.date)} whole /></dd></div>
+                    <div className="text-right"><dt className="text-faint">Balance that night</dt><dd className="font-semibold text-ink">{land != null ? <Money cents={land} whole /> : "—"}</dd></div>
+                  </dl>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {f.days.length > 14 && (
+        <button type="button" onClick={() => setAll((x) => !x)} className="mt-2 text-xs font-semibold text-brand">{all ? "Show fewer" : `Show all ${f.days.length} days`}</button>
+      )}
     </section>
   );
 }
