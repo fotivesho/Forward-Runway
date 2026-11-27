@@ -73,7 +73,7 @@ export function BillRoom({
       <p className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
         <span className="font-num text-2xl leading-none" style={{ color }}>{room >= 0 ? usd(room) : borrowed ? usd(borrowed) : `−${usd(over)}`}</span>
         <span className="text-[11px] font-semibold" style={{ color }}>
-          {room >= 0 ? "room left" : borrowed ? "from next pay" : "over"}
+          {room >= 0 ? "under max" : borrowed ? "from next pay" : "over max"}
           {borrowed > 0 && borrowNote && info?.("Where it comes from", borrowNote)}
         </span>
       </p>
@@ -89,10 +89,17 @@ export function BillRoom({
         )}
         <span className="absolute -inset-y-1 w-0.5 rounded" style={{ left: pct(capCents), background: p.ink }} />
       </div>
-      <p className="mt-1.5 text-[10px] leading-tight" style={{ color: p.muted }}>
-        Bill {usd(withCents)} · max {usd(capCents)}
-        {maxNote && info?.("What max means", maxNote)}
-      </p>
+      {/* Spelled out: the bill this purchase makes, against the most you can pay from cash. */}
+      <dl className="mt-2 space-y-1 text-[11px] leading-tight" style={{ color: p.muted }}>
+        <div>
+          <div className="flex justify-between gap-2"><dt>Bill</dt><dd className="shrink-0 font-semibold tabular" style={{ color: p.ink }}>{usd(withCents)}</dd></div>
+          {add > 0 && <p className="text-[10px] opacity-75">{usd(usualCents)} + {usd(add)} this</p>}
+        </div>
+        <div className="flex justify-between gap-2">
+          <dt className="min-w-0">Max from cash</dt>
+          <dd className="flex shrink-0 items-center font-semibold tabular" style={{ color: p.ink }}>{usd(capCents)}{maxNote && info?.("What max means", maxNote)}</dd>
+        </div>
+      </dl>
     </div>
   );
 }

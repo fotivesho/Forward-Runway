@@ -113,7 +113,7 @@ export function AffordTiles({
                 value={dollars(first)}
                 aside={`of ${dollars(c.capCents)} max`}
                 tone={over ? (result.verdict === "yes" ? "warn" : "bad") : "good"}
-                status={over ? (result.verdict === "yes" ? `${dollars(c.withCents - c.capCents)} over · next period covers it` : `over by ${dollars(c.withCents - c.capCents)}`) : `${dollars(c.capCents - c.withCents)} room left`}
+                status={over ? (result.verdict === "yes" ? `${dollars(c.withCents - c.capCents)} over · next period covers it` : `${dollars(c.withCents - c.capCents)} over max`) : `${dollars(c.capCents - c.withCents)} under max`}
               >
                 <div className="absolute inset-0 flex overflow-hidden rounded-full">
                   <span className="h-full bg-faint/70" style={{ width: w(g(c.onCardCents)) }} />
