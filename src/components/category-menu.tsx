@@ -32,6 +32,12 @@ export function CategoryMenu({
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  // Inside a pop-up the list opens in place and pushes the sheet taller, instead of floating in a
+  // small box that the sheet cuts off.
+  const [inSheet, setInSheet] = useState(false);
+  useEffect(() => {
+    if (open) setInSheet(!!box.current?.closest("dialog"));
+  }, [open]);
   const [q, setQ] = useState("");
   const [making, setMaking] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
@@ -71,7 +77,7 @@ export function CategoryMenu({
         <span aria-hidden className={`text-faint transition ${open ? "rotate-180" : ""}`}>▾</span>
       </button>
       {open && (
-        <div className="fade-up absolute left-0 top-full z-30 mt-1.5 w-64 overflow-hidden rounded-2xl border border-line bg-surface shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]">
+        <div className={`fade-up z-30 overflow-hidden rounded-2xl border border-line bg-surface ${inSheet ? "relative mt-2 w-[min(20rem,calc(100vw-2.5rem))]" : "absolute left-0 top-full mt-1.5 w-64 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]"}`}>
           <label className="flex items-center gap-2 border-b border-line px-3">
             <Search size={14} className="text-faint" aria-hidden />
             <span className="sr-only">Find a category</span>
@@ -93,7 +99,7 @@ export function CategoryMenu({
             <div className="p-3"><NewCategoryForm onCreated={pick} initialName={q} /></div>
           ) : (
             <>
-              <ul role="listbox" aria-label="Categories" className="max-h-64 overflow-y-auto py-1">
+              <ul role="listbox" aria-label="Categories" data-no-swipe className={`${inSheet ? "max-h-[48dvh]" : "max-h-64"} overflow-y-auto overscroll-contain py-1`}>
                 {list.map((c) => (
                   <li key={c} className="flex items-center">
                     <button type="button" role="option" aria-selected={c === value} onClick={() => pick(c)} className={`flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-3 text-left text-sm transition hover:bg-surface-2 ${c === value ? "font-semibold text-ink" : "text-muted"}`}>

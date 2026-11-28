@@ -125,7 +125,7 @@ export function Modal({
       className="fr-modal m-0 mt-auto max-h-[92dvh] w-full max-w-none overflow-hidden rounded-t-3xl border border-line bg-surface p-0 text-ink shadow-2xl backdrop:bg-black/45 backdrop:backdrop-blur-[2px] sm:m-auto sm:max-w-lg sm:rounded-3xl"
     >
       {open && (
-        <div ref={panel} tabIndex={-1} className="flex max-h-[92dvh] flex-col outline-none">
+        <div ref={panel} tabIndex={-1} className="flex max-h-[92dvh] min-h-[62dvh] flex-col outline-none sm:min-h-0">
           <div className={`relative bg-gradient-to-b ${head} to-transparent px-5 pb-3 pt-3 sm:pt-5`}>
             <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line sm:hidden" />
             <div className="flex items-start gap-3">
