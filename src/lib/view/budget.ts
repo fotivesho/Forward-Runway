@@ -321,7 +321,10 @@ export interface CategoryItem {
  * Everything counted in each category, newest first, from `from` to today: the same items the
  * budget and reports add up (logged spending, card refunds, and repeating bills on accounts no bank updates).
  */
-export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Record<string, CategoryItem[]> {
+export function categoryItems(s: Snapshot, today: ISODate, fromDate: ISODate): Record<string, CategoryItem[]> {
+  // Back to January 1 too, so a category can show its total for the year.
+  const jan1 = `${today.slice(0, 4)}-01-01`;
+  const from = fromDate < jan1 ? fromDate : jan1;
   const out: Record<string, CategoryItem[]> = {};
   const add = (c: string, it: CategoryItem) => (out[c] ??= []).push(it);
   const acct = new Map(s.accounts.map((a) => [a.id, a]));

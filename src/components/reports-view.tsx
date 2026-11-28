@@ -217,6 +217,8 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
   const list = items.filter((i) => i.date >= from && i.date <= to);
   const rows = all ? list : list.slice(0, 8);
   const total = list.reduce((t, i) => t + i.cents, 0);
+  const year = now.end.slice(0, 4);
+  const yearCents = items.filter((i) => i.date.startsWith(year)).reduce((t, i) => t + i.cents, 0);
   const pace = avg ? nowCents / avg : 0;
   const TrendIcon = trend == null || Math.abs(trend) < 10 ? Minus : trend > 0 ? TrendingUp : TrendingDown;
   const trendTone = trend == null || Math.abs(trend) < 10 ? "text-muted" : trend > 0 ? "text-warn" : "text-brand";
@@ -276,11 +278,12 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
 
       <div>
         <div className="mb-1 flex items-baseline justify-between gap-2">
-          <p className="text-sm font-bold text-ink">{picked ? periodName(picked) : "All of it"} <span className="font-normal text-faint">· {list.length}</span></p>
-          <span className="flex items-baseline gap-2">
-            <Money cents={total} whole className="text-sm font-semibold text-ink" />
-            {picked && <button type="button" onClick={() => setPick(null)} className="text-xs font-semibold text-brand">Show all</button>}
-          </span>
+          {picked ? (
+            <p className="text-sm font-bold text-ink">{periodName(picked)} <Money cents={total} whole className="ml-1 font-semibold" /></p>
+          ) : (
+            <p className="text-sm text-muted">{year} so far <Money cents={yearCents} whole className="ml-1 font-num text-base text-ink" /></p>
+          )}
+          {picked && <button type="button" onClick={() => setPick(null)} className="text-xs font-semibold text-brand">Show all</button>}
         </div>
         {list.length === 0 ? (
           <p className="text-sm text-muted">Nothing here.</p>
@@ -292,7 +295,7 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
               return (
                 <section key={key}>
                   <div className="sticky top-0 z-10 -mx-1 mb-1 flex items-baseline justify-between bg-surface/95 px-1 py-1.5 backdrop-blur">
-                    <span className="text-xs font-bold text-ink">{monthYear(key)} <span className="font-normal text-faint">· {all.length}</span></span>
+                    <span className="text-xs font-bold text-ink">{monthYear(key)}</span>
                     <Money cents={all.reduce((t, i) => t + i.cents, 0)} whole className="text-xs font-semibold text-ink" />
                   </div>
                   <ul className="divide-y divide-line rounded-xl border border-line">
