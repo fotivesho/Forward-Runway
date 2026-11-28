@@ -33,7 +33,7 @@ export function CalendarView({ snapshot, today, nowIso, demo = false }: ViewProp
   const ics = snapshot.calendarSources.some((s) => s.kind === "ics_url" && s.enabled);
   return (
     <>
-      <PageHeader title="Calendar plans" subtitle="Your plans, priced. Each plan on your calendar gets an expected cost and a verdict: fits, fits with a small change, or not yet. Tap a day to see what you can spend that day, or a plan to see your options." action={ics ? <SyncButton label="Sync all" /> : undefined} />
+      <PageHeader title="Plan" subtitle="Your plans, priced. Each plan on your calendar gets an expected cost and a verdict: fits, fits with a small change, or not yet. Tap a day to see what you can spend that day, or a plan to see your options." action={ics ? <SyncButton label="Sync all" /> : undefined} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
         <div className="flex flex-col gap-4">
           {m.coverage.incomplete && (

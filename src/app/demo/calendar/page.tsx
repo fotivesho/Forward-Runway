@@ -1,8 +1,7 @@
-import type { Metadata } from "next";
-import { CalendarView } from "@/components/views/calendar";
-import { getDemoSession } from "@/lib/data/demo-session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Calendar" };
-export default function Page() {
-  return <CalendarView {...getDemoSession()} />;
+/** Moved into Plan. Old links keep working, with their options (like ?add=1). */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : v == null ? [] : [[k, v]])) as Array<[string, string]>).toString();
+  redirect("/demo/plan/month" + (q ? "?" + q : ""));
 }

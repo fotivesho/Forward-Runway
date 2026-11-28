@@ -97,7 +97,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               <ShortfallFix snapshot={snapshot} m={m} cents={allowance.shortfallCents} date={allowance.shortfallDate} why={`${allowance.explanation[0] ?? ""} ${allowance.explanation[1] ?? ""}`.trim()} base={base} />
             )}
             <div className="mt-5 flex flex-wrap items-center gap-2">
-              <Link href={base + "/what-if#afford"} className="btn btn-primary">Can I afford it?</Link>
+              <Link href={base + "/plan/what-if#afford"} className="btn btn-primary">Can I afford it?</Link>
               {!demo && <QuickLog accounts={accounts} today={today} />}
             </div>
           </div>
@@ -115,7 +115,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           action={
             <span className="flex items-center gap-1">
               <AddPlanButton snapshot={snapshot} today={today} nextPayday={m.nextPayday} events={m.planned} calendarIncomplete={m.coverage.incomplete} className="btn btn-ghost btn-sm" />
-              <Link href={base + "/calendar"} className="btn btn-ghost btn-sm">
+              <Link href={base + "/plan/month"} className="btn btn-ghost btn-sm">
                 Calendar →
               </Link>
             </span>
@@ -400,7 +400,7 @@ function TodayForecast({ m, snapshot, today, base }: { m: ReturnType<typeof buil
     <section className="card p-4 sm:p-5" aria-labelledby="tf-title">
       <div className="flex items-baseline justify-between gap-2">
         <h2 id="tf-title" className="text-base font-bold text-ink">Next 30 days<Info label="Next 30 days">Your checking balance over the next month, after paychecks, bills, plans and your usual everyday spending. The dashed line is your cushion: the least you ever want in your account. Staying above it means you&apos;re safe.</Info></h2>
-        <Link href={base + "/forecast"} className="text-xs font-medium text-faint hover:text-ink">Forecast →</Link>
+        <Link href={base + "/plan"} className="text-xs font-medium text-faint hover:text-ink">Plan →</Link>
       </div>
       <p className={`mt-1 text-sm font-semibold ${low < floor ? "text-warn" : "text-brand"}`}>
         {low < floor ? <>Dips <Money cents={floor - low} whole /> under your floor</> : <>Stays <Money cents={low - floor} whole /> above your floor</>}
@@ -620,7 +620,7 @@ function ShortfallFix({ snapshot, m, cents, date, why, base }: { snapshot: Snaps
                     </li>
                   ))}
                 </ul>
-                <Link href={base + "/calendar"} className="mt-1 inline-block text-xs font-semibold text-brand">Open them in Calendar →</Link>
+                <Link href={base + "/plan/month"} className="mt-1 inline-block text-xs font-semibold text-brand">Open them in Plan →</Link>
               </section>
             )}
             <section>

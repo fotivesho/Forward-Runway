@@ -199,7 +199,7 @@ export function AccountsView({
 
   return (
     <>
-      <PageHeader title="Accounts" action={<AddInModal label="+ Add" title="Add an account" icon="🏦"><AccountForm accounts={accounts} today={today} /></AddInModal>} />
+      <PageHeader title="Accounts" action={<span className="flex items-center gap-2"><AddInModal label="+ Add" title="Add an account" icon="🏦"><AccountForm accounts={accounts} today={today} /></AddInModal><a href={(demo ? "/demo" : "/app") + "/settings"} aria-label="Settings" className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-muted transition hover:text-ink">⚙︎</a></span>} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         {!bank && !demo && bankSetupMissing && (
           <section className="card border-warn/50 p-4 text-sm">

@@ -1,16 +1,7 @@
-import type { Metadata } from "next";
-import { PageHeader } from "@/components/ui";
-import { WhatIf } from "@/components/what-if";
-import { getAppSession } from "@/lib/data/session";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "What if" };
-
-export default async function WhatIfPage() {
-  const { snapshot, today, nowIso } = await getAppSession();
-  return (
-    <>
-      <PageHeader title="What if…" subtitle="Thinking about buying something? Enter it here before you buy. You'll see if it fits, what it does to your money, the best day to buy it, and whether debit or credit works better." />
-      <WhatIf snapshot={snapshot} today={today} nowIso={nowIso} />
-    </>
-  );
+/** Moved into Plan. Old links keep working, with their options (like ?add=1). */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const q = new URLSearchParams(Object.entries(await searchParams).flatMap(([k, v]) => (Array.isArray(v) ? v.map((x) => [k, x]) : v == null ? [] : [[k, v]])) as Array<[string, string]>).toString();
+  redirect("/app/plan/what-if" + (q ? "?" + q : ""));
 }

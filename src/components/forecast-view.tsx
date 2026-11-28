@@ -52,7 +52,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
 
   return (
     <>
-      <PageHeader title="Forecast" />
+      <PageHeader title="Plan" />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
         <section className="card overflow-hidden" aria-labelledby="fc-title">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">

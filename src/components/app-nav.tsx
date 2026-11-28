@@ -1,14 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarDays, Landmark, Settings, Sparkles, Sunrise, TrendingUp, Wallet, type LucideIcon } from "lucide-react";
+import { CalendarDays, Landmark, Settings, Sunrise, Wallet, type LucideIcon } from "lucide-react";
+import { PLAN_SECTIONS } from "./plan-tabs";
 
 const LINKS: Array<{ href: string; label: string; Icon: LucideIcon }> = [
   { href: "/app", label: "Today", Icon: Sunrise },
+  { href: "/app/plan", label: "Plan", Icon: CalendarDays },
   { href: "/app/spend", label: "Money", Icon: Wallet },
-  { href: "/app/calendar", label: "Calendar", Icon: CalendarDays },
-  { href: "/app/what-if", label: "What if", Icon: Sparkles },
-  { href: "/app/forecast", label: "Forecast", Icon: TrendingUp },
   { href: "/app/accounts", label: "Accounts", Icon: Landmark },
   { href: "/app/settings", label: "Settings", Icon: Settings },
 ];
@@ -18,13 +17,17 @@ const MONEY = [
   { href: "/spend/bills", label: "Bills" },
   { href: "/spend/trends", label: "Trends" },
 ];
-const MOBILE = ["/app", "/app/spend", "/app/calendar", "/app/what-if", "/app/forecast", "/app/accounts"];
+const MOBILE = ["/app", "/app/plan", "/app/spend", "/app/accounts"];
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
   const path = usePathname();
   const to = (href: string) => base + href.slice(4);
   const active = (href: string) => (href === "/app" ? path === base : path.startsWith(to(href)));
   const inMoney = path.startsWith(`${base}/spend`);
+  const inPlan = path.startsWith(`${base}/plan`);
+  // The section pills above the tabs: Plan's views, or Money's.
+  const pills = inPlan ? PLAN_SECTIONS : inMoney ? MONEY : null;
+  const rootOf = inPlan ? "/plan" : "/spend";
   return (
     <>
       <nav aria-label="Main" className="hidden lg:block">
@@ -47,11 +50,11 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
       {/* Phones: docked to the bottom edge, solid, never blending into the page. In Money, its four
           sections sit as pills just above the tabs. */}
       <nav aria-label="Main" className="dock fixed inset-x-0 bottom-0 z-40 border-t border-line pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_24px_-12px_rgba(0,0,0,0.35)] lg:hidden">
-        {inMoney && (
-          <ul aria-label="Money" className="flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
-            {MONEY.map((m) => {
+        {pills && (
+          <ul aria-label={inPlan ? "Plan" : "Money"} className="flex gap-1.5 overflow-x-auto border-b border-line px-3 py-2">
+            {pills.map((m) => {
               const href = base + m.href;
-              const on = m.href === "/spend" ? path === href : path.startsWith(href);
+              const on = m.href === rootOf ? path === href : path.startsWith(href);
               return (
                 <li key={m.href}>
                   <Link href={href} aria-current={on ? "page" : undefined}
@@ -63,7 +66,7 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
             })}
           </ul>
         )}
-        <ul className="mx-auto grid max-w-md grid-cols-6 px-1 pb-1.5 pt-1.5">
+        <ul className="mx-auto grid max-w-md grid-cols-4 px-1 pb-1.5 pt-1.5">
           {LINKS.filter((l) => MOBILE.includes(l.href)).map(({ href, label, Icon }) => {
             const on = active(href);
             return (

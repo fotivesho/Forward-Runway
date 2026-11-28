@@ -74,7 +74,7 @@ for (const width of [390, 1280]) {
 }
 
 // Every other demo page renders cleanly and stays read-only
-for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions", "/demo/spend/bills", "/demo/spend/trends", "/demo/calendar", "/demo/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
+for (const path of ["/demo/plan", "/demo/spend", "/demo/spend/transactions", "/demo/spend/bills", "/demo/spend/trends", "/demo/plan/month", "/demo/plan/what-if", "/demo/accounts", "/demo/settings", "/demo/onboarding"]) {
   const { page, res, errors } = await visit(path);
   check(res.status() === 200 && errors.length === 0, `${path} loads without errors ${errors.join(" | ")}`);
   check(!(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)), `${path} has no horizontal scroll at 390px`);
@@ -146,7 +146,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
     await page.waitForTimeout(400);
     check(/(You're good|Doable|Not yet|Already covered)/.test(await dlg.innerText()), "a suggested amount gets an answer before saving");
   }
-  await page.goto(BASE + "/demo/forecast", { waitUntil: "networkidle" });
+  await page.goto(BASE + "/demo/plan", { waitUntil: "networkidle" });
   check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
   await page.close();
 }
@@ -159,7 +159,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
     check(errors.length === 0 && /Noticed/.test(body) && body.indexOf("Noticed") < body.indexOf("Categories") && /Net cash flow/.test(body) && !/Spending by group/.test(body), "trends leads with what we noticed, then categories and cash flow");
     await page.close();
   }
-  const { page, errors } = await visit("/demo/what-if", 390);
+  const { page, errors } = await visit("/demo/plan/what-if", 390);
   check(errors.length === 0, `what-if loads without errors ${errors.join(" | ")}`);
   const body = await page.locator("main").innerText();
   check(/Spending money/.test(body) && /Lowest balance/.test(body) && /(You're good|Doable|Not yet|Already covered)/.test(body), "what-if answers in plain words with both meters");

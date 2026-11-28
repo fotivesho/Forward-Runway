@@ -39,28 +39,28 @@ const FEATURES = [
   { id: "info-in-popup", area: "Everywhere", name: "ⓘ bubbles open inside pop-ups", at: "/demo", run: async (p) => { await p.locator('main li button[aria-haspopup="dialog"]').first().click(); await dialog(p).locator(".info-dot").first().click(); const box = await p.locator(".info-bubble").boundingBox(); return !!box || "bubble hidden"; } },
 
   // ── Calendar ───────────────────────────────────────────────────────────
-  { id: "cal-month", area: "Calendar", name: "Month grid with daily limits and ‹ › months", at: "/demo/calendar", run: has(/Your plans.*S M T W T F S|Your plans/) },
-  { id: "cal-day", area: "Calendar", name: "Tap a day: its limit and plans", at: "/demo/calendar", run: async (p) => { await p.locator("main button", { hasText: /^\s*29\s*\$/ }).first().click(); return has(/Limit/)(p); } },
-  { id: "cal-add", area: "Calendar", name: "+ Add a plan (with live what-if)", at: "/demo/calendar", run: async (p) => { await tap(p, "button", "+ Add", "main"); return dialogHas(p, /Free to plan with/); } },
-  { id: "cal-sync", area: "Calendar", name: "Sync all", at: "/demo/calendar", run: has(/Sync all/) },
-  { id: "cal-history", area: "Calendar", name: "How your plans went", at: "/demo/calendar", run: has(/How your plans went/) },
-  { id: "cal-connect", area: "Calendar", name: "Connected calendars, connect a link, upload a file", at: "/demo/calendar", run: has(/Connected calendars.*Connect a calendar.*Upload a calendar file/) },
-  { id: "cal-help", area: "Calendar", name: "Where to find the iCal link (Google, Apple, Outlook)", at: "/demo/calendar", run: has(/Where do I find the secret iCal address/) },
+  { id: "cal-month", area: "Plan · Month", name: "Month grid with daily limits and ‹ › months", at: "/demo/plan/month", run: has(/Your plans.*S M T W T F S|Your plans/) },
+  { id: "cal-day", area: "Plan · Month", name: "Tap a day: its limit and plans", at: "/demo/plan/month", run: async (p) => { await p.locator("main button", { hasText: /^\s*29\s*\$/ }).first().click(); return has(/Limit/)(p); } },
+  { id: "cal-add", area: "Plan · Month", name: "+ Add a plan (with live what-if)", at: "/demo/plan/month", run: async (p) => { await tap(p, "button", "+ Add", "main"); return dialogHas(p, /Free to plan with/); } },
+  { id: "cal-sync", area: "Plan · Month", name: "Sync all", at: "/demo/plan/month", run: has(/Sync all/) },
+  { id: "cal-history", area: "Plan · Month", name: "How your plans went", at: "/demo/plan/month", run: has(/How your plans went/) },
+  { id: "cal-connect", area: "Plan · Month", name: "Connected calendars, connect a link, upload a file", at: "/demo/plan/month", run: has(/Connected calendars.*Connect a calendar.*Upload a calendar file/) },
+  { id: "cal-help", area: "Plan · Month", name: "Where to find the iCal link (Google, Apple, Outlook)", at: "/demo/plan/month", run: has(/Where do I find the secret iCal address/) },
 
   // ── What if ────────────────────────────────────────────────────────────
-  { id: "wi-ask", area: "What if", name: "What if I spend: amount, plan chips and quick picks", at: "/demo/what-if", run: has(/What if I spend.*Dinner out.*Concert.*Weekend away/) },
-  { id: "wi-when", area: "What if", name: "When: today, Saturday, payday, best time to buy", at: "/demo/what-if", run: has(/Today.*Sat.*Payday.*Doable|Good/) },
-  { id: "wi-pay", area: "What if", name: "Debit vs credit, when cash leaves", at: "/demo/what-if", run: has(/Debit.*Credit.*cash leaves/) },
-  { id: "wi-add", area: "What if", name: "Add to my plans", at: "/demo/what-if", run: has(/Add to my plans/) },
-  { id: "wi-scenarios", area: "What if", name: "What-if scenarios (raise, cancel, skip, cushion)", at: "/demo/what-if", run: async (p) => (await p.locator("#scenarios").count()) > 0 || "no scenarios" },
+  { id: "wi-ask", area: "Plan · What if", name: "What if I spend: amount, plan chips and quick picks", at: "/demo/plan/what-if", run: has(/What if I spend.*Dinner out.*Concert.*Weekend away/) },
+  { id: "wi-when", area: "Plan · What if", name: "When: today, Saturday, payday, best time to buy", at: "/demo/plan/what-if", run: has(/Today.*Sat.*Payday.*Doable|Good/) },
+  { id: "wi-pay", area: "Plan · What if", name: "Debit vs credit, when cash leaves", at: "/demo/plan/what-if", run: has(/Debit.*Credit.*cash leaves/) },
+  { id: "wi-add", area: "Plan · What if", name: "Add to my plans", at: "/demo/plan/what-if", run: has(/Add to my plans/) },
+  { id: "wi-scenarios", area: "Plan · What if", name: "What-if scenarios (raise, cancel, skip, cushion)", at: "/demo/plan/what-if", run: async (p) => (await p.locator("#scenarios").count()) > 0 || "no scenarios" },
 
   // ── Forecast ───────────────────────────────────────────────────────────
-  { id: "fc-lowest", area: "Forecast", name: "Lowest ahead with chart", at: "/demo/forecast", run: has(/Lowest ahead/) },
-  { id: "fc-keydays", area: "Forecast", name: "Key days", at: "/demo/forecast", run: has(/Key days/) },
-  { id: "fc-card", area: "Forecast", name: "Card's next bill", at: "/demo/forecast", run: has(/next bill/i) },
-  { id: "fc-max", area: "Forecast", name: "Max bill without savings, both statements, how it adds up", at: "/demo/forecast", run: async (p) => all(has(/Max bill without savings.*Due/)(p), (async () => { await p.getByText("How it adds up").first().click(); return has(/Cash now.*Your cushion/)(p); })()) },
-  { id: "fc-days", area: "Forecast", name: "Day by day 30/60/90 with lean tags", at: "/demo/forecast", run: async (p) => { await tap(p, "button", "60d", "main"); return has(/Day by day.*Lean/)(p); } },
-  { id: "fc-day-open", area: "Forecast", name: "Open a day: why its limit, plans, bills", at: "/demo/forecast", run: async (p) => { await p.locator('main button[aria-expanded]', { hasText: /Dec 2/ }).first().click(); return has(/Balance that night/)(p); } },
+  { id: "fc-lowest", area: "Plan · Days", name: "Lowest ahead with chart", at: "/demo/plan", run: has(/Lowest ahead/) },
+  { id: "fc-keydays", area: "Plan · Days", name: "Key days", at: "/demo/plan", run: has(/Key days/) },
+  { id: "fc-card", area: "Plan · Days", name: "Card's next bill", at: "/demo/plan", run: has(/next bill/i) },
+  { id: "fc-max", area: "Plan · Days", name: "Max bill without savings, both statements, how it adds up", at: "/demo/plan", run: async (p) => all(has(/Max bill without savings.*Due/)(p), (async () => { await p.getByText("How it adds up").first().click(); return has(/Cash now.*Your cushion/)(p); })()) },
+  { id: "fc-days", area: "Plan · Days", name: "Day by day 30/60/90 with lean tags", at: "/demo/plan", run: async (p) => { await tap(p, "button", "60d", "main"); return has(/Day by day.*Lean/)(p); } },
+  { id: "fc-day-open", area: "Plan · Days", name: "Open a day: why its limit, plans, bills", at: "/demo/plan", run: async (p) => { await p.locator('main button[aria-expanded]', { hasText: /Dec 2/ }).first().click(); return has(/Balance that night/)(p); } },
 
   // ── Money: Month ───────────────────────────────────────────────────────
   { id: "mo-tiles", area: "Money", name: "Income − Fixed − Spent = Net, each tappable", at: "/demo/spend", run: async (p) => { await p.getByRole("button", { name: /^Income/ }).first().click(); return dialogHas(p, /\$/); } },
@@ -114,7 +114,10 @@ const FEATURES = [
       });
       return !open || "still open";
     } },
-  { id: "nav", area: "Everywhere", name: "Bottom bar reaches every area", at: "/demo", run: async (p) => { const t = await text(p, "nav"); return ["Today", "Money"].every((x) => t.includes(x)) || `nav: ${t}`; } },
+  { id: "nav", area: "Everywhere", name: "Bottom bar: Today, Plan, Money, Accounts", at: "/demo", run: async (p) => { const t = await p.locator('nav[aria-label="Main"]').last().innerText(); return ["Today", "Plan", "Money", "Accounts"].every((x) => t.includes(x)) || `nav: ${t}`; } },
+  { id: "plan-pills", area: "Everywhere", name: "Plan's views: Days, Month, What if", at: "/demo/plan", run: async (p) => { const t = await p.locator('ul[aria-label="Plan"]').innerText(); return ["Days", "Month", "What if"].every((x) => t.includes(x)) || `pills: ${t}`; } },
+  { id: "old-links", area: "Everywhere", name: "Old links still land in the right place", at: "/demo/calendar", run: async (p) => { if (!p.url().endsWith("/demo/plan/month")) return `calendar → ${p.url()}`; await p.goto(p.url().replace("/demo/plan/month", "/demo/what-if#afford"), { waitUntil: "networkidle" }); if (!p.url().includes("/demo/plan/what-if")) return `what-if → ${p.url()}`; await p.goto(p.url().replace(/\/demo\/plan\/what-if.*/, "/demo/forecast"), { waitUntil: "networkidle" }); return p.url().endsWith("/demo/plan") || `forecast → ${p.url()}`; } },
+  { id: "acc-settings", area: "Accounts", name: "⚙ Settings from Accounts", at: "/demo/accounts", run: async (p) => (await p.locator('main a[aria-label="Settings"]').count()) > 0 || "no gear" },
 ];
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
