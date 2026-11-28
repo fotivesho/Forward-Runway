@@ -291,6 +291,24 @@ export async function createCategory(name: string, icon: string, color: string):
 }
 
 /** One tap in a transaction's pop-up: just its category (bank or hand-entered). */
+/** A transaction's name or whether it's day-to-day spending, changed in place. */
+export async function updateTransactionQuick(id: string, patch: { description?: string; flexible?: boolean }): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await session();
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { ok: false, error: "Couldn't find that transaction." };
+  const row: Record<string, unknown> = {};
+  if (patch.description != null) {
+    const d = patch.description.trim().replace(/\s+/g, " ").slice(0, 120);
+    if (!d) return { ok: false, error: "Give it a name." };
+    row.description = d;
+  }
+  if (patch.flexible != null) row.flexible = !!patch.flexible;
+  if (!Object.keys(row).length) return { ok: true };
+  const { error } = await supabase.from("transactions").update(row).eq("id", id);
+  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 export async function setTransactionCategory(id: string, category: string, scope: "one" | "all" = "one"): Promise<{ ok: boolean; error?: string; count?: number }> {
   const { supabase } = await session();
   const clean = category.trim().slice(0, 40) || null;

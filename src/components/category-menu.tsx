@@ -23,7 +23,14 @@ export function CategoryMenu({
   onPick,
   size = "md",
   disabled,
+  hidePill = false,
+  open: openProp,
+  onOpenChange,
 }: {
+  /** No pill of its own: something else (like a pop-up's icon) opens it. */
+  hidePill?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   value: string | null;
   direction?: "in" | "out";
   yours?: string[];
@@ -31,7 +38,13 @@ export function CategoryMenu({
   size?: "sm" | "md";
   disabled?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const open = openProp ?? openState;
+  const setOpen = (v: boolean | ((o: boolean) => boolean)) => {
+    const next = typeof v === "function" ? v(open) : v;
+    if (onOpenChange) onOpenChange(next);
+    else setOpenState(next);
+  };
   // Inside a pop-up the list opens in place and pushes the sheet taller, instead of floating in a
   // small box that the sheet cuts off.
   const [inSheet, setInSheet] = useState(false);
@@ -46,7 +59,8 @@ export function CategoryMenu({
   const manage = usePathname()?.startsWith("/demo") ? "/demo/settings#categories" : "/app/settings#categories";
   useEffect(() => {
     if (!open) return;
-    const close = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
+    // Taps on what opens it (a pop-up's icon) aren't "outside".
+    const close = (e: PointerEvent) => !box.current?.contains(e.target as Node) && !(e.target as HTMLElement).closest?.("[data-cat-toggle]") && setOpen(false);
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
   }, [open]);
@@ -64,8 +78,8 @@ export function CategoryMenu({
   };
 
   return (
-    <div ref={box} className="relative inline-block">
-      <button
+    <div ref={box} className={hidePill ? "relative block" : "relative inline-block"}>
+      {!hidePill && <button
         type="button"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
@@ -75,7 +89,7 @@ export function CategoryMenu({
       >
         <Glyph name={value ?? (direction === "in" ? "income" : "spend")} size="xs" bare /> {shown}
         <span aria-hidden className={`text-faint transition ${open ? "rotate-180" : ""}`}>▾</span>
-      </button>
+      </button>}
       {open && (
         <div className={`fade-up z-30 overflow-hidden rounded-2xl border border-line bg-surface ${inSheet ? "relative mt-2 w-[min(20rem,calc(100vw-2.5rem))]" : "absolute left-0 top-full mt-1.5 w-64 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.55)]"}`}>
           <label className="flex items-center gap-2 border-b border-line px-3">

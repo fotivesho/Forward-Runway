@@ -14,6 +14,7 @@ export function Modal({
   title,
   subtitle,
   icon,
+  iconNode,
   tone = "neutral",
   action,
   children,
@@ -23,6 +24,8 @@ export function Modal({
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   icon?: React.ReactNode;
+  /** Instead of `icon`: something of your own in its place (like a button). */
+  iconNode?: React.ReactNode;
   /** Tints the header: income green, spending warm, neutral otherwise. */
   tone?: "neutral" | "in" | "out";
   /** A small button in the header, beside the close button (e.g. Edit). */
@@ -129,7 +132,8 @@ export function Modal({
           <div className={`relative bg-gradient-to-b ${head} to-transparent px-5 pb-3 pt-3 sm:pt-5`}>
             <span aria-hidden className="mx-auto mb-3 block h-1 w-10 rounded-full bg-line sm:hidden" />
             <div className="flex items-start gap-3">
-              {icon && typeof icon === "string" ? <Glyph name={icon} size="lg" /> : icon && <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-xl shadow-sm">{icon}</span>}
+              {iconNode ?? null}
+              {!iconNode && icon && typeof icon === "string" ? <Glyph name={icon} size="lg" /> : !iconNode && icon && <span aria-hidden className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-surface text-xl shadow-sm">{icon}</span>}
               <div className="min-w-0 flex-1">
                 <h2 id={titleId} className="text-lg font-bold leading-tight text-ink">{title}</h2>
                 {subtitle && <div className="mt-0.5 text-sm text-muted">{subtitle}</div>}

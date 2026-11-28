@@ -5,7 +5,8 @@ import { CategoryMenu } from "./category-menu";
 import { Repeat, Search, Sparkles } from "lucide-react";
 import { NewCategoryButton } from "./new-category";
 import { looksLike } from "@/lib/data/match";
-import { deleteRule, deleteTransaction, saveRule, setTransactionCategory } from "@/app/app/actions";
+import { deleteRule, deleteTransaction, saveRule, setTransactionCategory, updateTransactionQuick } from "@/app/app/actions";
+import { useRouter } from "next/navigation";
 import { addDays, addMonths, formatLong, formatShort, type ISODate } from "@/lib/dates";
 import { describeSchedule, nextOccurrence, type Account, type OneTimeTransaction, type RecurringRule } from "@/lib/engine";
 import { RuleForm, TransactionForm } from "./entity-forms";
@@ -206,24 +207,22 @@ export function TransactionList({
         </button>
       )}
       {current && (
+        <CatProvider key={current.id} txn={current} txns={txns} startOpen={startCat}>
         <Modal
           open
-          onClose={() => {
-            setOpen(null);
-            setRepeat(false);
-          }}
-          icon={current.category ?? (current.direction === "in" ? "income" : "spend")}
+          onClose={() => { setOpen(null); setRepeat(false); }}
+          iconNode={<CatIconButton txn={current} />}
           tone={current.direction === "in" ? "in" : "out"}
-          title={current.description}
+          title={<EditableName txn={current} />}
           subtitle={
             <>
               <Money cents={current.direction === "in" ? current.amountCents : -current.amountCents} sign tone="auto" className="font-semibold" /> · {formatShort(current.date)} · {name(current.accountId)}
-              <span className="mt-1 flex flex-wrap gap-1">
-                {current.status === "planned" && <Badge tone="info">Planned</Badge>}
-                {current.cleared && <Badge title="Already reflected in the balance">In balance</Badge>}
-                {current.isEstimate && <Badge tone="warn">Estimate</Badge>}
-                {onCard(current.accountId) && current.direction === "out" && <Badge title="Paid later with the statement — never counted twice">Paid with the statement</Badge>}
-              </span>
+              {(current.status === "planned" || current.isEstimate) && (
+                <span className="ml-1.5 inline-flex gap-1 align-middle">
+                  {current.status === "planned" && <Badge tone="info">Planned</Badge>}
+                  {current.isEstimate && <Badge tone="warn">Estimate</Badge>}
+                </span>
+              )}
             </>
           }
         >
@@ -248,33 +247,31 @@ export function TransactionList({
               />
             </>
           ) : (
-            <CatProvider key={current.id} txn={current} txns={txns}>
-            <TxnBody startPanel={startCat ? "cat" : null} txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
-              <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
-              <div className="mt-4 flex justify-end border-t border-line pt-4">
-                <QuickAction action={deleteTransaction} fields={{ id: current.id }} variant="danger" confirm="Delete this transaction?">Delete transaction</QuickAction>
-              </div>
+            <TxnBody txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
+              {!current.externalId && <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />}
             </TxnBody>
-            </CatProvider>
           )}
         </Modal>
+        </CatProvider>
       )}
     </div>
   );
 }
 
 /** Inside a transaction: two quick pills (category, repeats), what it's been over time, then the edit form folded away. */
-function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accountName, onRepeat, children }: { startPanel?: "cat" | null; txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; rules: RecurringRule[]; accountName: (id: string) => string; onRepeat: () => void; children: React.ReactNode }) {
+function TxnBody({ txn, txns, today, categories, rules, accountName, onRepeat, children }: { txn: OneTimeTransaction; txns: OneTimeTransaction[]; today: ISODate; categories: string[]; rules: RecurringRule[]; accountName: (id: string) => string; onRepeat: () => void; children?: React.ReactNode }) {
   const h = txnHistory(txn, txns, today);
-  const [panel, setPanel] = useState<"cat" | "repeat" | null>(startPanel);
-  const toggle = (p: "cat" | "repeat") => setPanel((x) => (x === p ? null : p));
+  const [panel, setPanel] = useState<"repeat" | null>(null);
+  const toggle = (p: "repeat") => setPanel((x) => (x === p ? null : p));
+  const { cat, set, pickOpen, setPickOpen } = useContext(CatCtx);
   const repeating = rules.find((r) => r.active !== false && looksLike(r, txn));
   // Everyday things (lunch, coffee) are predicted from your habits already; repeating is for bills and subscriptions.
   const canRepeat = !notSpendingTxn(txn) && !repeating && h?.unit !== "month";
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <CatMenu txn={txn} categories={categories} startOpen={panel === "cat"} />
+      <CatAsk txn={txn} />
+      {pickOpen && <CategoryMenu hidePill open onOpenChange={setPickOpen} value={cat ?? txn.category ?? null} direction={txn.direction} yours={categories} onPick={set} />}
+      {(repeating || canRepeat) && <div className="flex flex-wrap gap-2">
         {repeating ? (
           <button type="button" onClick={() => toggle("repeat")} aria-expanded={panel === "repeat"} className={pill(panel === "repeat")}>
             <Repeat size={14} strokeWidth={2.4} className="text-brand" aria-hidden /> Repeating
@@ -284,18 +281,18 @@ function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accou
             <Repeat size={14} strokeWidth={2.4} aria-hidden /> {h?.everyDays ? "Repeats?" : "Make repeating"}
           </button>
         ) : null}
-      </div>
+      </div>}
       {panel === "repeat" && (repeating ? <RepeatingInfo rule={repeating} today={today} /> : <QuickRepeat txn={txn} h={h} today={today} accountName={accountName} onMore={onRepeat} />)}
-      {h ? <Insights txn={txn} h={h} today={today} accountName={accountName} /> : (
-        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">First time we&apos;ve seen this. Once it shows up again, you&apos;ll see its history and what to expect next.</p>
-      )}
-      <Disclosure summary={txn.direction === "out" ? "Edit name, amount or date" : "Edit details"}>{children}</Disclosure>
+      {h && <Insights txn={txn} h={h} today={today} accountName={accountName} />}
+      {children && <Disclosure summary="Amount or date">{children}</Disclosure>}
+      <TxnFooter txn={txn} />
     </div>
   );
 }
 
 /** Holds the transaction's category while the pop-up is open: tapping one saves it right away. */
-function CatProvider({ txn, txns = [], children }: { txn: OneTimeTransaction; txns?: OneTimeTransaction[]; children: React.ReactNode }) {
+function CatProvider({ txn, txns = [], startOpen = false, children }: { txn: OneTimeTransaction; txns?: OneTimeTransaction[]; startOpen?: boolean; children: React.ReactNode }) {
+  const [pickOpen, setPickOpen] = useState(startOpen);
   const demo = useContext(DemoCtx);
   const [cat, setCat] = useState(txn.category ?? null);
   const [note, setNote] = useState<string | null>(null);
@@ -317,41 +314,115 @@ function CatProvider({ txn, txns = [], children }: { txn: OneTimeTransaction; tx
     });
   };
   const set = (c: string | null) => {
+    setPickOpen(false);
     if (!c || c === cat) return;
     setAsk(c);
   };
   return (
-    <CatCtx.Provider value={{ cat: ask ?? cat, set, pending, note }}>
+    <CatCtx.Provider value={{ cat: ask ?? cat, set, pending, note, pickOpen, setPickOpen, ask, apply, cancel: () => setAsk(null), same }}>
+      {children}
+    </CatCtx.Provider>
+  );
+}
+
+/** "Just this one, or all of them?" and what happened, inside the pop-up. */
+function CatAsk({ txn }: { txn: OneTimeTransaction }) {
+  const { ask, apply, cancel, same, note } = useContext(CatCtx);
+  return (
+    <>
       {ask && (
         <div className="fade-up mb-3 rounded-2xl border border-brand/40 bg-brand/[0.06] p-3" role="group" aria-label="Recategorize">
           <p className="text-sm text-ink">Make it <b>{ask}</b>:</p>
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" onClick={() => apply(ask, "one")} className="btn btn-secondary btn-sm">Just this one</button>
             <button type="button" onClick={() => apply(ask, "all")} className="btn btn-primary btn-sm">All “{txn.description.length > 18 ? `${txn.description.slice(0, 17)}…` : txn.description}”{same > 1 ? ` (${same})` : ""}</button>
-            <button type="button" onClick={() => setAsk(null)} className="btn btn-ghost btn-sm">Cancel</button>
+            <button type="button" onClick={cancel} className="btn btn-ghost btn-sm">Cancel</button>
           </div>
           <p className="mt-1.5 text-[11px] text-faint">“All” also sets new ones from your bank.</p>
         </div>
       )}
-      {children}
-      {note && <p className="mt-2 text-xs text-muted" aria-live="polite">{note}</p>}
-    </CatCtx.Provider>
+      {note && <p className="text-xs text-muted" aria-live="polite">{note}</p>}
+    </>
   );
 }
 
-/** The transaction's category as a pill that pops out the category list. */
-function CatMenu({ txn, categories, startOpen }: { txn: OneTimeTransaction; categories: string[]; startOpen: boolean }) {
-  const { cat, set, pending } = useContext(CatCtx);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    if (startOpen) ref.current?.querySelector("button")?.click();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+/** The pop-up's icon is the category: tap it to change. */
+function CatIconButton({ txn }: { txn: OneTimeTransaction }) {
+  const { cat, pickOpen, setPickOpen, pending } = useContext(CatCtx);
+  const shown = cat ?? txn.category ?? (txn.direction === "in" ? "income" : "spend");
   return (
-    <span ref={ref} className="inline-flex items-center gap-2">
-      <CategoryMenu value={cat ?? txn.category ?? null} direction={txn.direction} yours={categories} onPick={set} />
-      {pending && <span className="text-xs text-faint">Saving…</span>}
-    </span>
+    <button type="button" data-cat-toggle onClick={() => setPickOpen(!pickOpen)} aria-haspopup="listbox" aria-expanded={pickOpen} aria-label={`Category: ${shown}. Tap to change`} className={`relative shrink-0 rounded-2xl transition active:scale-95 ${pickOpen ? "ring-2 ring-brand" : ""} ${pending ? "opacity-60" : ""}`}>
+      <Glyph name={shown} size="lg" />
+      <span aria-hidden className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-line bg-surface text-[9px] text-muted">▾</span>
+    </button>
+  );
+}
+
+/** The name: tap it to change it, Enter or tap away to save. */
+function EditableName({ txn }: { txn: OneTimeTransaction }) {
+  const demo = useContext(DemoCtx);
+  const router = useRouter();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(txn.description);
+  const [shown, setShown] = useState(txn.description);
+  const save = async () => {
+    setEditing(false);
+    const v = value.trim();
+    if (!v || v === shown) return setValue(shown);
+    setShown(v);
+    if (!demo) {
+      const r = await updateTransactionQuick(txn.id, { description: v });
+      if (!r.ok) return setShown(txn.description);
+      router.refresh();
+    }
+  };
+  return editing ? (
+    <input autoFocus value={value} maxLength={120} aria-label="Name" onChange={(e) => setValue(e.target.value)} onBlur={save} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); if (e.key === "Escape") { setValue(shown); setEditing(false); } }} className="w-full rounded-lg border-b-2 border-brand bg-transparent text-lg font-bold text-ink outline-none" />
+  ) : (
+    <button type="button" onClick={() => setEditing(true)} aria-label={`Name: ${shown}. Tap to change`} className="text-left [overflow-wrap:anywhere]">{shown}</button>
+  );
+}
+
+/** Quiet last line: day-to-day or not, and delete. */
+function TxnFooter({ txn }: { txn: OneTimeTransaction }) {
+  const demo = useContext(DemoCtx);
+  const router = useRouter();
+  const [flex, setFlex] = useState(txn.flexible !== false);
+  const [, start] = useTransition();
+  const toggle = () =>
+    start(async () => {
+      const next = !flex;
+      setFlex(next);
+      if (!demo) {
+        const r = await updateTransactionQuick(txn.id, { flexible: next });
+        if (!r.ok) setFlex(!next);
+        else router.refresh();
+      }
+    });
+  return (
+    <div className="flex items-center justify-between gap-3 border-t border-line pt-3 text-xs text-muted">
+      {txn.direction === "out" ? (
+        <label className="flex items-center gap-2">
+          <button type="button" role="switch" aria-checked={flex} onClick={toggle} className={`relative h-5 w-9 rounded-full transition ${flex ? "bg-brand" : "bg-surface-3"}`}>
+            <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-surface transition-all ${flex ? "left-[18px]" : "left-0.5"}`} />
+          </button>
+          Day-to-day
+          <Info label="Day-to-day">On: it counts as everyday spending, so it shapes your daily limits and habits. Off for one-offs like a gift card or a deposit.</Info>
+        </label>
+      ) : <span />}
+      <QuickAction action={deleteTransaction} fields={{ id: txn.id }} variant="ghost" confirm="Delete this transaction?">Delete</QuickAction>
+    </div>
+  );
+}
+
+/** In a drill-down: the "this one or all?" prompt and the list the icon opens. */
+function DrillCats({ txn, yours }: { txn: OneTimeTransaction; yours: string[] }) {
+  const { cat, set, pickOpen, setPickOpen } = useContext(CatCtx);
+  return (
+    <div className="space-y-3">
+      <CatAsk txn={txn} />
+      {pickOpen && <CategoryMenu hidePill open onOpenChange={setPickOpen} value={cat ?? txn.category ?? null} direction={txn.direction} yours={yours} onPick={set} />}
+    </div>
   );
 }
 
@@ -359,7 +430,10 @@ const pill = (on: boolean) =>
   `inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold transition ${on ? "border-brand bg-brand/10 text-ink" : "border-line text-ink hover:border-brand/60"}`;
 
 /** The category, live: the pill shows what it is now (changed here or in the picker). */
-const CatCtx = createContext<{ cat: string | null; set: (c: string | null) => void; pending: boolean; note: string | null }>({ cat: null, set: () => {}, pending: false, note: null });
+const CatCtx = createContext<{
+  cat: string | null; set: (c: string | null) => void; pending: boolean; note: string | null;
+  pickOpen: boolean; setPickOpen: (o: boolean) => void; ask: string | null; apply: (c: string, scope: "one" | "all") => void; cancel: () => void; same: number;
+}>({ cat: null, set: () => {}, pending: false, note: null, pickOpen: false, setPickOpen: () => {}, ask: null, apply: () => {}, cancel: () => {}, same: 1 });
 
 
 
@@ -436,13 +510,14 @@ export function MerchantDrill({ txnId, onBack }: { txnId: string; onBack: () => 
       <button type="button" onClick={onBack} className="-ml-1 inline-flex items-center gap-1 text-xs font-semibold text-brand">
         <ChevronLeft size={14} strokeWidth={2.6} aria-hidden /> {txn.category ?? "Back"}
       </button>
-      <p className="truncate text-base font-bold text-ink">{txn.description}</p>
       <CatProvider key={txn.id} txn={txn} txns={d.txns}>
-        <CatMenu txn={txn} categories={yours} startOpen={false} />
+        <div className="flex items-center gap-3">
+          <CatIconButton txn={txn} />
+          <p className="min-w-0 flex-1 text-base font-bold text-ink"><EditableName txn={txn} /></p>
+        </div>
+        <DrillCats txn={txn} yours={yours} />
       </CatProvider>
-      {h ? <Insights txn={txn} h={h} today={d.today} accountName={d.accountName} /> : (
-        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">Only seen once so far. Once it shows up again, you&apos;ll see its history here.</p>
-      )}
+      {h && <Insights txn={txn} h={h} today={d.today} accountName={d.accountName} />}
     </div>
   );
 }
