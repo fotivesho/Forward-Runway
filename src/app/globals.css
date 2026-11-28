@@ -7,7 +7,7 @@
   --color-dock: #fffdf7;
   --color-surface-2: #f1ebdb;
   --color-surface-3: #e4eedc;
-  --color-line: #ddd3bb;
+  --color-line: #e2d9c3;
   --color-ink: #1d3324;
   --color-muted: #4f6455;
   --color-faint: #5d6f61;
@@ -38,13 +38,13 @@
   :root:not([data-theme="light"]) {
     color-scheme: dark;
     --color-bg: #121a15;
-    --color-surface: #18231c;
+    --color-surface: #172119;
     --color-dock: #0c130f;
-    --color-surface-2: #1f2c24;
+    --color-surface-2: #1d2922;
     --color-surface-3: #253a2c;
-    --color-line: #34483b;
+    --color-line: #2b3b31;
     --color-ink: #efe9d8;
-    --color-muted: #bfc6b4;
+    --color-muted: #b4bcaa;
     --color-faint: #a3ad9b;
     --color-brand: #7fd39a;
     --color-brand-strong: #9be0b1;
@@ -62,13 +62,13 @@
 :root[data-theme="dark"] {
   color-scheme: dark;
   --color-bg: #121a15;
-  --color-surface: #18231c;
+  --color-surface: #172119;
   --color-dock: #0c130f;
-  --color-surface-2: #1f2c24;
+  --color-surface-2: #1d2922;
   --color-surface-3: #253a2c;
-  --color-line: #34483b;
+  --color-line: #2b3b31;
   --color-ink: #efe9d8;
-  --color-muted: #bfc6b4;
+  --color-muted: #b4bcaa;
   --color-faint: #a3ad9b;
   --color-brand: #7fd39a;
   --color-brand-strong: #9be0b1;
@@ -195,12 +195,21 @@ select.input {
   font-size: 0.85rem;
 }
 
+/* Design tokens: one radius, one spacing scale, one card. Everything reads from these. */
+:root {
+  --radius-card: 1.25rem;
+  --radius-control: 0.875rem;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-6: 24px;
+}
 .card {
-  border-radius: 1rem;
-  border: 1px solid var(--color-line);
+  border-radius: var(--radius-card);
+  border: 1px solid color-mix(in srgb, var(--color-line) 75%, transparent);
   background: var(--color-surface);
   box-shadow: var(--card-shadow);
 }
+/* Pressed: anything tappable gives a little when touched. */
+a, button, [role="button"], summary { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active, a:active, summary:active { transform: scale(0.98); transition: transform 80ms ease-out; }
 
 .sr-only-focusable:not(:focus) {
   position: absolute;

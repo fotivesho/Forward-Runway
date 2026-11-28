@@ -8,8 +8,8 @@ export default async function TodayPage() {
   const name = snapshot.profile.displayName;
   return (
     <>
-      <h1 className="mb-4 text-2xl font-bold tracking-tight">
-        Today and what's next{name ? <span className="text-muted">, {name}</span> : null}
+      <h1 className="mb-4 font-display text-3xl leading-tight text-display">
+        Today{name ? <span className="text-muted">, {name}</span> : null}
       </h1>
       <Dashboard snapshot={snapshot} today={today} nowIso={nowIso} />
     </>

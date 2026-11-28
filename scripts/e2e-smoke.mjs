@@ -68,7 +68,7 @@ for (const width of [390, 1280]) {
   check(!overflow, `no horizontal scroll at ${width}px`);
   check((await unlabeled(page)) === 0, `every demo input has a label at ${width}px`);
   check((await page.locator("form button[type=submit]:enabled").count()) === 0, "demo forms can't save");
-  check(/(above|under) your floor/.test(await page.locator("main").innerText()), "today shows the floor takeaway");
+  check(/Coming up/.test(await page.locator("main").innerText()), "today shows what's coming up");
   check((await page.getByRole("link", { name: "Can I afford it?" }).count()) > 0, "can I afford it sits in the hero");
   await page.close();
 }
@@ -147,7 +147,7 @@ for (const path of ["/demo/plan", "/demo/spend", "/demo/spend/transactions", "/d
     check(/(You're good|Doable|Not yet|Already covered)/.test(await dlg.innerText()), "a suggested amount gets an answer before saving");
   }
   await page.goto(BASE + "/demo/plan", { waitUntil: "networkidle" });
-  check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
+  check(/next bill/i.test(await page.locator("main").innerText()) && /(above|under) your floor/.test(await page.locator("main").innerText()), "plan shows the next card bill and the floor takeaway");
   await page.close();
 }
 
