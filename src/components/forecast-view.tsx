@@ -271,7 +271,8 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon, lo
           return (
             <li key={d.date} className={low ? "rounded-xl bg-warn/10" : undefined}>
               <button type="button" onClick={() => setOpen(on ? null : d.date)} aria-expanded={on} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 px-1 py-2 text-left">
-                <span className="flex min-w-0 items-center gap-1.5 text-sm">
+                <span className="min-w-0">
+                <span className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-sm">
                   <span className={`font-semibold ${d.date === today ? "text-brand" : "text-ink"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
                   <span className="text-xs text-faint">{formatShort(d.date)}</span>
                   {plans.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-info" aria-label="plan" />}
@@ -279,8 +280,9 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon, lo
                   {d.items.some((i) => i.cashEffectCents < 0) && <span className="h-1.5 w-1.5 rounded-full bg-out" aria-label="bill" />}
                   {l?.reasons.some((r) => / likely/.test(r)) && <Sparkles size={11} className="text-warn" aria-label="usual trip likely" />}
                   {leanSet.has(d.date) && <span className="rounded-full bg-warn/15 px-1.5 text-[10px] font-bold text-warn">Lean</span>}
-                  {label && <span className="min-w-0 truncate text-[11px] text-muted">{label}</span>}
                   {low && <span className="shrink-0 text-[10px] font-bold uppercase text-warn">Lowest</span>}
+                </span>
+                {label && <span className="block truncate text-[11px] text-muted">{label}</span>}
                 </span>
                 <span className="w-16 text-right font-num text-base text-display">{l ? <>{l.firm ? "" : "~"}<Money cents={l.cents} whole /></> : "—"}</span>
                 <span className="flex w-20 items-center justify-end gap-1 text-right text-xs tabular text-muted">
