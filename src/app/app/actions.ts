@@ -369,10 +369,20 @@ export async function saveCategorySetting(_: ActionState, form: FormData): Promi
     if (cents == null || cents < 0) return invalid({ budget: "Enter an amount like 250, or leave it blank for a smart budget." });
     budget = cents;
   }
-  const { error } = await supabase.from("category_settings").upsert({ name, grp, monthly_budget_cents: budget }, { onConflict: "user_id,name" });
+  // Update your row for this category if there is one, otherwise add it (the same way new
+  // categories are saved), so it doesn't depend on the database's conflict handling.
+  const found = await supabase.from("category_settings").select("id").eq("name", name).maybeSingle();
+  const { error } = found.error
+    ? found
+    : found.data
+      ? await supabase.from("category_settings").update({ grp, monthly_budget_cents: budget }).eq("id", found.data.id)
+      : await supabase.from("category_settings").insert({ name, grp, monthly_budget_cents: budget });
   if (error) {
-    if (/category_settings/.test(error.message ?? "")) return fail("Budgets need one more database update: run supabase/migrations/20261128000000_categories.sql in Supabase's SQL editor.");
-    return dbError(error);
+    // Only a missing table means the database update hasn't been run; anything else, say what it was.
+    if (error.code === "42P01" || error.code === "PGRST205" || /does not exist|could not find the table/i.test(error.message ?? ""))
+      return fail("Budgets need one more database update: run supabase/migrations/20261128000000_categories.sql in Supabase's SQL editor.");
+    console.error("saveCategorySetting", error);
+    return fail(`Couldn't save the budget (${error.code ?? "error"}: ${(error.message ?? "").slice(0, 120)}).`);
   }
   revalidatePath("/app", "layout");
   return ok(budget == null ? "Saved. Using a smart budget." : "Saved.");
