@@ -56,7 +56,7 @@ const FEATURES = [
 
   // ── Forecast ───────────────────────────────────────────────────────────
   { id: "fc-lowest", area: "Plan · Days", name: "Lowest ahead with chart", at: "/demo/plan", run: has(/Lowest ahead/) },
-  { id: "fc-keydays", area: "Plan · Days", name: "Key days", at: "/demo/plan", run: has(/Key days/) },
+  { id: "fc-keydays", area: "Plan · Days", name: "Key days named in the timeline, lowest day marked", at: "/demo/plan", run: async (p) => { await tap(p, "button", "60d", "main"); return has(/Day by day.*(Rent|Paycheck).*Lowest/i)(p); } },
   { id: "fc-card", area: "Plan · Days", name: "Card's next bill", at: "/demo/plan", run: has(/next bill/i) },
   { id: "fc-max", area: "Plan · Days", name: "Max bill without savings, both statements, how it adds up", at: "/demo/plan", run: async (p) => all(has(/Max bill without savings.*Due/)(p), (async () => { await p.getByText("How it adds up").first().click(); return has(/Cash now.*Your cushion/)(p); })()) },
   { id: "fc-days", area: "Plan · Days", name: "Day by day 30/60/90 with lean tags", at: "/demo/plan", run: async (p) => { await tap(p, "button", "60d", "main"); return has(/Day by day.*Lean/)(p); } },

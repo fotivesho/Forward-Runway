@@ -40,11 +40,6 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
   const items = f.days.flatMap((d) => d.items.map((it) => ({ ...it, day: d })));
   const paydays = items.filter((i) => i.kind === "income" && i.cashEffectCents > 0);
   const bills = items.filter((i) => i.cashEffectCents < 0);
-  // The days that matter: paydays, anything $100+, and the low point.
-  const moments = [
-    ...items.filter((i) => Math.abs(i.cashEffectCents) >= 10_000).map((i) => ({ key: i.id, date: i.date, glyph: KIND_GLYPH[i.kind] ?? i.category ?? "bill", label: i.label, cents: i.cashEffectCents as number | null, low: false })),
-    { key: "low", date: life.low.date, glyph: "⚠", label: "Lowest point", cents: null, low: true },
-  ].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.low ? 1 : -1));
   const realOn = (d: ISODate): number | null => {
     const i = f.days.findIndex((x) => x.date === d);
     return i < 0 ? null : life.real[i]!;
@@ -98,28 +93,7 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           </p>
         </section>
 
-        {/* The days that matter */}
-        <section className="card p-4" aria-labelledby="moments-title">
-          <h2 id="moments-title" className="text-base font-bold text-ink">Key days</h2>
-          <ol className="mt-2">
-            {moments.slice(0, 12).map((k) => (
-              <li key={k.key} className={`flex items-center gap-2.5 py-1.5 ${k.low ? "rounded-lg bg-warn/10 px-1.5" : ""}`}>
-                <Glyph name={k.glyph} size="sm" />
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold leading-snug text-ink">{k.label}</span>
-                  <span className="block text-[11px] text-muted">{k.date === today ? "Today" : k.date === addDays(today, 1) ? "Tomorrow" : `${formatWeekday(k.date)} ${formatShort(k.date)}`}</span>
-                </span>
-                <span className="text-right">
-                  {k.cents != null && <Money cents={k.cents} whole sign tone="auto" className="block text-sm font-bold tabular" />}
-                  <span className={`block text-[11px] tabular ${k.low ? "font-bold text-warn" : "text-faint"}`}>
-                    {k.low ? <Money cents={life.low.cents} whole /> : <>→ <Money cents={realOn(k.date) ?? 0} whole /></>}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </section>
-
+        <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} horizon={horizon} setHorizon={setHorizon} lowDate={life.low.date} />
         {f.cards.map((c) => (
           <div key={c.accountId} className="grid gap-3">
             <CardBillForecast card={c} snapshot={snapshot} today={today} realOn={realOn} />
@@ -127,7 +101,6 @@ export function ForecastView({ snapshot, today }: { snapshot: Snapshot; today: I
           </div>
         ))}
 
-        <DayByDay f={f} snapshot={snapshot} today={today} realOn={realOn} usualOn={(d) => life.byDay[d] ?? 0} horizon={horizon} setHorizon={setHorizon} />
         {(f.issues.length > 0 || f.assumptions.length > 0) && (
           <p className="px-1 text-xs text-muted">
             {f.complete ? "Inputs complete" : `${f.issues.filter((i) => i.makesIncomplete).length} input(s) missing or stale`}
@@ -250,7 +223,7 @@ function CardBillForecast({ card, snapshot, today, realOn }: { card: ReturnType<
  * Every day ahead, one quiet line each: the day, its limit, and where your balance lands. Tap a day
  * for the rest: why the limit is what it is, plans, bills and paychecks, and usual everyday spending.
  */
-function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: { f: ReturnType<typeof buildForecast>; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null; usualOn: (d: ISODate) => number; horizon: number; setHorizon: (h: number) => void }) {
+function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon, lowDate }: { f: ReturnType<typeof buildForecast>; snapshot: Snapshot; today: ISODate; realOn: (d: ISODate) => number | null; usualOn: (d: ISODate) => number; horizon: number; setHorizon: (h: number) => void; lowDate?: ISODate }) {
   const m = useMemo(() => buildDashboard(snapshot, today, 30, new Date()), [snapshot, today]);
   const [open, setOpen] = useState<ISODate | null>(null);
   const [all, setAll] = useState(false);
@@ -291,8 +264,12 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: 
           const on = open === d.date;
           const land = realOn(d.date);
           const marks = d.items.length + plans.length;
+          // What makes the day matter, in a few words: its plan, or its biggest bill or paycheck.
+          const big = [...d.items].sort((x, y) => Math.abs(y.cashEffectCents) - Math.abs(x.cashEffectCents))[0];
+          const label = plans.find((v) => v.plannedCents > 0)?.event.title ?? (big && Math.abs(big.cashEffectCents) >= 2_500 ? big.label : null);
+          const low = d.date === lowDate;
           return (
-            <li key={d.date}>
+            <li key={d.date} className={low ? "rounded-xl bg-warn/10" : undefined}>
               <button type="button" onClick={() => setOpen(on ? null : d.date)} aria-expanded={on} className="grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-3 px-1 py-2 text-left">
                 <span className="flex min-w-0 items-center gap-1.5 text-sm">
                   <span className={`font-semibold ${d.date === today ? "text-brand" : "text-ink"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
@@ -302,6 +279,8 @@ function DayByDay({ f, snapshot, today, realOn, usualOn, horizon, setHorizon }: 
                   {d.items.some((i) => i.cashEffectCents < 0) && <span className="h-1.5 w-1.5 rounded-full bg-out" aria-label="bill" />}
                   {l?.reasons.some((r) => / likely/.test(r)) && <Sparkles size={11} className="text-warn" aria-label="usual trip likely" />}
                   {leanSet.has(d.date) && <span className="rounded-full bg-warn/15 px-1.5 text-[10px] font-bold text-warn">Lean</span>}
+                  {label && <span className="min-w-0 truncate text-[11px] text-muted">{label}</span>}
+                  {low && <span className="shrink-0 text-[10px] font-bold uppercase text-warn">Lowest</span>}
                 </span>
                 <span className="w-16 text-right font-num text-base text-display">{l ? <>{l.firm ? "" : "~"}<Money cents={l.cents} whole /></> : "—"}</span>
                 <span className="flex w-20 items-center justify-end gap-1 text-right text-xs tabular text-muted">
