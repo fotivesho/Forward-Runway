@@ -11,6 +11,7 @@ import { Modal } from "./modal";
 import { AvgLine, shortMoney } from "./avg-line";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
 import { useTxnDrill } from "./txn-drill";
+import { CategoryEditButton } from "./category-editor";
 import { MerchantDrill } from "./transaction-list";
 
 const COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
@@ -162,7 +163,7 @@ export function ReportsView({
       </section>
 
       {cat && (
-        <Modal open onClose={() => setCat(null)} icon={cat} title={cat} subtitle={<>{GROUPS.find((g) => g.id === (groupOf[cat] ?? "wants"))!.label} · last {range} {by === "month" ? "months" : "pay periods"}</>}>
+        <Modal open onClose={() => setCat(null)} icon={cat} title={cat} action={<CategoryEditButton name={cat} onChanged={() => setCat(null)} />} subtitle={<>{GROUPS.find((g) => g.id === (groupOf[cat] ?? "wants"))!.label} · last {range} {by === "month" ? "months" : "pay periods"}</>}>
           <CategoryReport cat={cat} data={data} items={items[cat] ?? []} by={by} periodName={periodName} />
         </Modal>
       )}

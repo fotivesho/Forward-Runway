@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Plus, Search } from "lucide-react";
+import { Check, Pencil, Plus, Search } from "lucide-react";
+import { CategoryEditor } from "./category-editor";
 import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
 import { Glyph } from "@/components/icon";
 import { useCategoryStyles } from "./custom-glyph";
@@ -33,6 +34,7 @@ export function CategoryMenu({
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const [making, setMaking] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const { styles, hidden } = useCategoryStyles();
   const manage = usePathname()?.startsWith("/demo") ? "/demo/settings#categories" : "/app/settings#categories";
@@ -52,6 +54,7 @@ export function CategoryMenu({
     setOpen(false);
     setQ("");
     setMaking(false);
+    setEditing(null);
   };
 
   return (
@@ -74,18 +77,35 @@ export function CategoryMenu({
             <span className="sr-only">Find a category</span>
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find…" className="pill-input min-w-0 flex-1 bg-transparent py-2 text-sm text-ink outline-none placeholder:text-faint" />
           </label>
-          {making ? (
+          {editing ? (
+            <div className="max-h-[70vh] overflow-y-auto p-3">
+              <CategoryEditor
+                name={editing}
+                others={spend}
+                onDone={(r) => {
+                  // Editing the one this is set to: follow it to its new name.
+                  if (r?.renamed && editing === value) onPick(r.renamed);
+                  setEditing(null);
+                }}
+              />
+            </div>
+          ) : making ? (
             <div className="p-3"><NewCategoryForm onCreated={pick} initialName={q} /></div>
           ) : (
             <>
               <ul role="listbox" aria-label="Categories" className="max-h-64 overflow-y-auto py-1">
                 {list.map((c) => (
-                  <li key={c}>
-                    <button type="button" role="option" aria-selected={c === value} onClick={() => pick(c)} className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition hover:bg-surface-2 ${c === value ? "font-semibold text-ink" : "text-muted"}`}>
+                  <li key={c} className="flex items-center">
+                    <button type="button" role="option" aria-selected={c === value} onClick={() => pick(c)} className={`flex min-w-0 flex-1 items-center gap-2.5 py-2 pl-3 text-left text-sm transition hover:bg-surface-2 ${c === value ? "font-semibold text-ink" : "text-muted"}`}>
                       <Glyph name={c} size="xs" />
-                      <span className="flex-1">{c}</span>
+                      <span className="flex-1 truncate">{c}</span>
                       {c === value && <Check size={14} className="text-brand" aria-hidden />}
                     </button>
+                    {!["Transfer", "Card payment", "Other", "Income", "Salary", "Interest"].includes(c) && (
+                      <button type="button" onClick={() => setEditing(c)} aria-label={`Edit ${c}`} className="flex h-9 w-9 shrink-0 items-center justify-center text-faint transition hover:text-ink">
+                        <Pencil size={12} strokeWidth={2.4} aria-hidden />
+                      </button>
+                    )}
                   </li>
                 ))}
                 {list.length === 0 && <li className="px-3 py-2 text-xs text-faint">No match.</li>}

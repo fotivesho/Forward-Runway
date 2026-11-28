@@ -23,6 +23,7 @@ import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
 import { isNotSpending, notSpendingTxn } from "@/lib/categories";
 import { TxnDrillProvider, useTxnDrill } from "./txn-drill";
+import { CategoryEditButton } from "./category-editor";
 import { ChevronLeft } from "lucide-react";
 
 
@@ -140,7 +141,7 @@ export function TransactionList({
         </button>
       )}
       {cat && catOpen && (
-        <Modal open onClose={() => setCatOpen(false)} icon={cat} title={cat} subtitle="Last 6 months">
+        <Modal open onClose={() => setCatOpen(false)} icon={cat} title={cat} action={<CategoryEditButton name={cat} onChanged={(r) => { setCatOpen(false); setCat(r.renamed ?? null); }} />} subtitle="Last 6 months">
           <TxnDrillProvider txns={txns} accounts={accounts} today={today}>
             <CategoryReport cat={cat} data={report} items={catItems[cat] ?? []} />
           </TxnDrillProvider>

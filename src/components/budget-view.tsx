@@ -9,6 +9,7 @@ import { ActionForm, QuickAction, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
 import { NewCategoryButton } from "./new-category";
+import { CategoryEditButton } from "./category-editor";
 import { CategoryReport } from "./reports-view";
 import { Money } from "./privacy";
 import { Glyph } from "@/components/icon";
@@ -210,7 +211,7 @@ export function BudgetView({
 
 
       {edit && (
-        <Modal open onClose={() => setEdit(null)} icon={edit.category} title={edit.category} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
+        <Modal open onClose={() => setEdit(null)} icon={edit.category} title={edit.category} action={<CategoryEditButton name={edit.category} onChanged={() => setEdit(null)} />} subtitle={<><Money cents={edit.spentCents} whole /> spent this month</>}>
           <CategoryReport cat={edit.category} data={history} items={items[edit.category] ?? []}>
             <details className="group rounded-2xl border border-line">
               <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between px-3 text-sm font-semibold text-ink">
