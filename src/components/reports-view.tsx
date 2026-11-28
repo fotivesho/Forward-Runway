@@ -200,9 +200,13 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
   const now = data[data.length - 1]!;
   const nowCents = now.categories[cat] ?? 0;
   // Trend: the last three finished periods against the three before.
-  const done = full.slice(Math.max(0, first)).map((m) => m.categories[cat] ?? 0);
+  const doneP = full.slice(Math.max(0, first));
+  const done = doneP.map((m) => m.categories[cat] ?? 0);
   const recent = done.slice(-3);
   const before = done.slice(-6, -3);
+  const nameOf = (m: SpendingReport[number]) => (by === "month" ? m.label : `${Number(m.month.slice(5, 7))}/${Number(m.month.slice(8))}`);
+  const spanOf = (ps: SpendingReport) => (ps.length ? (ps.length === 1 ? nameOf(ps[0]!) : `${nameOf(ps[0]!)}–${nameOf(ps[ps.length - 1]!)}`) : "");
+  const trendLabel = `${spanOf(doneP.slice(-3))} vs ${spanOf(doneP.slice(-6, -3))}`;
   const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
   const trend = recent.length >= 2 && before.length >= 2 && mean(before) > 0 ? Math.round(((mean(recent) - mean(before)) / mean(before)) * 100) : null;
   const top = shown.reduce((m, x) => ((x.categories[cat] ?? 0) > (m.categories[cat] ?? 0) ? x : m), shown[0]!);
@@ -235,14 +239,14 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
         <li className="rounded-xl bg-surface-2/60 px-1 py-2">
           <span className="block text-[11px] text-faint">Trend</span>
           <span className={`flex items-center justify-center gap-1 font-num text-lg leading-tight ${trendTone}`}>
-            <TrendIcon size={16} strokeWidth={2.4} aria-hidden />{trend == null ? "—" : Math.abs(trend) < 10 ? "Steady" : `${Math.abs(trend)}%`}
+            <TrendIcon size={16} strokeWidth={2.4} aria-hidden />{trend == null ? "—" : Math.abs(trend) < 10 ? "Steady" : trend >= 200 ? `${Math.round(trend / 100 + 1)}×` : `${Math.abs(trend)}%`}
           </span>
-          <span className="block text-[10px] text-faint">last 3 vs 3 before</span>
+          <span className="block text-[10px] text-faint">{trend == null ? "needs 4+ months" : trendLabel}</span>
         </li>
       </ul>
       {(trend != null || top) && (
         <p className="text-xs text-muted">
-          {trend != null && (Math.abs(trend) < 10 ? "Holding steady. " : trend > 0 ? `Climbing: up ${trend}% lately. ` : `Easing off: down ${Math.abs(trend)}% lately. `)}
+          {trend != null && (Math.abs(trend) < 10 ? `Holding steady (${trendLabel}). ` : trend >= 200 ? `Way up: ${Math.round(trend / 100 + 1)}× as much in ${spanOf(doneP.slice(-3))} as in ${spanOf(doneP.slice(-6, -3))}. ` : trend > 0 ? `Climbing: up ${trend}% in ${spanOf(doneP.slice(-3))} vs ${spanOf(doneP.slice(-6, -3))}. ` : `Easing off: down ${Math.abs(trend)}% in ${spanOf(doneP.slice(-3))} vs ${spanOf(doneP.slice(-6, -3))}. `)}
           {top && (top.categories[cat] ?? 0) > avg * 1.3 && <>Highest was {periodName(top)} at <Money cents={top.categories[cat] ?? 0} whole />.</>}
         </p>
       )}
@@ -281,8 +285,18 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
         {list.length === 0 ? (
           <p className="text-sm text-muted">Nothing here.</p>
         ) : (
-          <ul className="divide-y divide-line rounded-xl border border-line">
-            {rows.map((i, k) => {
+          <div className="space-y-3">
+            {monthsIn(rows).map((key) => {
+              const these = rows.filter((i) => i.date.startsWith(key));
+              const all = list.filter((i) => i.date.startsWith(key));
+              return (
+                <section key={key}>
+                  <div className="sticky top-0 z-10 -mx-1 mb-1 flex items-baseline justify-between bg-surface/95 px-1 py-1.5 backdrop-blur">
+                    <span className="text-xs font-bold text-ink">{monthYear(key)} <span className="font-normal text-faint">· {all.length}</span></span>
+                    <Money cents={all.reduce((t, i) => t + i.cents, 0)} whole className="text-xs font-semibold text-ink" />
+                  </div>
+                  <ul className="divide-y divide-line rounded-xl border border-line">
+            {these.map((i, k) => {
               const body = (
                 <>
                   <span className="min-w-0">
@@ -305,7 +319,11 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
                 </li>
               );
             })}
-          </ul>
+                  </ul>
+                </section>
+              );
+            })}
+          </div>
         )}
         {list.length > 8 && (
           <button type="button" onClick={() => setAll((x) => !x)} className="mt-1.5 text-xs font-semibold text-brand">{all ? "Show fewer" : `Show all ${list.length}`}</button>
@@ -314,3 +332,10 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
     </div>
   );
 }
+
+/** The months a list covers, newest first ("2026-11"). */
+function monthsIn(items: CategoryItem[]): string[] {
+  return [...new Set(items.map((i) => i.date.slice(0, 7)))].sort((a, b) => (a < b ? 1 : -1));
+}
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const monthYear = (key: string) => `${MONTH_NAMES[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
