@@ -429,6 +429,21 @@ export async function showCategory(form: FormData) {
   revalidatePath("/app", "layout");
 }
 
+/** Cover a shortfall: a planned move from a savings account into your main cash account by that day. */
+export async function coverShortfall(fromAccountId: string, cents: number, date: string): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await session();
+  if (!/^[0-9a-f-]{36}$/i.test(fromAccountId) || !Number.isInteger(cents) || cents <= 0 || cents > 100_000_000 || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false, error: "Couldn't plan that." };
+  const { data: accts } = await supabase.from("accounts").select("id, kind, is_spendable, archived");
+  const from = accts?.find((a) => a.id === fromAccountId);
+  const to = accts?.find((a) => a.is_spendable && a.kind === "checking" && !a.archived) ?? accts?.find((a) => a.is_spendable && !a.archived && a.kind !== "savings");
+  if (!from || from.kind !== "savings" || !to) return { ok: false, error: "Couldn't find the accounts for that." };
+  const { today } = await userToday(supabase);
+  const { error } = await supabase.from("transfers").insert({ from_account_id: from.id, to_account_id: to.id, date: date >= today ? date : today, amount_cents: cents, status: "planned", note: "Cover the shortfall" });
+  if (error) return { ok: false, error: "Couldn't plan that. Try again." };
+  revalidatePath("/app", "layout");
+  return { ok: true };
+}
+
 /** Count a category again (undo "not counted"). */
 export async function includeCategory(form: FormData) {
   const { supabase } = await session();
