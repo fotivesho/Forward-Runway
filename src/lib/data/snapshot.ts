@@ -106,6 +106,8 @@ export interface Snapshot {
   scenarios: ScenarioRow[];
   /** Missing before the categories update is applied, and in the demo. */
   categorySettings?: CategorySetting[];
+  /** Categories you've set as not counted: their money isn't spending or income anywhere. */
+  excludedCategories?: string[];
 }
 
 export const DEFAULT_SETTINGS: ForecastSettings = {

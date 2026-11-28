@@ -74,11 +74,16 @@ export async function loadSnapshot(supabase: SupabaseClient, userId?: string): P
   const prof = mapProfile(profile.data);
   const ruleList = (rules.data ?? []).map(mapRule);
   const overrideList = (overrides.data ?? []).map(mapOverride);
-  const txnList = (txns.data ?? []).map(mapTransaction);
+  const correctionList = (corrections.data ?? []).map(mapCorrection);
+  // Categories you've set as not counted (work expenses and their reimbursements, a sinking fund).
+  const excludedCategories = correctionList.filter((c) => c.kind === "preference" && c.matchKey.startsWith("exclude_category:") && (c.value as { on?: boolean })?.on !== false).map((c) => c.matchKey.slice(17));
+  const excludedSet = new Set(excludedCategories);
+  const txnList = (txns.data ?? []).map(mapTransaction).map((t) => (t.category && excludedSet.has(t.category) ? { ...t, excluded: true } : t));
   // A repeating item's real charge (any amount close enough) marks that date as done, so it's never counted twice.
   const auto = autoPosted(ruleList, txnList, overrideList, todayInZone(prof.timezone || "America/New_York"));
   return {
     categorySettings,
+    excludedCategories,
     profile: prof,
     settings: mapSettings(settings.data, DEFAULT_SETTINGS),
     accounts: (accounts.data ?? []).map(mapAccount),
@@ -90,7 +95,7 @@ export async function loadSnapshot(supabase: SupabaseClient, userId?: string): P
     goals: (goals.data ?? []).map(mapGoal),
     calendarSources: (sources.data ?? []).map(mapCalendarSource),
     calendarEvents: (events.data ?? []).map(mapCalendarEvent),
-    corrections: (corrections.data ?? []).map(mapCorrection),
+    corrections: correctionList,
     decisions: (decisions.data ?? []).map(mapDecision),
     scenarios: (scenarios.data ?? []).map(mapScenario),
   };

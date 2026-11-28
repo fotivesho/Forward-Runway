@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { saveCategorySetting } from "@/app/app/actions";
+import { includeCategory, saveCategorySetting } from "@/app/app/actions";
 import { formatShort } from "@/lib/dates";
 import { GROUPS, type BudgetPlan, type CategoryBudget, type CategoryItem, type SpendingReport } from "@/lib/view/budget";
 import type { CategoryGroup } from "@/lib/data/snapshot";
-import { ActionForm, SelectField, Submit } from "./form";
+import { ActionForm, QuickAction, SelectField, Submit } from "./form";
 import { Modal } from "./modal";
 import { Info } from "./info";
 import { NewCategoryButton } from "./new-category";
@@ -148,6 +148,17 @@ export function BudgetView({
 
       {!compact && <div className="-mt-3 flex justify-end"><NewCategoryButton /></div>}
 
+      {plan.excluded.length > 0 && (
+        <div className="-mt-2 flex flex-wrap items-center gap-2 text-xs text-muted">
+          <span className="flex items-center">Not counted<Info label="Not counted">Money in these categories isn&apos;t spending or income anywhere: budgets, Month, limits, trends and your habits leave it out. Good for work expenses (and their reimbursements) or spending from a sinking fund. It still moves your balances, so the forecast stays right. Tap one to count it again.</Info></span>
+          {plan.excluded.map((c) => (
+            <QuickAction key={c} action={includeCategory} fields={{ name: c }} variant="ghost" confirm={`Count ${c} as spending again?`}>
+              {c} ×
+            </QuickAction>
+          ))}
+        </div>
+      )}
+
       {/* Each group and its categories. */}
       {GROUPS.filter((g) => g.id !== "savings").map((g) => {
         const cats = plan.categories.filter((c) => c.group === g.id);
@@ -270,7 +281,7 @@ function BudgetEditor({ c, history, demo, onDone }: { c: CategoryBudget; history
       </p>
 
 
-      <SelectField name="group" label="Group" defaultValue={c.group} options={GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` }))} />
+      <SelectField name="group" label="Group" defaultValue={c.group} options={[...GROUPS.map((g) => ({ value: g.id, label: `${g.label}: ${g.hint}` })), { value: "excluded", label: "Not counted: work, reimbursed, sinking fund" }]} />
       <Submit>Save</Submit>
       {demo && <p className="text-xs text-muted">Demo: saving is off.</p>}
     </ActionForm>

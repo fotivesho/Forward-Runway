@@ -17,7 +17,7 @@
 import { addDays, addMonths, daysInMonth, endOfMonth, parts, startOfMonth, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { ruleOccurrences, spendingByCategory } from "../engine";
-import { isNotSpending, isRefund } from "../categories";
+import { isNotSpending, notSpendingTxn, isRefund } from "../categories";
 import { toEngineInput, type CategoryGroup, type Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
 import { payPeriodBuckets } from "./spend";
@@ -50,7 +50,7 @@ export function spendByBuckets(s: Snapshot, today: ISODate, buckets: Array<{ sta
     const end = bucketEnd < today ? bucketEnd : today;
     const map = new Map<string, Cents>();
     if (start > today) return { start, byCategory: map };
-    for (const t of spendingByCategory(input, start, bucketEnd)) if (!isNotSpending(t.category) && t.cents > 0) map.set(t.category, t.cents);
+    for (const t of spendingByCategory(input, start, bucketEnd)) if (!notSpendingTxn(t) && t.cents > 0) map.set(t.category, t.cents);
     // Loan payments are a need too (they aren't "spending" in the forecast's sense).
     for (const r of loanRules) {
       if (bankAccounts.has(r.accountId)) continue;
@@ -101,6 +101,8 @@ export interface BudgetPlan {
   notes: string[];
   /** This month as organized life (bills, plans) and everyday life (predicted from your patterns). */
   life: { billsCents: Cents; plansCents: Cents; everydayCents: Cents; setAsideCents: Cents };
+  /** Categories you've set as not counted. */
+  excluded: string[];
 }
 
 export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: string; date: ISODate; cents: Cents; category?: string | null }> = []): BudgetPlan {
@@ -117,7 +119,7 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
   if (!incomeCents) {
     const sums = past.map((pm) =>
       s.transactions
-        .filter((t) => t.direction === "in" && t.status === "posted" && t.date >= pm && t.date <= endOfMonth(pm) && !isNotSpending(t.category))
+        .filter((t) => t.direction === "in" && t.status === "posted" && t.date >= pm && t.date <= endOfMonth(pm) && !notSpendingTxn(t))
         .reduce((a, t) => a + t.amountCents, 0),
     );
     const withIncome = sums.filter((x) => x > 0);
@@ -184,7 +186,7 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
 
   const names = new Set<string>([...usual.keys(), ...planBy.keys(), ...current!.byCategory.keys(), ...(s.categorySettings ?? []).filter((c) => c.monthlyBudgetCents != null || c.icon).map((c) => c.name)]);
   const cats: CategoryBudget[] = [...names]
-    .filter((c) => !isNotSpending(c))
+    .filter((c) => !isNotSpending(c) && !(s.excludedCategories ?? []).includes(c))
     .map((c) => {
       const mine = s.categorySettings?.find((x) => x.name === c)?.monthlyBudgetCents ?? null;
       const u = usual.get(c) ?? 0;
@@ -257,6 +259,7 @@ export function buildBudget(s: Snapshot, today: ISODate, plans: Array<{ title: s
     categories: cats.sort((a, b) => b.budgetCents - a.budgetCents || b.spentCents - a.spentCents),
     groups,
     unassignedCents: incomeCents - assigned,
+    excluded: s.excludedCategories ?? [],
     basis,
     monthsOfHistory: history.length,
     notes,
@@ -323,7 +326,7 @@ export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Recor
   const add = (c: string, it: CategoryItem) => (out[c] ??= []).push(it);
   const acct = new Map(s.accounts.map((a) => [a.id, a]));
   for (const t of s.transactions) {
-    if (t.status !== "posted" || t.date < from || t.date > today || isNotSpending(t.category)) continue;
+    if (t.status !== "posted" || t.date < from || t.date > today || notSpendingTxn(t)) continue;
     const a = acct.get(t.accountId);
     if (!a || a.kind === "loan") continue;
     const cat = t.category?.trim() || "Uncategorized";

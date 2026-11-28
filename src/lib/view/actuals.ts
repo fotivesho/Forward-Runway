@@ -5,7 +5,7 @@
  */
 import { addDays, diffDays, type ISODate } from "../dates";
 import type { Cents } from "../money";
-import { isNotSpending } from "../categories";
+import { isNotSpending, notSpendingTxn } from "../categories";
 import type { Snapshot } from "../data/snapshot";
 import { readTitle } from "./estimate";
 
@@ -56,7 +56,7 @@ export function planResults(s: Snapshot, today: ISODate, days = 60): PlanResult[
     for (const t of s.transactions) {
       if (check?.ok === false && check.txnId === t.id) continue;
       if (check?.ok === true && check.txnId && check.txnId !== t.id) continue;
-      if (used.has(t.id) || t.status !== "posted" || t.direction !== "out" || isNotSpending(t.category)) continue;
+      if (used.has(t.id) || t.status !== "posted" || t.direction !== "out" || notSpendingTxn(t)) continue;
       const gap = diffDays(e.date, t.date);
       if (gap < -1 || gap > 2) continue;
       const ratio = t.amountCents / planned;

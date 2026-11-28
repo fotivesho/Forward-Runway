@@ -216,6 +216,21 @@ describe("spending", () => {
     expect(totals.find((t) => t.category === "Groceries")!.onCardCents).toBe(5_000);
   });
 
+  it("leaves out categories you've set as not counted (and their reimbursements)", () => {
+    const i = input({
+      today: "2026-01-31",
+      accounts: [checking(100_000), card(5_000)],
+      transactions: [
+        { id: "a", date: "2026-01-05", amountCents: 30_000, direction: "out", accountId: "visa", description: "Client dinner", category: "Work", status: "posted", excluded: true },
+        { id: "r", date: "2026-01-20", amountCents: 30_000, direction: "in", accountId: "chk", description: "Reimbursement", category: "Work", status: "posted", excluded: true },
+        { id: "b", date: "2026-01-06", amountCents: 2_000, direction: "out", accountId: "chk", description: "Lunch", category: "Dining", status: "posted" },
+      ],
+    });
+    const totals = spendingByCategory(i, "2026-01-01", "2026-01-31");
+    expect(totals.map((t) => t.category)).toEqual(["Dining"]);
+    expect(totals.reduce((s, t) => s + t.cents, 0)).toBe(2_000);
+  });
+
   it("learns a weekday baseline", () => {
     const txns = Array.from({ length: 28 }, (_, k) => ({
       id: `t${k}`,

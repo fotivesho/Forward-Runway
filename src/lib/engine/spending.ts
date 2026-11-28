@@ -2,7 +2,7 @@ import { addDays, dayOfWeek, diffDays, endOfMonth, startOfMonth, type ISODate } 
 import type { Cents } from "../money";
 import { ruleOccurrences } from "./schedule";
 import type { Account, EngineInput, OneTimeTransaction } from "./types";
-import { isRefund, isNotSpending } from "../categories";
+import { isRefund, isNotSpending, notSpendingTxn } from "../categories";
 
 export interface CategoryTotal {
   category: string;
@@ -39,7 +39,7 @@ export function spendingByCategory(input: EngineInput, from: ISODate, to: ISODat
   for (const t of input.transactions) {
     if (t.status !== "posted" || t.date < from || t.date > until) continue;
     const acct = accounts.get(t.accountId);
-    if (!acct || acct.kind === "loan" || isNotSpending(t.category)) continue;
+    if (!acct || acct.kind === "loan" || notSpendingTxn(t)) continue;
     if (t.direction === "out") add(t.category, t.amountCents, acct, false);
     else if (acct.kind === "credit_card" || isRefund(t)) add(t.category, -t.amountCents, acct, false); // refund
   }

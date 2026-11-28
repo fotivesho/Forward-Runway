@@ -5,7 +5,7 @@
 import { addDays, addMonths, diffDays, parts, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import type { Frequency, OneTimeTransaction, RecurringRule } from "../engine";
-import { isNotSpending } from "../categories";
+import { isNotSpending, notSpendingTxn } from "../categories";
 
 export interface RecurringSuggestion {
   /** Stable id for dismissing it. */
@@ -90,7 +90,7 @@ export function findRecurring(
   const from = addDays(today, -200);
   const groups = new Map<string, OneTimeTransaction[]>();
   for (const t of transactions) {
-    if (t.status !== "posted" || t.pending || t.date < from || t.date > today || isNotSpending(t.category)) continue;
+    if (t.status !== "posted" || t.pending || t.date < from || t.date > today || notSpendingTxn(t)) continue;
     const name = cleanName(t.description);
     if (!name) continue;
     const key = `${t.direction}|${name}`;

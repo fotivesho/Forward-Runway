@@ -21,7 +21,7 @@ import { Info } from "./info";
 import { inPeriod, itemStats, PERIOD_LABEL, sameThing, txnHistory, type HistoryView, type StatPeriod } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
-import { isNotSpending } from "@/lib/categories";
+import { isNotSpending, notSpendingTxn } from "@/lib/categories";
 import { TxnDrillProvider, useTxnDrill } from "./txn-drill";
 import { ChevronLeft } from "lucide-react";
 
@@ -87,7 +87,7 @@ export function TransactionList({
   const chipFrom = r?.from ?? monthStart;
   const totals = new Map<string, number>();
   for (const t of txns) {
-    if (t.direction !== "out" || t.status !== "posted" || t.date < chipFrom || t.date > today || (r && t.date > r.to) || (acct && t.accountId !== acct) || isNotSpending(t.category)) continue;
+    if (t.direction !== "out" || t.status !== "posted" || t.date < chipFrom || t.date > today || (r && t.date > r.to) || (acct && t.accountId !== acct) || notSpendingTxn(t)) continue;
     const c = t.category ?? "Other";
     totals.set(c, (totals.get(c) ?? 0) + t.amountCents);
   }
@@ -269,7 +269,7 @@ function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accou
   const toggle = (p: "cat" | "repeat") => setPanel((x) => (x === p ? null : p));
   const repeating = rules.find((r) => r.active !== false && looksLike(r, txn));
   // Everyday things (lunch, coffee) are predicted from your habits already; repeating is for bills and subscriptions.
-  const canRepeat = !isNotSpending(txn.category) && !repeating && h?.unit !== "month";
+  const canRepeat = !notSpendingTxn(txn) && !repeating && h?.unit !== "month";
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">

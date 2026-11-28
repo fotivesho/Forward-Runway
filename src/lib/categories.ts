@@ -32,11 +32,13 @@ export const CATEGORY_ICON: Record<string, string> = {
  */
 export const NOT_SPENDING = new Set(["Card payment", "Transfer"]);
 export const isNotSpending = (category?: string | null) => !!category && NOT_SPENDING.has(category);
+/** Not spending (or income): a transfer, a card payment, or a category you've set as not counted. */
+export const notSpendingTxn = (t: { category?: string | null; excluded?: boolean }) => isNotSpending(t.category) || !!t.excluded;
 
 /** Money in with one of these (or no category) is income; money in under a spending category is a refund. */
 export const INCOME_CATEGORIES = new Set(["Income", "Salary", "Interest", "Other"]);
-export const isRefund = (t: { direction: "in" | "out"; category?: string | null }) =>
-  t.direction === "in" && !!t.category && !INCOME_CATEGORIES.has(t.category) && !NOT_SPENDING.has(t.category);
+export const isRefund = (t: { direction: "in" | "out"; category?: string | null; excluded?: boolean }) =>
+  t.direction === "in" && !t.excluded && !!t.category && !INCOME_CATEGORIES.has(t.category) && !NOT_SPENDING.has(t.category);
 
 export const iconFor = (category?: string | null) => (category && CATEGORY_ICON[category]) || "•";
 

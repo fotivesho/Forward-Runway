@@ -8,7 +8,7 @@ import type { Cents } from "../money";
 import { ruleOccurrences, type RecurringRule } from "../engine";
 import type { Snapshot } from "../data/snapshot";
 import { monthlyEquivalent } from "./dashboard";
-import { isNotSpending, isRefund } from "../categories";
+import { isNotSpending, notSpendingTxn, isRefund } from "../categories";
 import { looksLike } from "../data/match";
 
 /** Costs that are fixed by nature: counted with bills, not everyday spending. */
@@ -104,7 +104,7 @@ export function cashFlow(s: Snapshot, today: ISODate, buckets: Bucket[]): FlowBu
       if (t.date < b.start || t.date > b.end) continue;
       if (t.status === "planned" && t.date < today) continue;
       if (t.status !== "planned" && t.date > today) continue;
-      if (isNotSpending(t.category)) continue;
+      if (notSpendingTxn(t)) continue;
       // A refund (money back under a spending category) lowers spending; it isn't income.
       if (isRefund(t)) outC -= t.amountCents;
       else if (t.direction === "in") inC += t.amountCents;
@@ -157,7 +157,7 @@ export function flowItems(s: Snapshot, today: ISODate, b: Bucket, plans: Array<{
     if (t.date < b.start || t.date > b.end) continue;
     if (t.status === "planned" && t.date < today) continue;
     if (t.status !== "planned" && t.date > today) continue;
-    if (isNotSpending(t.category)) continue;
+    if (notSpendingTxn(t)) continue;
     const refund = isRefund(t);
     // A real charge for a repeating bill (or anything in a fixed-cost category) is fixed, not everyday spending.
     const fixed = t.direction === "out" && (FIXED_CATEGORIES.has(t.category ?? "") || bills.some((r) => looksLike(r, t)));

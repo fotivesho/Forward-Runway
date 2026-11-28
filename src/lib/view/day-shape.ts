@@ -5,7 +5,7 @@
  */
 import { addDays, dayOfWeek, diffDays, eachDay, type ISODate } from "../dates";
 import type { Cents } from "../money";
-import { isNotSpending } from "../categories";
+import { isNotSpending, notSpendingTxn } from "../categories";
 import type { Snapshot } from "../data/snapshot";
 import { spendModel, typicalDay } from "./patterns";
 
@@ -31,7 +31,7 @@ export function dueTrips(s: Snapshot, today: ISODate, until: ISODate): DueTrip[]
   const from = addDays(today, -120);
   const byCat = new Map<string, Map<ISODate, Cents>>();
   for (const t of s.transactions) {
-    if (t.status !== "posted" || t.direction !== "out" || t.date < from || t.date >= today || t.calendarEventId || isNotSpending(t.category)) continue;
+    if (t.status !== "posted" || t.direction !== "out" || t.date < from || t.date >= today || t.calendarEventId || notSpendingTxn(t)) continue;
     const c = t.category ?? "Other";
     // Routine needs you restock on a rhythm; wants (shopping, dining out) aren't "due".
     if (!ROUTINE.has(c)) continue;
@@ -112,7 +112,7 @@ const WD = ["Sundays", "Mondays", "Tuesdays", "Wednesdays", "Thursdays", "Friday
 export function leanDays(s: Snapshot, today: ISODate, until: ISODate): Record<ISODate, { cents: Cents; reasons: string[] }> {
   const from = addDays(today, -84);
   const needs = s.transactions.filter(
-    (t) => t.status === "posted" && t.direction === "out" && t.date >= from && t.date < today && !t.calendarEventId && t.flexible !== false && !isNotSpending(t.category) && LEAN_NEEDS.has(t.category ?? ""),
+    (t) => t.status === "posted" && t.direction === "out" && t.date >= from && t.date < today && !t.calendarEventId && t.flexible !== false && !notSpendingTxn(t) && LEAN_NEEDS.has(t.category ?? ""),
   );
   const trips = dueTrips(s, today, until).filter((t) => LEAN_NEEDS.has(t.category));
   const tripCats = new Set(trips.map((t) => t.category));
@@ -164,7 +164,7 @@ export function weekdayHabits(s: Snapshot, today: ISODate, keep: (category: stri
   const days: Record<string, Map<ISODate, number>> = {};
   for (const t of s.transactions) {
     const c = t.category ?? "Other";
-    if (t.status !== "posted" || t.direction !== "out" || t.date < from || t.date >= today || t.calendarEventId || t.flexible === false || isNotSpending(t.category) || BILLS.has(c) || !keep(c)) continue;
+    if (t.status !== "posted" || t.direction !== "out" || t.date < from || t.date >= today || t.calendarEventId || t.flexible === false || notSpendingTxn(t) || BILLS.has(c) || !keep(c)) continue;
     const k = `${c}|${dayOfWeek(t.date)}`;
     const m = (days[k] ??= new Map());
     m.set(t.date, (m.get(t.date) ?? 0) + t.amountCents);

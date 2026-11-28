@@ -13,7 +13,7 @@
 import { addDays, addMonths, dayOfWeek, diffDays, eachDay, endOfMonth, formatShort, startOfMonth, type ISODate } from "../dates";
 import type { Cents } from "../money";
 import { ruleOccurrences, type OneTimeTransaction } from "../engine";
-import { isNotSpending } from "../categories";
+import { isNotSpending, notSpendingTxn } from "../categories";
 import type { Snapshot } from "../data/snapshot";
 import { mainIncome } from "./spend";
 import { cleanName } from "./recurring";
@@ -64,7 +64,7 @@ function everyday(s: Snapshot, from: ISODate, to: ISODate): OneTimeTransaction[]
       t.date >= from &&
       t.date <= to &&
       !t.calendarEventId &&
-      !isNotSpending(t.category) &&
+      !notSpendingTxn(t) &&
       !scheduled.has(t.category ?? "Other"),
   );
 }
@@ -252,7 +252,7 @@ export function insights(s: Snapshot, today: ISODate, m: SpendModel | null = spe
   const months = [3, 2, 1].map((k) => startOfMonth(addMonths(startOfMonth(today), -k)));
   const sums = new Map<string, number[]>();
   for (const t of s.transactions) {
-    if (t.status !== "posted" || t.direction !== "out" || isNotSpending(t.category)) continue;
+    if (t.status !== "posted" || t.direction !== "out" || notSpendingTxn(t)) continue;
     const i = months.findIndex((mm) => t.date >= mm && t.date <= endOfMonth(mm));
     if (i < 0) continue;
     const c = t.category ?? "Other";

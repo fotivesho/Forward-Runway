@@ -5,7 +5,7 @@
  */
 import { addDays, addMonths, dayOfWeek, diffDays, endOfMonth, startOfMonth, type ISODate } from "../dates";
 import type { Cents } from "../money";
-import { isNotSpending } from "../categories";
+import { isNotSpending, notSpendingTxn } from "../categories";
 import type { Snapshot } from "../data/snapshot";
 import { mainIncome } from "./spend";
 import { ruleOccurrences } from "../engine";
@@ -39,7 +39,7 @@ const round5 = (c: Cents) => Math.max(500, Math.round(c / 500) * 500);
 export function exploreData(s: Snapshot, today: ISODate): ExploreData {
   const from = addDays(today, -183);
   const txns: Txn[] = s.transactions
-    .filter((t) => t.status === "posted" && t.direction === "out" && t.date >= from && t.date < today && !isNotSpending(t.category))
+    .filter((t) => t.status === "posted" && t.direction === "out" && t.date >= from && t.date < today && !notSpendingTxn(t))
     .map((t) => ({ d: t.date, c: t.amountCents, cat: t.category ?? "Other", desc: t.description }))
     .sort((a, b) => (a.d < b.d ? -1 : 1));
   const rule = mainIncome(s);

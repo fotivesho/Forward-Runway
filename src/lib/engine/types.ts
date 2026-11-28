@@ -122,6 +122,8 @@ export interface OneTimeTransaction {
   pending?: boolean;
   /** The bank's own id, when it came from a connected bank. */
   externalId?: string | null;
+  /** In a category you've set as not counted (work expenses, reimbursements, a sinking fund). */
+  excluded?: boolean;
 }
 
 export interface Transfer {

@@ -375,13 +375,31 @@ export async function dismissRecurring(form: FormData) {
   revalidatePath("/app", "layout");
 }
 
+/** Count a category again (undo "not counted"). */
+export async function includeCategory(form: FormData) {
+  const { supabase } = await session();
+  const name = String(form.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return;
+  await supabase.from("corrections").delete().eq("kind", "preference").eq("match_key", `exclude_category:${name}`);
+  revalidatePath("/app", "layout");
+}
+
 /** A category's group (needs / wants / savings) and, optionally, your own monthly budget (blank = smart). */
 export async function saveCategorySetting(_: ActionState, form: FormData): Promise<ActionState> {
   const { supabase } = await session();
   const name = String(form.get("name") ?? "").trim().slice(0, 40);
   const grp = String(form.get("group") ?? "");
   if (!name) return invalid({ name: "Choose a category." });
-  if (!["needs", "wants", "savings"].includes(grp)) return invalid({ group: "Choose needs, wants or savings." });
+  if (!["needs", "wants", "savings", "excluded"].includes(grp)) return invalid({ group: "Choose needs, wants or savings." });
+  // Not counted: kept as a preference (the category keeps its group if you count it again later).
+  const exKey = `exclude_category:${name}`;
+  if (grp === "excluded") {
+    const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: exKey, value: { on: true } }, { onConflict: "user_id,kind,match_key" });
+    if (error) return dbError(error);
+    revalidatePath("/app", "layout");
+    return ok(`${name} isn't counted anymore: not in spending, budgets or income.`);
+  }
+  await supabase.from("corrections").delete().eq("kind", "preference").eq("match_key", exKey);
   const raw = String(form.get("budget") ?? "").trim();
   let budget: number | null = null;
   if (raw) {
