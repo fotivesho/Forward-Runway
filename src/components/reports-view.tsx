@@ -259,7 +259,7 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
               <li key={m.month}>
                 <button type="button" onClick={() => setPick(on ? null : m.month)} aria-pressed={on} aria-label={`${periodName(m)}: ${hide ? "hidden" : shortMoney(v)}`} className="flex w-full flex-col items-center">
                   <span className="flex h-32 w-full items-end justify-center">
-                    <span className={`w-full max-w-[14px] rounded-full transition ${m.current ? "opacity-60" : ""} ${dim ? "opacity-25" : ""}`} style={{ height: `${Math.max(v ? 4 : 0, (v / max) * 100)}%`, background: `linear-gradient(to top, color-mix(in srgb, var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}) 50%, transparent), var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}))`, boxShadow: on ? "0 0 12px -2px var(--color-brand)" : undefined }} />
+                    <span className={`w-full max-w-[22px] rounded-full transition ${m.current ? "opacity-60" : ""} ${dim ? "opacity-25" : ""}`} style={{ height: `${Math.max(v ? 4 : 0, (v / max) * 100)}%`, background: `linear-gradient(to top, color-mix(in srgb, var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}) 50%, transparent), var(${v > avg * 1.1 && avg > 0 ? "--color-warn" : "--color-brand"}))`, boxShadow: on ? "0 0 12px -2px var(--color-brand)" : undefined }} />
                   </span>
                   <span className={`mt-1 h-4 text-[10px] ${on ? "font-bold text-ink" : "text-faint"}`}>{by === "month" ? m.label : `${Number(m.month.slice(5, 7))}/${Number(m.month.slice(8))}`}</span>
                 </button>

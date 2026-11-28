@@ -135,7 +135,22 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
   const usualCents = median(same.map((t) => t.amountCents));
   const recent = same.filter((t) => t.date > addDays(today, -90));
 
-  if (recent.length >= 6) {
+  // How regular is it? Bills and subscriptions (about once a period, steady) show each charge;
+  // anything else (several a month, or on and off) shows months added up.
+  const gaps = same.slice(1).map((t, i) => diffDays(same[i]!.date, t.date)).filter((g) => g > 0);
+  const gap = median(gaps);
+  // Two on the same day (a bet, then another) isn't a steady bill.
+  const sameDay = gaps.length < same.length - 1;
+  const steady = !sameDay && same.length >= 3 && gap >= 5 && gaps.every((g) => Math.abs(g - gap) <= Math.max(3, gap * 0.35));
+  // Bills that come about once a month but on a wandering day (utilities, a parking app) count as monthly too.
+  const span = diffDays(same[0]!.date, same[same.length - 1]!.date);
+  const perMonth = span > 0 ? (same.length - 1) / (span / 30.4) : 0;
+  const roughlyMonthly = !steady && !sameDay && same.length >= 3 && span >= 55 && perMonth >= 0.75 && perMonth <= 1.4;
+  const regular = steady || roughlyMonthly;
+  const twoInAMonth = same.some((t, i) => i > 0 && t.date.slice(0, 7) === same[i - 1]!.date.slice(0, 7));
+
+  if (recent.length >= 6 || !regular || (twoInAMonth && !steady)) {
+    const frequent = recent.length >= 6;
     const thisMonth = startOfMonth(today);
     const bars: HistBar[] = [];
     for (let i = 5; i >= 1; i--) {
@@ -145,8 +160,10 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
       bars.push({ key: from, label: MONTHS[parts(from).m - 1]!, title: MONTHS_LONG[parts(from).m - 1]!, cents, kind: "past" });
     }
     // Drop empty months before it started, and the month it started in if that was partway through.
-    while (bars.length && (bars[0]!.cents === 0 || bars[0]!.key < startOfMonth(addDays(same[0]!.date, -3)) || (bars[0]!.key === startOfMonth(same[0]!.date) && parts(same[0]!.date).d > 7))) bars.shift();
-    const perDay = recent.reduce((s, t) => s + t.amountCents, 0) / 90;
+    while (bars.length && (bars[0]!.cents === 0 || (frequent && (bars[0]!.key < startOfMonth(addDays(same[0]!.date, -3)) || (bars[0]!.key === startOfMonth(same[0]!.date) && parts(same[0]!.date).d > 7))))) bars.shift();
+    // What it usually comes to a day: the last 90 days when it's frequent, else since it started.
+    const since = Math.max(30, diffDays(same[0]!.date, today));
+    const perDay = frequent ? recent.reduce((s, t) => s + t.amountCents, 0) / 90 : same.reduce((s, t) => s + t.amountCents, 0) / since;
     const { y, m, d } = parts(today);
     const left = daysInMonth(y, m) - d;
     const done = same.filter((t) => t.date >= thisMonth).reduce((s, t) => s + t.amountCents, 0);
@@ -155,19 +172,12 @@ export function txnHistory(txn: OneTimeTransaction, txns: OneTimeTransaction[], 
     const next = addMonths(thisMonth, 1);
     const perMonthCents = Math.round(perDay * 30);
     bars.push({ key: next, label: MONTHS[parts(next).m - 1]!, title: MONTHS_LONG[parts(next).m - 1]!, cents: perMonthCents, kind: "ahead" });
-    return { items: same.map(item), bars, unit: "month", count: recent.length, usualCents, perMonthCents, often: howOften(90 / recent.length), totalCents: same.reduce((s, t) => s + t.amountCents, 0) };
+    return { items: same.map(item), bars, unit: "month", count: frequent ? recent.length : same.length, usualCents, perMonthCents, often: frequent ? howOften(90 / recent.length) : undefined, totalCents: same.reduce((s, t) => s + t.amountCents, 0) };
   }
+
 
   const last = same.slice(-6);
   const bars: HistBar[] = last.map((t) => ({ key: t.id, label: short(t.date), title: short(t.date), cents: t.amountCents, kind: "past" }));
-  const gaps = same.slice(1).map((t, i) => diffDays(same[i]!.date, t.date)).filter((g) => g > 0);
-  const gap = median(gaps);
-  const steady = same.length >= 3 && gap >= 5 && gaps.every((g) => Math.abs(g - gap) <= Math.max(3, gap * 0.35));
-  // Bills that come about once a month but on a wandering day (utilities, a parking app) count as monthly too.
-  const span = diffDays(same[0]!.date, same[same.length - 1]!.date);
-  const perMonth = span > 0 ? (same.length - 1) / (span / 30.4) : 0;
-  const roughlyMonthly = !steady && same.length >= 3 && span >= 55 && perMonth >= 0.75 && perMonth <= 1.4;
-  const regular = steady || roughlyMonthly;
   const every = roughlyMonthly ? 30 : gap;
   if (regular) {
     let d = same[same.length - 1]!.date;

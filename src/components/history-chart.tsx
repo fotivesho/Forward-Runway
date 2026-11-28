@@ -67,13 +67,13 @@ export function HistoryChart({
                 </span>
               )}
               {b.kind === "past" && (
-                <span className={`mx-auto block w-full max-w-[14px] rounded-full transition ${on ? "opacity-100" : "opacity-60 group-hover:opacity-85"}`} style={{ height: `${h}%`, background: grad, boxShadow: on ? glow : undefined }} />
+                <span className={`mx-auto block w-full max-w-[22px] rounded-full transition ${on ? "opacity-100" : "opacity-60 group-hover:opacity-85"}`} style={{ height: `${h}%`, background: grad, boxShadow: on ? glow : undefined }} />
               )}
               {b.kind === "ahead" && (
-                <span className={`mx-auto block w-full max-w-[14px] rounded-full border border-dashed transition ${on ? "opacity-100" : "opacity-70"}`} style={{ height: `${h}%`, ...hatch }} />
+                <span className={`mx-auto block w-full max-w-[22px] rounded-full border border-dashed transition ${on ? "opacity-100" : "opacity-70"}`} style={{ height: `${h}%`, ...hatch }} />
               )}
               {b.kind === "now" && (
-                <span className={`mx-auto flex w-full max-w-[14px] flex-col justify-end overflow-hidden rounded-full transition ${on ? "opacity-100" : "opacity-75"}`} style={{ height: `${h}%`, boxShadow: on ? glow : undefined }}>
+                <span className={`mx-auto flex w-full max-w-[22px] flex-col justify-end overflow-hidden rounded-full transition ${on ? "opacity-100" : "opacity-75"}`} style={{ height: `${h}%`, boxShadow: on ? glow : undefined }}>
                   <span className="block w-full flex-1 rounded-t-full border border-b-0 border-dashed" style={hatch} />
                   <span className="block w-full" style={{ height: `${((b.doneCents ?? 0) / Math.max(1, b.cents)) * 100}%`, background: grad }} />
                 </span>

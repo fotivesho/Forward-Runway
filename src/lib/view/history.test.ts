@@ -26,6 +26,14 @@ describe("history", () => {
     expect(h.perMonthCents).toBeGreaterThan(15_000);
   });
 
+  it("adds up months for things that come on and off (two the same day, then one later)", () => {
+    const txns = [tx("2026-10-13", 2500, "Kalshi"), tx("2026-10-13", 1000, "Kalshi"), tx("2026-11-25", 2000, "Kalshi")];
+    const h = txnHistory(txns[2]!, txns, today)!;
+    expect(h.unit).toBe("month");
+    expect(h.bars.find((b) => b.key === "2026-10-01")!.cents).toBe(3500);
+    expect(h.bars.find((b) => b.kind === "now")!.doneCents).toBe(2000);
+  });
+
   it("projects the next ones for regular charges, and nothing for a one-off", () => {
     const txns = [tx("2026-08-03", 1599, "Netflix"), tx("2026-09-03", 1599, "Netflix"), tx("2026-10-03", 1599, "Netflix"), tx("2026-11-03", 1599, "Netflix")];
     const h = txnHistory(txns[3]!, txns, today)!;
