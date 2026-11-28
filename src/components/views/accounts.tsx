@@ -6,13 +6,14 @@ import { AccountGrid, AddInModal, type AccountTile } from "@/components/account-
 import { Info } from "@/components/info";
 import type { ViewProps } from "./types";
 import { BankConnections, type BankConnectionView } from "@/components/bank-connect";
-import { diffDays, formatShort } from "@/lib/dates";
+import { addDays, diffDays, formatShort } from "@/lib/dates";
 import { archiveAccount, deleteAccount, deleteGoal, deleteStatement, markStatementPaid } from "@/app/app/actions";
 import { ReplaceWithBankForm } from "@/components/replace-with-bank";
 import { BankAccountPanel } from "@/components/bank-account-panel";
 import { CardRoomView } from "@/components/card-room";
 import { cardRoom } from "@/lib/view/card-room";
-import { avgDailyCardSpend, buildForecast, everydayCash } from "@/lib/engine";
+import { avgDailyCardSpend, buildForecast, everydayCash, everydayPaySplit } from "@/lib/engine";
+import { buildDashboard } from "@/lib/view/dashboard";
 import { toEngineInput } from "@/lib/data/snapshot";
 import { CashPath } from "@/components/cash-path";
 import { Glyph } from "@/components/icon";
@@ -68,6 +69,26 @@ export function AccountsView({
     };
   })();
 
+  // The same card spending at your daily limits (what Today and Day by day show): each day's limit,
+  // times the share of everyday spending that goes on this card.
+  const dash = active.some((a) => a.kind === "credit_card" && a.bankConnectionId) ? buildDashboard(snapshot, today, 30) : null;
+  const split = dash ? everydayPaySplit(input) : [];
+  const limitOn = (d: string): number => {
+    if (!dash) return 0;
+    const c = dash.plan.days.find((x) => x.date === d);
+    if (c) return c.capCents;
+    const base = dash.baselineByDay[d];
+    if (base == null) return 0;
+    return base + dash.allEvents.filter((v) => v.event.date === d).reduce((t, v) => t + (v.advice?.capCents ?? 0), 0);
+  };
+  const atLimits = (accountId: string, closing: string): number | null => {
+    const share = split.find((x) => x.accountId === accountId)?.share ?? 0;
+    if (!dash || share <= 0) return null;
+    let t = 0;
+    for (let d = today; d < closing; d = addDays(d, 1)) t += limitOn(d) * share;
+    return Math.round(t);
+  };
+
   const detailFor = (a: (typeof active)[number]) => {
     const statements = snapshot.statements.filter((st) => st.accountId === a.id).sort((x, y) => (x.closingDate < y.closingDate ? 1 : -1));
     if (a.bankConnectionId) {
@@ -76,7 +97,7 @@ export function AccountsView({
       const usual = a.kind === "credit_card" && next ? avgDailyCardSpend(input, a.id) * Math.max(0, diffDays(today, next.closingDate)) : 0;
       return (
         <div className="grid gap-4">
-          <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} today={today} nowMs={nowMs} />
+          <BankAccountPanel account={a} statements={statements} transactions={snapshot.transactions} projection={projection} usualCardSpendCents={usual} limitCardSpendCents={next ? atLimits(a.id, next.closingDate) : null} today={today} nowMs={nowMs} />
           {a.kind === "credit_card" && <CardRoomView rooms={cardRoom(snapshot, today, a.id)} />}
         </div>
       );

@@ -36,6 +36,7 @@ export function BankAccountPanel({
   transactions,
   projection,
   usualCardSpendCents,
+  limitCardSpendCents = null,
   today,
   nowMs,
 }: {
@@ -45,9 +46,13 @@ export function BankAccountPanel({
   projection: CardProjection | undefined;
   /** Typical everyday spending on this card still to come before the next statement closes. */
   usualCardSpendCents: number;
+  /** The same, if you keep to your daily limits (null when this card isn't how you usually pay). */
+  limitCardSpendCents?: number | null;
   today: ISODate;
   nowMs: number;
 }) {
+  // Only worth showing when the limits really are lower than your usual pace.
+  const saves = limitCardSpendCents != null && usualCardSpendCents - limitCardSpendCents >= 1_000;
   const pending = transactions.filter((t) => t.accountId === a.id && t.pending);
   const pendingNet = pending.reduce((s, t) => s + (t.direction === "out" ? t.amountCents : -t.amountCents), 0);
   const updated = <>from your bank · updated {ago(a.balanceUpdatedAt, nowMs)}</>;
@@ -127,10 +132,20 @@ export function BankAccountPanel({
               <>
                 <Row label="Expected by closing" sub={`Usual card spending until ${formatShort(next.closingDate)}`}>
                   ~<Money cents={usualCardSpendCents} whole />
+                  {saves && <span className="block text-[11px] font-semibold text-brand">~<Money cents={limitCardSpendCents!} whole /> at your limits</span>}
                 </Row>
                 <Row label="Estimated statement" sub={`Closes ${formatShort(next.closingDate)} · due ${formatShort(next.dueDate)}`}>
                   ~<Money cents={next.balanceCents + usualCardSpendCents} whole />
                 </Row>
+                {saves && (
+                  <div className="mt-1 flex items-center justify-between gap-2 rounded-lg bg-brand/[0.08] px-2.5 py-1.5 text-xs">
+                    <span className="flex items-center text-muted">
+                      Stick to your limits
+                      <Info label="At your limits">Each day&apos;s limit (the one on Today and in Day by day), times the share of your everyday spending that usually goes on this card, until the statement closes. The estimate above stays at your usual pace: it&apos;s what the bill will likely be, and what the max and the forecast use.</Info>
+                    </span>
+                    <span className="tabular"><span className="font-semibold text-brand">~<Money cents={next.balanceCents + limitCardSpendCents!} whole /></span> <span className="text-faint">· <Money cents={usualCardSpendCents - limitCardSpendCents!} whole /> less</span></span>
+                  </div>
+                )}
               </>
             )}
           </dl>
