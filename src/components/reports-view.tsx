@@ -28,7 +28,10 @@ export function ReportsView({
   byPeriod,
   groupOf,
   items,
+  chart = true,
 }: {
+  /** The spending-by-group chart above the categories (off on Trends, which leads with categories). */
+  chart?: boolean;
   byMonth: SpendingReport;
   byPeriod: SpendingReport;
   groupOf: Record<string, CategoryGroup>;
@@ -74,7 +77,7 @@ export function ReportsView({
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-      <section className="card p-4 sm:p-5" aria-labelledby="rep-title">
+      {chart && <section className="card p-4 sm:p-5" aria-labelledby="rep-title">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="rep-title" className="text-base font-bold text-ink">{title}</h2>
           {(pick || focus !== "all") && (
@@ -132,7 +135,7 @@ export function ReportsView({
           {focus === "all" && GROUPS.map((g) => <span key={g.id}><span className={`mr-1 inline-block h-2 w-2 rounded-full ${COLOR[g.id]}`} />{g.label}</span>)}
           <Info label="Reading the chart">Each bar is one {by === "month" ? "month" : "pay period"}, split into needs, wants and savings. Tap a bar to see that {by === "month" ? "month" : "pay period"}'s categories below. The dashed line is your average.</Info>
         </p>
-      </section>
+      </section>}
 
       <section className="card p-4 sm:p-5" aria-labelledby="cats-title">
         <div className="flex items-baseline justify-between gap-2">

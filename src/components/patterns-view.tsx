@@ -38,7 +38,10 @@ export function PatternsView({
   learnedDays,
   explore,
   hideAhead = false,
+  onlyNoticed = false,
 }: {
+  /** Just the "Noticed" insights, a few of them (Trends). */
+  onlyNoticed?: boolean;
   insights: Insight[];
   ahead: ReturnType<typeof lifeAhead>;
   week: ReturnType<typeof rhythm> | null;
@@ -69,7 +72,7 @@ export function PatternsView({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       {/* Until payday, at your usual pace */}
-      {pace && (
+      {pace && !onlyNoticed && (
         <section className="card overflow-hidden" aria-labelledby="pace-title">
           <div className="bg-gradient-to-br from-surface-3 to-surface p-4 sm:p-5">
             <div className="flex items-center justify-between gap-2">
@@ -101,14 +104,14 @@ export function PatternsView({
       {insights.length > 0 && (
         <section aria-labelledby="ins-title">
           <h2 id="ins-title" className="mb-2 text-base font-bold text-ink">Noticed</h2>
-          <InsightTiles items={insights.slice(0, 6)} />
+          <InsightTiles items={insights.slice(0, onlyNoticed ? 3 : 6)} />
         </section>
       )}
 
-      {explore && <PatternExplorer data={explore} />}
+      {explore && !onlyNoticed && <PatternExplorer data={explore} />}
 
       {/* The next 30 days */}
-      {!hideAhead && <section className="card p-4" aria-labelledby="ahead-title">
+      {!hideAhead && !onlyNoticed && <section className="card p-4" aria-labelledby="ahead-title">
         <div className="flex items-baseline justify-between gap-2">
           <h2 id="ahead-title" className="text-base font-bold text-ink">
             Next 30 days <Info label="Next 30 days">Everything you&apos;re likely to spend in the next month, in two kinds. <strong className="font-semibold">Scheduled:</strong> bills and plans on your calendar, things we know about. <strong className="font-semibold">Predicted:</strong> everyday spending nobody puts on a calendar (groceries, gas, coffee), estimated from your habits, plus big costs that tend to come around now. Your budget is built from both.</Info>

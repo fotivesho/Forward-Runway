@@ -148,9 +148,6 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
   }
   await page.goto(BASE + "/demo/forecast", { waitUntil: "networkidle" });
   check(/next bill/i.test(await page.locator("main").innerText()), "forecast shows the next credit card bill");
-  await page.goto(BASE + "/demo/spend/trends", { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Day", exact: true }).click();
-  check(/on a usual/.test(await page.locator("main").innerText()), "patterns explorer drills into a weekday");
   await page.close();
 }
 
@@ -159,7 +156,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
   {
     const { page, errors } = await visit("/demo/spend/trends", 390);
     const body = await page.locator("body").innerText();
-    check(errors.length === 0 && /Noticed/.test(body) && /Usual spend to/i.test(body) && /Spending by group/.test(body), "trends shows the history chart, insights and pace");
+    check(errors.length === 0 && /Categories/.test(body) && /Noticed/.test(body) && /Net cash flow/.test(body) && !/Spending by group/.test(body), "trends leads with categories, then what we noticed and cash flow");
     await page.close();
   }
   const { page, errors } = await visit("/demo/what-if", 390);

@@ -80,8 +80,8 @@ export function TrendsPage({ snapshot, today, nowIso, demo = false }: ViewProps)
       <PageHeader title="Money" subtitle="How your spending is changing, the habits behind it, and money in versus out. Tap any bar or category to drill in." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}><ReportsView byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} /></TxnDrillProvider>
-        <PatternsView {...life} explore={exploreData(snapshot, today)} hideAhead />
+        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}><ReportsView chart={false} byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} /></TxnDrillProvider>
+        <PatternsView {...life} onlyNoticed hideAhead />
         <CashFlowCard months={cashFlow(snapshot, today, monthBuckets(today))} periods={periods ? cashFlow(snapshot, today, periods) : null} />
       </div>
     </>
