@@ -42,6 +42,73 @@ export function Modal({
     }
     if (!open && d.open) d.close();
   }, [open]);
+
+  // Pull the sheet down to close it (phones): from the header anytime, or from the content once
+  // it's scrolled to the top. It follows your finger; let go past a short distance and it closes.
+  const body = useRef<HTMLDivElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+  useEffect(() => {
+    const p = panel.current;
+    const d = ref.current;
+    if (!open || !p || !d) return;
+    let startY = 0;
+    let dy = 0;
+    let dragging = false;
+    let armed = false;
+    const start = (e: TouchEvent) => {
+      const t = e.target as HTMLElement;
+      // Not while using a slider, a text field or a horizontal scroller.
+      if (t.closest("input, textarea, select, [data-no-swipe]")) return;
+      const inBody = body.current?.contains(t);
+      armed = !inBody || (body.current?.scrollTop ?? 0) <= 0;
+      startY = e.touches[0]!.clientY;
+      dy = 0;
+      dragging = false;
+    };
+    const move = (e: TouchEvent) => {
+      if (!armed) return;
+      const y = e.touches[0]!.clientY - startY;
+      if (!dragging) {
+        if (y < 6) {
+          if (y < -6) armed = false;
+          return;
+        }
+        dragging = true;
+        d.style.transition = "none";
+      }
+      dy = Math.max(0, y);
+      d.style.transform = `translateY(${dy}px)`;
+      if (e.cancelable) e.preventDefault();
+    };
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      armed = false;
+      if (dy > Math.min(140, window.innerHeight * 0.18)) {
+        d.style.transition = "transform 180ms ease-in";
+        d.style.transform = "translateY(100%)";
+        window.setTimeout(() => {
+          d.style.transition = "";
+          d.style.transform = "";
+          onCloseRef.current();
+        }, 170);
+      } else {
+        d.style.transition = "transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1)";
+        d.style.transform = "";
+      }
+    };
+    p.addEventListener("touchstart", start, { passive: true });
+    p.addEventListener("touchmove", move, { passive: false });
+    p.addEventListener("touchend", end);
+    p.addEventListener("touchcancel", end);
+    return () => {
+      p.removeEventListener("touchstart", start);
+      p.removeEventListener("touchmove", move);
+      p.removeEventListener("touchend", end);
+      p.removeEventListener("touchcancel", end);
+    };
+  }, [open]);
   const head = { neutral: "from-surface-3/70", in: "from-brand/15", out: "from-warn/12" }[tone];
   return (
     <dialog
@@ -73,7 +140,7 @@ export function Modal({
               </button>
             </div>
           </div>
-          <div className="overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">{children}</div>
+          <div ref={body} className="overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">{children}</div>
         </div>
       )}
     </dialog>

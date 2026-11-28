@@ -216,9 +216,6 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
   const to = picked?.end ?? now.end;
   const list = items.filter((i) => i.date >= from && i.date <= to);
   const rows = all ? list : list.slice(0, 8);
-  const total = list.reduce((t, i) => t + i.cents, 0);
-  const year = now.end.slice(0, 4);
-  const yearCents = items.filter((i) => i.date.startsWith(year)).reduce((t, i) => t + i.cents, 0);
   const pace = avg ? nowCents / avg : 0;
   const TrendIcon = trend == null || Math.abs(trend) < 10 ? Minus : trend > 0 ? TrendingUp : TrendingDown;
   const trendTone = trend == null || Math.abs(trend) < 10 ? "text-muted" : trend > 0 ? "text-warn" : "text-brand";
@@ -246,12 +243,7 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
           <span className="block text-[10px] text-faint">{trend == null ? "needs 4+ months" : trendLabel}</span>
         </li>
       </ul>
-      {(trend != null || top) && (
-        <p className="text-xs text-muted">
-          {trend != null && (Math.abs(trend) < 10 ? `Holding steady (${trendLabel}). ` : trend >= 200 ? `Way up: ${Math.round(trend / 100 + 1)}× as much in ${spanOf(doneP.slice(-3))} as in ${spanOf(doneP.slice(-6, -3))}. ` : trend > 0 ? `Climbing: up ${trend}% in ${spanOf(doneP.slice(-3))} vs ${spanOf(doneP.slice(-6, -3))}. ` : `Easing off: down ${Math.abs(trend)}% in ${spanOf(doneP.slice(-3))} vs ${spanOf(doneP.slice(-6, -3))}. `)}
-          {top && (top.categories[cat] ?? 0) > avg * 1.3 && <>Highest was {periodName(top)} at <Money cents={top.categories[cat] ?? 0} whole />.</>}
-        </p>
-      )}
+
 
       {children}
       <div className="relative pt-2">
@@ -274,17 +266,9 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
           })}
         </ol>
       </div>
-      <p className="-mt-2 text-[11px] text-faint">Amber = above average · faded = still going · tap a bar to list it</p>
 
       <div>
-        <div className="mb-1 flex items-baseline justify-between gap-2">
-          {picked ? (
-            <p className="text-sm font-bold text-ink">{periodName(picked)} <Money cents={total} whole className="ml-1 font-semibold" /></p>
-          ) : (
-            <p className="text-sm text-muted">{year} so far <Money cents={yearCents} whole className="ml-1 font-num text-base text-ink" /></p>
-          )}
-          {picked && <button type="button" onClick={() => setPick(null)} className="text-xs font-semibold text-brand">Show all</button>}
-        </div>
+        {picked && <div className="mb-1 flex justify-end"><button type="button" onClick={() => setPick(null)} className="text-xs font-semibold text-brand">Show all months</button></div>}
         {list.length === 0 ? (
           <p className="text-sm text-muted">Nothing here.</p>
         ) : (
