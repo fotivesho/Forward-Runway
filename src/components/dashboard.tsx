@@ -228,10 +228,22 @@ function PlanCheckins({ items }: { items: ReturnType<typeof buildDashboard>["che
 
 /** The week's daily limits: the selected day is unmistakable, the amounts scan at a glance. */
 function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: ISODate }) {
-  const days = m.plan.days;
-  const [showAll, setShowAll] = useState(false);
+  // This pay period's limits are firm; after payday they're a first look (~) from the same
+  // engine: what that period frees up, shaped by your habits (or lean, with needs only).
+  const firm = m.plan.days;
+  const lastFirm = firm[firm.length - 1]?.date ?? today;
+  const later = m.forecast90.days
+    .filter((d) => d.date > lastFirm && m.baselineByDay[d.date] != null)
+    .map((d) => {
+      const plans = m.allEvents.filter((v) => v.event.date === d.date && (v.advice?.capCents ?? 0) > 0);
+      const eventCents = plans.reduce((t, v) => t + (v.advice?.capCents ?? 0), 0);
+      const base = m.baselineByDay[d.date]!;
+      return { date: d.date, baseCents: base, eventCents, capCents: base + eventCents, spentCents: 0, remainingCents: base + eventCents, eventIds: plans.map((v) => v.event.id), reasons: m.leanReasons[d.date], lean: m.leanDates.includes(d.date), estimate: true };
+    });
+  const days: Array<(typeof firm)[number] & { estimate?: boolean }> = [...firm, ...later];
+  const [span, setSpan] = useState<7 | 30 | 90>(7);
   const [selected, setSelected] = useState<ISODate | null>(days[0]?.date ?? null);
-  const visible = showAll ? days : days.slice(0, 7);
+  const visible = days.slice(0, span);
   const sel = days.find((d) => d.date === selected) ?? null;
   const fday = sel ? m.forecast90.days.find((d) => d.date === sel.date) : undefined;
   const planById = new Map(m.allEvents.map((v) => [v.event.id, v]));
@@ -241,9 +253,14 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id="caps-title" className="text-base font-bold text-ink">Daily limits<Info label="Daily limits">A reasonable most to spend each day until payday. It starts from what you have left after bills and savings, adds room on days with a plan (blue dot), and follows your habits: busier weekdays and payday get more, quiet days less, and a trip that&apos;s due (like groceries, when it&apos;s been a while) gets room on the day it&apos;s likely (small spark). Spend less one day and the rest rolls into the days ahead.</Info></h2>
         {days.length > 7 && (
-          <button type="button" className="text-xs font-medium text-faint hover:text-ink" onClick={() => setShowAll((v) => !v)} aria-expanded={showAll}>
-            {showAll ? "Next 7 days" : `All ${days.length} days`}
-          </button>
+          <div role="group" aria-label="How far ahead" className="flex rounded-full border border-line p-0.5">
+            {([7, 30, 90] as const).map((n) => (
+              <button key={n} type="button" onClick={() => setSpan(n)} aria-pressed={span === n}
+                className={`min-h-7 rounded-full px-2.5 text-[11px] font-bold transition ${span === n ? "bg-surface-3 text-ink" : "text-faint hover:text-ink"}`}>
+                {n}d
+              </button>
+            ))}
+          </div>
         )}
       </div>
       <ol className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }} aria-label="Daily limits">
@@ -257,8 +274,8 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
                 aria-pressed={on}
                 className={`relative w-full rounded-2xl px-1 py-2 text-center transition ${on ? (d.lean ? "bg-warn text-brand-ink shadow-md" : "bg-brand text-brand-ink shadow-md") : "bg-surface-2/70 text-ink hover:bg-surface-3"}`}
               >
-                <span className={`block text-[11px] font-medium ${on ? "opacity-80" : "text-faint"}`}>{d.date === today ? "Today" : formatWeekday(d.date)}</span>
-                <Money cents={d.capCents} whole className="font-num block text-xl" />
+                <span className={`block text-[11px] font-medium ${on ? "opacity-80" : "text-faint"}`}>{d.date === today ? (span > 7 ? "Now" : "Today") : span > 7 ? (d.date.endsWith("-01") || d === visible[0] ? formatShort(d.date).split(" ")[0] : Number(d.date.slice(8))) : formatWeekday(d.date)}</span>
+                <span className={`font-num block ${span > 7 ? "text-[15px] leading-tight" : "text-xl"} ${d.estimate && !on ? "opacity-70" : ""}`}>{d.estimate && span <= 7 ? "~" : ""}<Money cents={d.capCents} whole /></span>
                 {d.eventIds.length > 0 && <span aria-label="has a plan" className={`absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full ${on ? "bg-brand-ink" : "bg-info"}`} />}
                 {d.lean && !on && <span aria-label="lean day" className="absolute right-1.5 bottom-1.5 h-1.5 w-1.5 rounded-full bg-warn" />}
                 {d.reasons?.some((r) => / likely/.test(r)) && <Sparkles aria-label="a usual trip is likely" size={10} className={`absolute left-1.5 top-1.5 ${on ? "text-brand-ink" : "text-warn"}`} />}
@@ -267,6 +284,7 @@ function DailyCaps({ m, today }: { m: ReturnType<typeof buildDashboard>; today: 
           );
         })}
       </ol>
+      {span > 7 && <p className="mt-2 text-[11px] text-faint">Faded: after payday, a first look that settles as it gets closer. Tap any day.</p>}
       {sel && <DayCard sel={sel} fday={fday} planById={planById} today={today} />}
     </section>
   );
