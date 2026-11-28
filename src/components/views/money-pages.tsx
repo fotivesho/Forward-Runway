@@ -1,3 +1,4 @@
+import { TxnDrillProvider } from "@/components/txn-drill";
 import { CashFlowCard } from "@/components/spend-insights";
 import { cashFlow, monthBuckets, payPeriodBuckets } from "@/lib/view/spend";
 import { BudgetView } from "@/components/budget-view";
@@ -32,7 +33,7 @@ export function BudgetPage({ snapshot, today, nowIso, demo = false }: ViewProps)
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       {(() => {
         const history = spendingReport(snapshot, today, 6);
-        return <BudgetView plan={buildBudget(snapshot, today, plans)} demo={demo} history={history} items={categoryItems(snapshot, today, history[0]!.month)} />;
+        return <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}><BudgetView plan={buildBudget(snapshot, today, plans)} demo={demo} history={history} items={categoryItems(snapshot, today, history[0]!.month)} /></TxnDrillProvider>;
       })()}
     </>
   );
@@ -48,12 +49,14 @@ export function ReportsPage({ snapshot, today, demo = false }: ViewProps) {
       <PageHeader title="Money" subtitle="Where your money went, month by month or paycheck by paycheck, and money in versus out. Tap a group or category to focus on it." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <ReportsView
-          byMonth={byMonth}
-          byPeriod={byPeriod}
-          groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))}
-          items={categoryItems(snapshot, today, from)}
-        />
+        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}>
+          <ReportsView
+            byMonth={byMonth}
+            byPeriod={byPeriod}
+            groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))}
+            items={categoryItems(snapshot, today, from)}
+          />
+        </TxnDrillProvider>
         {(() => {
           const periods = payPeriodBuckets(snapshot, today);
           return <CashFlowCard months={cashFlow(snapshot, today, monthBuckets(today))} periods={periods ? cashFlow(snapshot, today, periods) : null} />;
@@ -77,7 +80,7 @@ export function TrendsPage({ snapshot, today, nowIso, demo = false }: ViewProps)
       <PageHeader title="Money" subtitle="How your spending is changing, the habits behind it, and money in versus out. Tap any bar or category to drill in." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <ReportsView byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} />
+        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}><ReportsView byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} /></TxnDrillProvider>
         <PatternsView {...life} explore={exploreData(snapshot, today)} hideAhead />
         <CashFlowCard months={cashFlow(snapshot, today, monthBuckets(today))} periods={periods ? cashFlow(snapshot, today, periods) : null} />
       </div>

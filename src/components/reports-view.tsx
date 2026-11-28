@@ -10,6 +10,8 @@ import { Money, useHideAmounts } from "./privacy";
 import { Modal } from "./modal";
 import { AvgLine, shortMoney } from "./avg-line";
 import { TrendingDown, TrendingUp, Minus } from "lucide-react";
+import { useTxnDrill } from "./txn-drill";
+import { MerchantDrill } from "./transaction-list";
 
 const COLOR: Record<CategoryGroup, string> = { needs: "bg-info", wants: "bg-brand", savings: "bg-warn" };
 const seg = (active: boolean) => `min-h-9 flex-1 rounded-md px-2 text-xs font-medium sm:text-sm ${active ? "bg-brand text-brand-ink" : "text-muted hover:text-ink"}`;
@@ -186,6 +188,8 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
   const hide = useHideAmounts();
   const [pick, setPick] = useState<string | null>(null);
   const [all, setAll] = useState(false);
+  const drillCtx = useTxnDrill();
+  const [drill, setDrill] = useState<string | null>(null);
   const full = data.filter((m) => !m.current);
   const avg = avgSince(full, cat);
   const vals = data.map((m) => m.categories[cat] ?? 0);
@@ -212,6 +216,8 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
   const TrendIcon = trend == null || Math.abs(trend) < 10 ? Minus : trend > 0 ? TrendingUp : TrendingDown;
   const trendTone = trend == null || Math.abs(trend) < 10 ? "text-muted" : trend > 0 ? "text-warn" : "text-brand";
 
+  // A level deeper: one name's history, with a way back to the category.
+  if (drill) return <MerchantDrill txnId={drill} onBack={() => setDrill(null)} />;
   return (
     <div className="space-y-4">
       <ul className="grid grid-cols-3 gap-2 text-center">
@@ -275,15 +281,29 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
           <p className="text-sm text-muted">Nothing here.</p>
         ) : (
           <ul className="divide-y divide-line rounded-xl border border-line">
-            {rows.map((i, k) => (
-              <li key={`${i.date}-${k}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
-                <span className="min-w-0">
-                  <span className="block truncate font-medium text-ink">{i.label}</span>
-                  <span className="block text-[11px] text-muted">{formatShort(i.date)} · {i.account}{i.repeating ? " · repeating" : ""}{i.pending ? " · pending" : ""}</span>
-                </span>
-                <Money cents={-i.cents} sign tone="auto" className="shrink-0 font-semibold" />
-              </li>
-            ))}
+            {rows.map((i, k) => {
+              const body = (
+                <>
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium text-ink">{i.label}</span>
+                    <span className="block text-[11px] text-muted">{formatShort(i.date)} · {i.account}{i.repeating ? " · repeating" : ""}{i.pending ? " · pending" : ""}</span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <Money cents={-i.cents} sign tone="auto" className="font-semibold" />
+                    {i.txnId && drillCtx && <span aria-hidden className="text-faint">›</span>}
+                  </span>
+                </>
+              );
+              return (
+                <li key={`${i.date}-${k}`}>
+                  {i.txnId && drillCtx ? (
+                    <button type="button" onClick={() => setDrill(i.txnId!)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition hover:bg-surface-2/60">{body}</button>
+                  ) : (
+                    <div className="flex items-center justify-between gap-2 px-3 py-2 text-sm">{body}</div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
         {list.length > 8 && (

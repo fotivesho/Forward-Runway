@@ -310,6 +310,8 @@ export interface CategoryItem {
   /** From a repeating bill rather than a logged transaction. */
   repeating: boolean;
   pending?: boolean;
+  /** The transaction behind it, to drill into that name's history. */
+  txnId?: string;
 }
 
 /**
@@ -325,8 +327,8 @@ export function categoryItems(s: Snapshot, today: ISODate, from: ISODate): Recor
     const a = acct.get(t.accountId);
     if (!a || a.kind === "loan") continue;
     const cat = t.category?.trim() || "Uncategorized";
-    if (t.direction === "out") add(cat, { date: t.date, label: t.description, cents: t.amountCents, account: a.name, repeating: false, pending: t.pending });
-    else if (a.kind === "credit_card" || isRefund(t)) add(cat, { date: t.date, label: `${t.description} (refund)`, cents: -t.amountCents, account: a.name, repeating: false });
+    if (t.direction === "out") add(cat, { date: t.date, label: t.description, cents: t.amountCents, account: a.name, repeating: false, pending: t.pending, txnId: t.id });
+    else if (a.kind === "credit_card" || isRefund(t)) add(cat, { date: t.date, label: `${t.description} (refund)`, cents: -t.amountCents, account: a.name, repeating: false, txnId: t.id });
   }
   for (const r of s.rules) {
     if (r.active === false || (r.toAccountId && r.kind !== "loan_payment")) continue;

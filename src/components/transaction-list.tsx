@@ -22,6 +22,8 @@ import { inPeriod, itemStats, PERIOD_LABEL, txnHistory, type HistoryView, type S
 import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
 import { isNotSpending } from "@/lib/categories";
+import { TxnDrillProvider, useTxnDrill } from "./txn-drill";
+import { ChevronLeft } from "lucide-react";
 
 
 /** Every transaction, newest first, grouped by day. Category chips (with totals) filter the list. */
@@ -139,7 +141,9 @@ export function TransactionList({
       )}
       {cat && catOpen && (
         <Modal open onClose={() => setCatOpen(false)} icon={cat} title={cat} subtitle="Last 6 months">
-          <CategoryReport cat={cat} data={report} items={catItems[cat] ?? []} />
+          <TxnDrillProvider txns={txns} accounts={accounts} today={today}>
+            <CategoryReport cat={cat} data={report} items={catItems[cat] ?? []} />
+          </TxnDrillProvider>
         </Modal>
       )}
       {filtered && (
@@ -398,6 +402,31 @@ function QuickRepeat({ txn, h, today, accountName, onMore }: { txn: OneTimeTrans
 }
 
 /** Its history: a period to look at, the cards, a finding or two, the chart, and every time it happened. */
+/**
+ * One name's history, a level down from a category's list: the same chart, stats and charges a
+ * transaction shows in Activity, with a way back.
+ */
+export function MerchantDrill({ txnId, onBack }: { txnId: string; onBack: () => void }) {
+  const d = useTxnDrill();
+  const txn = d?.txns.find((t) => t.id === txnId);
+  if (!d || !txn) return null;
+  const h = txnHistory(txn, d.txns, d.today);
+  return (
+    <div className="fade-up space-y-3">
+      <button type="button" onClick={onBack} className="-ml-1 inline-flex items-center gap-1 text-xs font-semibold text-brand">
+        <ChevronLeft size={14} strokeWidth={2.6} aria-hidden /> {txn.category ?? "Back"}
+      </button>
+      <div className="flex items-center gap-3">
+        <Glyph name={txn.category ?? "Other"} size="sm" />
+        <p className="min-w-0 flex-1 truncate text-base font-bold text-ink">{txn.description}</p>
+      </div>
+      {h ? <Insights txn={txn} h={h} today={d.today} accountName={d.accountName} /> : (
+        <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">Only seen once so far. Once it shows up again, you&apos;ll see its history here.</p>
+      )}
+    </div>
+  );
+}
+
 function Insights({ txn, h, today, accountName }: { txn: OneTimeTransaction; h: HistoryView; today: ISODate; accountName: (id: string) => string }) {
   const [period, setPeriod] = useState<StatPeriod>("all");
   const [sel, setSel] = useState<string | null>(h.bars.find((b) => b.kind === "now")?.key ?? h.bars.find((b) => b.key === txn.id)?.key ?? h.bars.filter((b) => b.kind === "past").at(-1)?.key ?? null);
