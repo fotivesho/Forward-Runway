@@ -141,7 +141,6 @@ export function ReportsView({
         </div>
         <ul className="mt-2 divide-y divide-line">
           {rows.map((r) => {
-            const pace = r.avg ? r.now / r.avg : 0;
             return (
               <li key={r.c}>
                 <button type="button" onClick={() => setCat(r.c)} aria-haspopup="dialog" className="flex w-full items-center gap-3 rounded-lg px-1 py-2 text-left transition hover:bg-surface-2/60">
@@ -152,7 +151,7 @@ export function ReportsView({
                   </span>
                   <span className="text-right text-sm tabular">
                     <Money cents={r.now} whole className="font-semibold text-ink" />
-                    {r.avg > 0 && <span className={`block text-[11px] ${pace > 1.1 ? "text-warn" : "text-muted"}`}>{Math.round(pace * 100)}% of avg</span>}
+                    <VsAvg now={r.now} avg={r.avg} />
                   </span>
                   <span aria-hidden className="text-faint">›</span>
                 </button>
@@ -228,7 +227,7 @@ export function CategoryReport({ cat, data, items, by = "month", periodName = mo
         <li className="rounded-xl bg-surface-2/60 px-1 py-2">
           <span className="block text-[11px] text-faint">This {unit}</span>
           <span className={`block font-num text-lg leading-tight ${pace > 1.1 ? "text-warn" : "text-display"}`}><Money cents={nowCents} whole /></span>
-          <span className="block text-[10px] text-faint">{avg ? `${Math.round(pace * 100)}% of avg` : "so far"}</span>
+          <VsAvg now={nowCents} avg={avg} small />
         </li>
         <li className="rounded-xl bg-surface-2/60 px-1 py-2">
           <span className="block text-[11px] text-faint">Average</span>
@@ -326,3 +325,13 @@ function monthsIn(items: CategoryItem[]): string[] {
 }
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const monthYear = (key: string) => `${MONTH_NAMES[Number(key.slice(5, 7)) - 1]} ${key.slice(0, 4)}`;
+
+/** How far from average: "+20%" in amber when higher, "−15%" in green when lower, "≈ avg" when close. */
+function VsAvg({ now, avg, small }: { now: number; avg: number; small?: boolean }) {
+  const size = small ? "text-[10px]" : "text-[11px]";
+  if (avg <= 0) return <span className={`block ${size} text-faint`}>{now > 0 ? "new" : ""}</span>;
+  const pct = Math.round((now / avg - 1) * 100);
+  if (Math.abs(pct) < 5) return <span className={`block ${size} text-muted`}>≈ avg</span>;
+  const shown = Math.abs(pct) >= 300 ? `${(now / avg).toFixed(0)}×` : `${pct > 0 ? "+" : "−"}${Math.abs(pct)}%`;
+  return <span className={`block ${size} font-semibold ${pct > 0 ? "text-warn" : "text-brand"}`}>{shown}</span>;
+}
