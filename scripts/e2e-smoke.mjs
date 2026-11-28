@@ -156,7 +156,7 @@ for (const path of ["/demo/forecast", "/demo/spend", "/demo/spend/transactions",
   {
     const { page, errors } = await visit("/demo/spend/trends", 390);
     const body = await page.locator("body").innerText();
-    check(errors.length === 0 && /Categories/.test(body) && /Noticed/.test(body) && /Net cash flow/.test(body) && !/Spending by group/.test(body), "trends leads with categories, then what we noticed and cash flow");
+    check(errors.length === 0 && /Noticed/.test(body) && body.indexOf("Noticed") < body.indexOf("Categories") && /Net cash flow/.test(body) && !/Spending by group/.test(body), "trends leads with what we noticed, then categories and cash flow");
     await page.close();
   }
   const { page, errors } = await visit("/demo/what-if", 390);

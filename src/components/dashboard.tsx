@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useContext, useMemo, useState, useTransition } from "react";
 import { addFoundRepeats, checkPlan, coverShortfall } from "@/app/app/actions";
 import { Modal } from "./modal";
+import { NoticedLine } from "./noticed-view";
+import { noticed } from "@/lib/view/noticed";
 import { useRouter } from "next/navigation";
 import { DemoCtx } from "./form";
 import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/lib/dates";
@@ -28,6 +30,7 @@ import { AddPlanButton, PlanProvider } from "./calendar-forms";
 export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot: Snapshot; today: ISODate; nowIso: string; demo?: boolean }) {
   const now = useMemo(() => new Date(nowIso), [nowIso]);
   const m = useMemo(() => buildDashboard(snapshot, today, 30, now), [snapshot, today, now]);
+  const lead = useMemo(() => noticed(snapshot, today, 4), [snapshot, today]);
   const { plan } = m;
   const allowance = plan.allowance;
   const accounts = snapshot.accounts;
@@ -100,6 +103,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
           </div>
         </section>
 
+        <NoticedLine items={lead} base={base} />
         {m.found.length > 0 && <FoundRepeats items={m.found} />}
         {m.checkins.length > 0 && <PlanCheckins items={m.checkins} />}
         <DailyCaps m={m} today={today} />

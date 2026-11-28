@@ -444,6 +444,28 @@ export async function coverShortfall(fromAccountId: string, cents: number, date:
   return { ok: true };
 }
 
+/** "Noticed": hide one for a while (it comes back if it's still true later). */
+export async function snoozeInsight(id: string, days = 30): Promise<{ ok: boolean }> {
+  const { supabase } = await session();
+  const key = String(id).slice(0, 180);
+  if (!key) return { ok: false };
+  const { today } = await userToday(supabase);
+  const until = new Date(Date.parse(today) + days * 86_400_000).toISOString().slice(0, 10);
+  const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: `insight_snooze:${key}`, value: { until } }, { onConflict: "user_id,kind,match_key" });
+  revalidatePath("/app", "layout");
+  return { ok: !error };
+}
+
+/** "Noticed": was this useful? Kinds you like rank higher, ones you don't, lower (and it's a record to learn from). */
+export async function rateInsight(id: string, kind: string, useful: boolean, title: string): Promise<{ ok: boolean }> {
+  const { supabase } = await session();
+  const key = String(id).slice(0, 180);
+  if (!key || !/^[a-z]{2,12}$/.test(kind)) return { ok: false };
+  const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: `insight_rating:${key}`, value: { kind, useful, title: String(title).slice(0, 120), at: new Date().toISOString() } }, { onConflict: "user_id,kind,match_key" });
+  revalidatePath("/app", "layout");
+  return { ok: !error };
+}
+
 /** Count a category again (undo "not counted"). */
 export async function includeCategory(form: FormData) {
   const { supabase } = await session();

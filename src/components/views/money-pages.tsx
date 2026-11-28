@@ -1,3 +1,5 @@
+import { NoticedView } from "@/components/noticed-view";
+import { noticed } from "@/lib/view/noticed";
 import { TxnDrillProvider } from "@/components/txn-drill";
 import { CashFlowCard } from "@/components/spend-insights";
 import { cashFlow, monthBuckets, payPeriodBuckets } from "@/lib/view/spend";
@@ -67,9 +69,7 @@ export function ReportsPage({ snapshot, today, demo = false }: ViewProps) {
 }
 
 /** Trends: how your spending is changing (by month or pay period), your habits, and money in versus out. */
-export function TrendsPage({ snapshot, today, nowIso, demo = false }: ViewProps) {
-  const m = buildDashboard(snapshot, today, 30, new Date(nowIso));
-  const { model: _model, ...life } = lifeSummary(snapshot, today, m);
+export function TrendsPage({ snapshot, today, demo = false }: ViewProps) {
   const byMonth = spendingReport(snapshot, today, 12, "month");
   const byPeriod = spendingReport(snapshot, today, 12, "period");
   const names = new Set([...byMonth, ...byPeriod].flatMap((x) => Object.keys(x.categories)));
@@ -80,8 +80,12 @@ export function TrendsPage({ snapshot, today, nowIso, demo = false }: ViewProps)
       <PageHeader title="Money" subtitle="How your spending is changing, the habits behind it, and money in versus out. Tap any bar or category to drill in." />
       <MoneyTabs base={demo ? "/demo" : "/app"} />
       <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
-        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}><ReportsView chart={false} byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} /></TxnDrillProvider>
-        <PatternsView {...life} onlyNoticed hideAhead />
+        <TxnDrillProvider txns={snapshot.transactions} accounts={snapshot.accounts} today={today}>
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
+            <NoticedView items={noticed(snapshot, today)} base={demo ? "/demo" : "/app"} />
+            <ReportsView chart={false} byMonth={byMonth} byPeriod={byPeriod} groupOf={Object.fromEntries([...names].map((c) => [c, groupOf(c, snapshot)]))} items={categoryItems(snapshot, today, from)} />
+          </div>
+        </TxnDrillProvider>
         <CashFlowCard months={cashFlow(snapshot, today, monthBuckets(today))} periods={periods ? cashFlow(snapshot, today, periods) : null} />
       </div>
     </>
