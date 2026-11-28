@@ -7,6 +7,7 @@ import { plaidEnv, plaidMode } from "./config";
 import { decryptToken, encryptToken, tokenKey } from "./crypto";
 import { accountBalanceCents, accountKind, accountName, cardFields, pendingOwedCents, settleStatement, statementRow, transactionRow } from "./map";
 import { PlaidError, type BankApi, type PlaidTransaction } from "./types";
+import { cleanName } from "../view/recurring";
 
 /**
  * Bank sync. Two database clients on purpose:
@@ -152,6 +153,12 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
       }
     }
 
+    // Your categories: never overwritten by the bank once a transaction is in, and names you
+    // recategorized ("all with this name") apply to new ones as they arrive.
+    const { data: nameRules } = await supabase.from("corrections").select("match_key, value").eq("user_id", userId).eq("kind", "preference").like("match_key", "category_for:%");
+    const ruleFor = new Map((nameRules ?? []).map((r) => [String(r.match_key).slice(13), String((r.value as { category?: string })?.category ?? "")]));
+    const ruled = (direction: string, description: string) => ruleFor.get(`${direction}:${cleanName(description) || description.trim().toLowerCase()}`) || null;
+
     // Transactions, page by page from the last cursor.
     let cursor = (secret.sync_cursor as string | null) ?? null;
     const seen = cursor ? undefined : new Set<string>();
@@ -164,10 +171,20 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
           return target ? transactionRow(t, target.id, target.kind) : null;
         })
         .filter((x): x is NonNullable<typeof x> => !!x)
-        .map((x) => ({ ...x, user_id: userId }));
-      for (let i = 0; i < rows.length; i += 500) {
-        const { error } = await supabase.from("transactions").upsert(rows.slice(i, i + 500), { onConflict: "user_id,external_id" });
-        if (error) throw new Error("Couldn't save transactions.");
+        .map((x) => ({ ...x, user_id: userId, category: ruled(x.direction, x.description) ?? x.category }));
+      const ext = rows.map((x) => x.external_id);
+      const have = new Set<string>();
+      for (let i = 0; i < ext.length; i += 500) {
+        const { data } = await supabase.from("transactions").select("external_id").eq("user_id", userId).in("external_id", ext.slice(i, i + 500));
+        for (const d of data ?? []) have.add(String(d.external_id));
+      }
+      const fresh = rows.filter((x) => !have.has(x.external_id));
+      const known = rows.filter((x) => have.has(x.external_id)).map(({ category: _c, ...x }) => x);
+      for (const batch of [fresh, known]) {
+        for (let i = 0; i < batch.length; i += 500) {
+          const { error } = await supabase.from("transactions").upsert(batch.slice(i, i + 500), { onConflict: "user_id,external_id" });
+          if (error) throw new Error("Couldn't save transactions.");
+        }
       }
       const removed = r.removed.map((x) => x.transaction_id);
       if (removed.length) await supabase.from("transactions").delete().in("external_id", removed);

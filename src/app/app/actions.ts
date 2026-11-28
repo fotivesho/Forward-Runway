@@ -1,5 +1,7 @@
 "use server";
 
+import { sameThing } from "@/lib/view/history";
+import { cleanName } from "@/lib/view/recurring";
 import { findRecurring } from "@/lib/view/recurring";
 import { getAppSession } from "@/lib/data/session";
 import { centsToInput } from "@/lib/money";
@@ -289,14 +291,32 @@ export async function createCategory(name: string, icon: string, color: string):
 }
 
 /** One tap in a transaction's pop-up: just its category (bank or hand-entered). */
-export async function setTransactionCategory(id: string, category: string): Promise<{ ok: boolean; error?: string }> {
+export async function setTransactionCategory(id: string, category: string, scope: "one" | "all" = "one"): Promise<{ ok: boolean; error?: string; count?: number }> {
   const { supabase } = await session();
   const clean = category.trim().slice(0, 40) || null;
   if (!id) return { ok: false, error: "Couldn't find that transaction." };
-  const { error } = await supabase.from("transactions").update({ category: clean }).eq("id", id);
-  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  if (scope === "one") {
+    const { error } = await supabase.from("transactions").update({ category: clean }).eq("id", id);
+    if (error) return { ok: false, error: "Couldn't save that. Try again." };
+    revalidatePath("/app", "layout");
+    return { ok: true, count: 1 };
+  }
+  // Every transaction with this name (same direction), and new ones from your bank from now on.
+  const { data: txn } = await supabase.from("transactions").select("description, direction").eq("id", id).maybeSingle();
+  if (!txn) return { ok: false, error: "Couldn't find that transaction." };
+  const { data: all } = await supabase.from("transactions").select("id, description").eq("direction", txn.direction).limit(20000);
+  const ids = (all ?? []).filter((t) => sameThing(String(t.description), String(txn.description))).map((t) => String(t.id));
+  if (!ids.includes(id)) ids.push(id);
+  for (let i = 0; i < ids.length; i += 200) {
+    const { error } = await supabase.from("transactions").update({ category: clean }).in("id", ids.slice(i, i + 200));
+    if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  }
+  const key = cleanName(String(txn.description)) || String(txn.description).trim().toLowerCase();
+  if (key && clean) {
+    await supabase.from("corrections").upsert({ kind: "preference", match_key: `category_for:${txn.direction}:${key}`.slice(0, 200), value: { category: clean } }, { onConflict: "user_id,kind,match_key" });
+  }
   revalidatePath("/app", "layout");
-  return { ok: true };
+  return { ok: true, count: ids.length };
 }
 
 /** "How did it go?": confirm a plan's matched charge, say it wasn't that one, or that nothing was spent. */

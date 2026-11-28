@@ -18,7 +18,7 @@ import { Money } from "./privacy";
 import { Badge, Disclosure, EmptyState } from "./ui";
 import { HistoryChart } from "./history-chart";
 import { Info } from "./info";
-import { inPeriod, itemStats, PERIOD_LABEL, txnHistory, type HistoryView, type StatPeriod } from "@/lib/view/history";
+import { inPeriod, itemStats, PERIOD_LABEL, sameThing, txnHistory, type HistoryView, type StatPeriod } from "@/lib/view/history";
 import { APP_NAME } from "@/lib/brand";
 import { Glyph } from "@/components/icon";
 import { isNotSpending } from "@/lib/categories";
@@ -247,7 +247,7 @@ export function TransactionList({
               />
             </>
           ) : (
-            <CatProvider key={current.id} txn={current}>
+            <CatProvider key={current.id} txn={current} txns={txns}>
             <TxnBody startPanel={startCat ? "cat" : null} txn={current} txns={txns} today={today} categories={categories} rules={rules} accountName={name} onRepeat={() => setRepeat(true)}>
               <TransactionForm key={current.id} accounts={accounts} today={today} txn={current} categories={categories} onDone={() => setOpen(null)} />
               <div className="mt-4 flex justify-end border-t border-line pt-4">
@@ -294,26 +294,44 @@ function TxnBody({ startPanel = null, txn, txns, today, categories, rules, accou
 }
 
 /** Holds the transaction's category while the pop-up is open: tapping one saves it right away. */
-function CatProvider({ txn, children }: { txn: OneTimeTransaction; children: React.ReactNode }) {
+function CatProvider({ txn, txns = [], children }: { txn: OneTimeTransaction; txns?: OneTimeTransaction[]; children: React.ReactNode }) {
   const demo = useContext(DemoCtx);
   const [cat, setCat] = useState(txn.category ?? null);
   const [note, setNote] = useState<string | null>(null);
+  const [ask, setAsk] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const set = (c: string | null) => {
-    if (!c || c === cat) return;
+  // Others with the same name: changing one asks whether to change just it, or all of them.
+  const same = txns.filter((t) => t.direction === txn.direction && sameThing(t.description, txn.description)).length || 1;
+  const apply = (c: string, scope: "one" | "all") => {
+    setAsk(null);
     const before = cat;
     setCat(c);
     if (demo) return setNote("Demo: changes aren't saved.");
     start(async () => {
-      const r = await setTransactionCategory(txn.id, c);
+      const r = await setTransactionCategory(txn.id, c, scope);
       if (!r.ok) {
         setCat(before);
         setNote(r.error ?? "Couldn't save that.");
-      } else setNote(null);
+      } else setNote(scope === "all" ? `${r.count && r.count > 1 ? `All ${r.count}` : "Every"} “${txn.description}” now ${c}, and new ones will be too.` : null);
     });
   };
+  const set = (c: string | null) => {
+    if (!c || c === cat) return;
+    setAsk(c);
+  };
   return (
-    <CatCtx.Provider value={{ cat, set, pending, note }}>
+    <CatCtx.Provider value={{ cat: ask ?? cat, set, pending, note }}>
+      {ask && (
+        <div className="fade-up mb-3 rounded-2xl border border-brand/40 bg-brand/[0.06] p-3" role="group" aria-label="Recategorize">
+          <p className="text-sm text-ink">Make it <b>{ask}</b>:</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => apply(ask, "one")} className="btn btn-secondary btn-sm">Just this one</button>
+            <button type="button" onClick={() => apply(ask, "all")} className="btn btn-primary btn-sm">All “{txn.description.length > 18 ? `${txn.description.slice(0, 17)}…` : txn.description}”{same > 1 ? ` (${same})` : ""}</button>
+            <button type="button" onClick={() => setAsk(null)} className="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-faint">“All” also sets new ones from your bank.</p>
+        </div>
+      )}
       {children}
       {note && <p className="mt-2 text-xs text-muted" aria-live="polite">{note}</p>}
     </CatCtx.Provider>
@@ -411,15 +429,16 @@ export function MerchantDrill({ txnId, onBack }: { txnId: string; onBack: () => 
   const txn = d?.txns.find((t) => t.id === txnId);
   if (!d || !txn) return null;
   const h = txnHistory(txn, d.txns, d.today);
+  const yours = [...new Set(d.txns.map((t) => t.category).filter((c): c is string => !!c))];
   return (
     <div className="fade-up space-y-3">
       <button type="button" onClick={onBack} className="-ml-1 inline-flex items-center gap-1 text-xs font-semibold text-brand">
         <ChevronLeft size={14} strokeWidth={2.6} aria-hidden /> {txn.category ?? "Back"}
       </button>
-      <div className="flex items-center gap-3">
-        <Glyph name={txn.category ?? "Other"} size="sm" />
-        <p className="min-w-0 flex-1 truncate text-base font-bold text-ink">{txn.description}</p>
-      </div>
+      <p className="truncate text-base font-bold text-ink">{txn.description}</p>
+      <CatProvider key={txn.id} txn={txn} txns={d.txns}>
+        <CatMenu txn={txn} categories={yours} startOpen={false} />
+      </CatProvider>
       {h ? <Insights txn={txn} h={h} today={d.today} accountName={d.accountName} /> : (
         <p className="rounded-2xl bg-surface-2/60 px-3 py-2 text-xs text-muted">Only seen once so far. Once it shows up again, you&apos;ll see its history here.</p>
       )}

@@ -99,10 +99,12 @@ function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string
   const [busy, start] = useTransition();
   const [note, setNote] = useState<string | null>(null);
   const [cats, setCats] = useState<Record<string, string>>({});
-  const choose = (i: FlowItem, c: string) =>
+  const [ask, setAsk] = useState<{ i: FlowItem; c: string } | null>(null);
+  const choose = (i: FlowItem, c: string, scope: "one" | "all" = "one") =>
     start(async () => {
+      setAsk(null);
       if (!demo) {
-        const r = await setTransactionCategory(i.txnId!, c);
+        const r = await setTransactionCategory(i.txnId!, c, scope);
         if (!r.ok) return setNote(r.error ?? "Couldn't save that.");
       }
       setCats((x) => ({ ...x, [i.key]: c }));
@@ -122,13 +124,24 @@ function IncomeList({ items, onHide }: { items: FlowItem[]; onHide: (key: string
         Tap a category to fix it.
         <Info label="Fixing income">A refund (like money back from DoorDash) belongs to its spending category, so pick Dining and it lowers your Dining spending instead. Money moved from your own savings or another account of yours is a Transfer. Anything else stays as income.</Info>
       </p>
+      {ask && (
+        <div className="fade-up rounded-2xl border border-brand/40 bg-brand/[0.06] p-3" role="group" aria-label="Recategorize">
+          <p className="text-sm text-ink">Make “{ask.i.label}” <b>{ask.c}</b>:</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" onClick={() => choose(ask.i, ask.c, "one")} className="btn btn-secondary btn-sm">Just this one</button>
+            <button type="button" onClick={() => choose(ask.i, ask.c, "all")} className="btn btn-primary btn-sm">All with this name</button>
+            <button type="button" onClick={() => setAsk(null)} className="btn btn-ghost btn-sm">Cancel</button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-faint">&ldquo;All&rdquo; also sets new ones from your bank.</p>
+        </div>
+      )}
       {note && <p className="rounded-xl bg-surface-2/70 px-3 py-2 text-xs text-muted" aria-live="polite">{note}</p>}
       <Group title="Came in" items={done}>
         {(i) => (
           <Row key={i.key} i={i}>
             {i.txnId && (
               <>
-                <span className="mt-1 block"><CategoryMenu size="sm" direction="in" disabled={busy} value={cats[i.key] ?? i.category ?? "Income"} onPick={(c) => choose(i, c)} /></span>
+                <span className="mt-1 block"><CategoryMenu size="sm" direction="in" disabled={busy} value={cats[i.key] ?? i.category ?? "Income"} onPick={(c) => setAsk({ i, c })} /></span>
               </>
             )}
           </Row>
