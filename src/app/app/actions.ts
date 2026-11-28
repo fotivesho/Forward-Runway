@@ -3,6 +3,7 @@
 import { sameThing } from "@/lib/view/history";
 import { cleanName } from "@/lib/view/recurring";
 import { findRecurring } from "@/lib/view/recurring";
+import { groupOf } from "@/lib/view/budget";
 import { getAppSession } from "@/lib/data/session";
 import { centsToInput } from "@/lib/money";
 
@@ -482,6 +483,21 @@ export async function rateInsight(id: string, kind: string, useful: boolean, tit
   const { error } = await supabase.from("corrections").upsert({ kind: "preference", match_key: `insight_rating:${key}`, value: { kind, useful, title: String(title).slice(0, 120), at: new Date().toISOString() } }, { onConflict: "user_id,kind,match_key" });
   revalidatePath("/app", "layout");
   return { ok: !error };
+}
+
+/** One tap from an insight: set a category's monthly budget, keeping its group. */
+export async function capCategory(name: string, cents: number): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await session();
+  const n = String(name).trim().slice(0, 40);
+  if (!n || !Number.isInteger(cents) || cents <= 0 || cents > 100_000_000) return { ok: false, error: "Couldn't set that." };
+  const { snapshot } = await getAppSession();
+  const { data: row } = await supabase.from("category_settings").select("id").eq("name", n).maybeSingle();
+  const { error } = row
+    ? await supabase.from("category_settings").update({ monthly_budget_cents: cents }).eq("id", row.id)
+    : await supabase.from("category_settings").insert({ name: n, grp: groupOf(n, snapshot), monthly_budget_cents: cents });
+  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  revalidatePath("/app", "layout");
+  return { ok: true };
 }
 
 /** Count a category again (undo "not counted"). */

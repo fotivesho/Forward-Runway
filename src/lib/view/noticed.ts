@@ -38,6 +38,8 @@ export interface Noticed {
   txnIds?: string[];
   /** What to do next (paths are relative to /app or /demo). */
   actions: Array<{ label: string; path: string }>;
+  /** One tap: set this category's monthly budget (the usual amount, rounded). */
+  cap?: { category: string; cents: Cents };
 }
 
 const usd = (c: Cents) => `$${Math.round(Math.abs(c) / 100).toLocaleString("en-US")}`;
@@ -89,6 +91,7 @@ export function noticed(s: Snapshot, today: ISODate, limit = 8): Noticed[] {
     return first >= 0 && first < 6 && full.length >= 2 ? full.reduce((a, b) => a + b, 0) / full.length : 0;
   };
   const budget = { label: "Set a budget", path: "/spend/budget" };
+  const capAt = (c: string, avg: number) => ({ category: c, cents: Math.max(1_000, Math.round(avg / 1_000) * 1_000) });
 
   for (const [c, arr] of by) {
     const avg = avgOf(arr);
@@ -102,7 +105,7 @@ export function noticed(s: Snapshot, today: ISODate, limit = 8): Noticed[] {
           title: `${c} is running hot`,
           stat: `+${Math.round((projected / avg - 1) * 100)}%`,
           detail: `${usd(arr[6]!)} so far this month. At this pace that's about ${usd(projected)} by the end of ${MONTH[m - 1]}, against your usual ${usd(avg)}.`,
-          impactCents: projected - avg, bars: barsFor(arr, projected), avgCents: Math.round(avg), actions: [budget],
+          impactCents: projected - avg, bars: barsFor(arr, projected), avgCents: Math.round(avg), actions: [], cap: capAt(c, avg),
         });
       }
     }
@@ -114,7 +117,7 @@ export function noticed(s: Snapshot, today: ISODate, limit = 8): Noticed[] {
         title: `${c} keeps creeping up`,
         stat: `+${Math.round((last / a - 1) * 100)}%`,
         detail: `${usd(a)} in ${MONTH[parts(starts[3]!).m - 1]}, ${usd(b)} in ${MONTH[parts(starts[4]!).m - 1]}, ${usd(last)} in ${MONTH[parts(starts[5]!).m - 1]}. Small steps up become the new normal if nobody looks.`,
-        impactCents: last - a, bars: barsFor(arr), avgCents: Math.round(avg), actions: [budget],
+        impactCents: last - a, bars: barsFor(arr), avgCents: Math.round(avg), actions: [], cap: capAt(c, avg),
       });
     }
     // A win: last month well under usual.

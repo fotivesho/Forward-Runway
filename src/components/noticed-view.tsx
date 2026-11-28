@@ -4,7 +4,7 @@ import { useContext, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { EyeOff, Sparkles, ThumbsDown, ThumbsUp } from "lucide-react";
-import { rateInsight, snoozeInsight } from "@/app/app/actions";
+import { capCategory, rateInsight, snoozeInsight } from "@/app/app/actions";
 import { formatShort } from "@/lib/dates";
 import type { Noticed } from "@/lib/view/noticed";
 import { sameThing } from "@/lib/view/history";
@@ -61,6 +61,7 @@ export function NoticedView({ items, base }: { items: Noticed[]; base: string })
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2 px-5 pb-4 pt-2">
+          {lead!.cap && <CapButton cap={lead!.cap} />}
           {lead!.actions.map((a) => <Link key={a.path} href={base + a.path} className="btn btn-secondary btn-sm">{a.label}</Link>)}
           <button type="button" onClick={() => setOpen(lead!)} className="btn btn-ghost btn-sm">The details</button>
         </div>
@@ -143,8 +144,9 @@ function NoticedModal({ n, base, onClose }: { n: Noticed; base: string; onClose:
               </ul>
             </div>
           )}
-          {n.actions.length > 0 && (
+          {(n.actions.length > 0 || n.cap) && (
             <div className="flex flex-wrap gap-2">
+              {n.cap && <CapButton cap={n.cap} />}
               {n.actions.map((a) => <Link key={a.path} href={base + a.path} className="btn btn-primary btn-sm">{a.label}</Link>)}
             </div>
           )}
@@ -180,5 +182,26 @@ export function NoticedLine({ items, base }: { items: Noticed[]; base: string })
       <span className={`shrink-0 font-num text-lg ${STAT[lead.tone]}`}>{lead.stat}</span>
       <span aria-hidden className="text-faint">›</span>
     </Link>
+  );
+}
+
+/** "Cap Shopping at $450": sets the budget in one tap, right on the insight. */
+function CapButton({ cap }: { cap: { category: string; cents: number } }) {
+  const demo = useContext(DemoCtx);
+  const router = useRouter();
+  const [done, setDone] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+  const amount = "$" + Math.round(cap.cents / 100).toLocaleString("en-US");
+  if (done) return <span className="inline-flex min-h-9 items-center text-sm font-semibold text-brand">{done}</span>;
+  return (
+    <button type="button" disabled={busy} className="btn btn-primary btn-sm"
+      onClick={() => start(async () => {
+        if (demo) return setDone("Demo: not saved");
+        const r = await capCategory(cap.category, cap.cents);
+        setDone(r.ok ? "✓ " + cap.category + " capped at " + amount : (r.error ?? "Couldn't save"));
+        if (r.ok) router.refresh();
+      })}>
+      Cap {cap.category} at {amount}
+    </button>
   );
 }
