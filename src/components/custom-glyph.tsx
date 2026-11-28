@@ -5,14 +5,14 @@ import { CircleDot } from "lucide-react";
 import { GlyphView, styleFor } from "./icon";
 
 type Style = { icon?: string | null; color?: string | null };
-type Ctx = { styles: Record<string, Style>; add: (name: string, s: Style) => void };
-const CategoryStyles = createContext<Ctx>({ styles: {}, add: () => {} });
+type Ctx = { styles: Record<string, Style>; add: (name: string, s: Style) => void; hidden: string[] };
+const CategoryStyles = createContext<Ctx>({ styles: {}, add: () => {}, hidden: [] });
 
 /** Your own categories' symbols and colors, for every icon on the page (and ones made just now). */
-export function CategoryStylesProvider({ styles, children }: { styles: Record<string, Style>; children: React.ReactNode }) {
+export function CategoryStylesProvider({ styles, hidden = [], children }: { styles: Record<string, Style>; hidden?: string[]; children: React.ReactNode }) {
   const [extra, setExtra] = useState<Record<string, Style>>({});
   return (
-    <CategoryStyles.Provider value={{ styles: { ...styles, ...extra }, add: (name, s) => setExtra((e) => ({ ...e, [name]: s })) }}>
+    <CategoryStyles.Provider value={{ styles: { ...styles, ...extra }, add: (name, s) => setExtra((e) => ({ ...e, [name]: s })), hidden }}>
       {children}
     </CategoryStyles.Provider>
   );

@@ -84,6 +84,7 @@ export async function loadSnapshot(supabase: SupabaseClient, userId?: string): P
   return {
     categorySettings,
     excludedCategories,
+    hiddenCategories: correctionList.filter((c) => c.kind === "preference" && c.matchKey.startsWith("hide_category:")).map((c) => c.matchKey.slice(14)),
     profile: prof,
     settings: mapSettings(settings.data, DEFAULT_SETTINGS),
     accounts: (accounts.data ?? []).map(mapAccount),

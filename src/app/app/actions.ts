@@ -375,6 +375,60 @@ export async function dismissRecurring(form: FormData) {
   revalidatePath("/app", "layout");
 }
 
+/**
+ * Rename a category, or delete it by moving everything in it to another one. Every transaction,
+ * repeating item and plan moves; your budget, symbol and "not counted" setting carry over; new
+ * transactions from your bank that would land in the old one land in the new one; and the old
+ * name (even a built-in one) isn't offered anymore.
+ */
+export async function moveCategory(fromName: string, toName: string): Promise<{ ok: boolean; error?: string; moved?: number }> {
+  const { supabase } = await session();
+  const from = fromName.trim().slice(0, 40);
+  const to = toName.trim().slice(0, 40);
+  if (!from || !to) return { ok: false, error: "Give it a name." };
+  if (from === to) return { ok: true, moved: 0 };
+  if (["Transfer", "Card payment"].includes(from)) return { ok: false, error: `${from} is built in: it keeps transfers and card payments out of your spending.` };
+  const { data: moved, error } = await supabase.from("transactions").update({ category: to }).eq("category", from).select("id");
+  if (error) return { ok: false, error: "Couldn't save that. Try again." };
+  await supabase.from("recurring_rules").update({ category: to }).eq("category", from);
+  await supabase.from("calendar_events").update({ category: to }).eq("category", from);
+  // Budget, group, symbol: keep the new one's if it has its own, otherwise take the old one's.
+  const { data: rows } = await supabase.from("category_settings").select("id, name").in("name", [from, to]);
+  const oldRow = rows?.find((r) => r.name === from);
+  if (oldRow) {
+    if (rows?.some((r) => r.name === to)) await supabase.from("category_settings").delete().eq("id", oldRow.id);
+    else await supabase.from("category_settings").update({ name: to }).eq("id", oldRow.id);
+  }
+  // Names you sent to the old category now go to the new one; "not counted" follows it.
+  const { data: forName } = await supabase.from("corrections").select("id, match_key, value").eq("kind", "preference").like("match_key", "category_for:%");
+  const { data: excl } = await supabase.from("corrections").select("id, match_key, value").eq("kind", "preference").eq("match_key", `exclude_category:${from}`);
+  for (const p of [...(forName ?? []), ...(excl ?? [])]) {
+    if (String(p.match_key) === `exclude_category:${from}`) {
+      await supabase.from("corrections").upsert({ kind: "preference", match_key: `exclude_category:${to}`, value: p.value }, { onConflict: "user_id,kind,match_key" });
+      await supabase.from("corrections").delete().eq("id", p.id);
+    } else if ((p.value as { category?: string })?.category === from) {
+      await supabase.from("corrections").update({ value: { category: to } }).eq("id", p.id);
+    }
+  }
+  // The bank's own category names land in the new one from now on.
+  await supabase.from("corrections").upsert({ kind: "category_rename", match_key: from, value: { to } }, { onConflict: "user_id,kind,match_key" });
+  await supabase.from("corrections").update({ value: { to } }).eq("kind", "category_rename").eq("value->>to", from);
+  await supabase.from("corrections").upsert({ kind: "preference", match_key: `hide_category:${from}`, value: { hidden: true } }, { onConflict: "user_id,kind,match_key" });
+  await supabase.from("corrections").delete().eq("kind", "preference").eq("match_key", `hide_category:${to}`);
+  revalidatePath("/app", "layout");
+  return { ok: true, moved: moved?.length ?? 0 };
+}
+
+/** Offer a hidden category again (it starts empty). */
+export async function showCategory(form: FormData) {
+  const { supabase } = await session();
+  const name = String(form.get("name") ?? "").trim().slice(0, 40);
+  if (!name) return;
+  await supabase.from("corrections").delete().eq("kind", "preference").eq("match_key", `hide_category:${name}`);
+  await supabase.from("corrections").delete().eq("kind", "category_rename").eq("match_key", name);
+  revalidatePath("/app", "layout");
+}
+
 /** Count a category again (undo "not counted"). */
 export async function includeCategory(form: FormData) {
   const { supabase } = await session();

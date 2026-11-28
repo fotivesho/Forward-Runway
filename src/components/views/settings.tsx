@@ -1,3 +1,5 @@
+import { CategoryManager } from "@/components/category-manager";
+import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
 import { QuickAction } from "@/components/form";
 import { DeleteAccountForm, DeleteDataForm, ImportForm, PasswordForm, ProfileForm, SettingsForm } from "@/components/settings-forms";
 import { Card, Disclosure, EmptyState, PageHeader } from "@/components/ui";
@@ -41,6 +43,17 @@ export function SettingsView({ snapshot, user, demo = false }: ViewProps) {
           })()}
         </Card>
         <Card title="Forecast & advice"><SettingsForm snapshot={snapshot} /></Card>
+        <Card id="categories" title={<>Categories <Info label="Categories">Rename any category, built-in ones too, or delete one by moving what&apos;s in it to another. Everything in it moves: transactions, repeating items, plans, its budget and symbol. New transactions from your bank that would have landed in the old one land in the new one.</Info></>}>
+          {(() => {
+            const hidden = snapshot.hiddenCategories ?? [];
+            const count = new Map<string, number>();
+            for (const t of snapshot.transactions) if (t.category) count.set(t.category, (count.get(t.category) ?? 0) + 1);
+            const names = [...new Set([...CATEGORY_LIST, ...(snapshot.categorySettings ?? []).map((c) => c.name), ...count.keys(), ...snapshot.rules.map((r) => r.category ?? "").filter(Boolean)])]
+              .filter((c) => !hidden.includes(c) && !isNotSpending(c) && !["Income", "Salary", "Interest", "Other", "Uncategorized"].includes(c))
+              .sort((a, b) => (count.get(b) ?? 0) - (count.get(a) ?? 0) || a.localeCompare(b));
+            return <CategoryManager categories={names.map((n) => ({ name: n, count: count.get(n) ?? 0 }))} hidden={hidden} />;
+          })()}
+        </Card>
         <Card title={<>What {APP_NAME} remembers <Info label="What we remember">When you correct a cost or make a decision, we remember it so you don&apos;t have to repeat yourself next time. Remove anything you&apos;d rather we forget.</Info></>} id="memory">
           <h3 className="text-sm font-bold text-ink">Event cost corrections</h3>
           {corrections.length === 0 ? (

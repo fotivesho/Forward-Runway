@@ -108,6 +108,8 @@ export interface Snapshot {
   categorySettings?: CategorySetting[];
   /** Categories you've set as not counted: their money isn't spending or income anywhere. */
   excludedCategories?: string[];
+  /** Categories you renamed away or deleted: not offered anymore (including built-in ones). */
+  hiddenCategories?: string[];
 }
 
 export const DEFAULT_SETTINGS: ForecastSettings = {

@@ -6,6 +6,8 @@ import { CATEGORY_LIST, isNotSpending } from "@/lib/categories";
 import { Glyph } from "@/components/icon";
 import { useCategoryStyles } from "./custom-glyph";
 import { NewCategoryForm } from "./new-category";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const INCOME_KINDS = ["Income", "Salary", "Interest"];
 
@@ -32,7 +34,8 @@ export function CategoryMenu({
   const [q, setQ] = useState("");
   const [making, setMaking] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const { styles } = useCategoryStyles();
+  const { styles, hidden } = useCategoryStyles();
+  const manage = usePathname()?.startsWith("/demo") ? "/demo/settings#categories" : "/app/settings#categories";
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
@@ -40,7 +43,7 @@ export function CategoryMenu({
     return () => document.removeEventListener("pointerdown", close);
   }, [open]);
 
-  const spend = [...new Set([...Object.keys(styles), ...yours, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c) && !INCOME_KINDS.includes(c) && c !== "Other");
+  const spend = [...new Set([...Object.keys(styles), ...yours, ...CATEGORY_LIST])].filter((c) => !isNotSpending(c) && !INCOME_KINDS.includes(c) && c !== "Other" && !hidden.includes(c));
   const all = direction === "in" ? [...INCOME_KINDS, "Transfer", ...spend, "Other"] : [...spend, "Other", "Transfer"];
   const list = q ? all.filter((c) => c.toLowerCase().includes(q.toLowerCase())) : all;
   const shown = value ?? (direction === "in" ? "Income" : "Uncategorized");
@@ -90,6 +93,7 @@ export function CategoryMenu({
               <button type="button" onClick={() => setMaking(true)} className="flex w-full items-center gap-2 border-t border-line px-3 py-2.5 text-sm font-semibold text-brand transition hover:bg-surface-2">
                 <Plus size={14} strokeWidth={2.6} aria-hidden /> {q ? `New category “${q}”` : "New category"}
               </button>
+              <Link href={manage} className="block border-t border-line px-3 py-2 text-xs text-muted transition hover:bg-surface-2 hover:text-ink">Rename or delete categories…</Link>
             </>
           )}
         </div>

@@ -22,7 +22,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hide = snapshot.profile.hideAmounts;
   return (
     <PrivacyProvider hide={hide}>
-     <CategoryStylesProvider styles={Object.fromEntries((snapshot.categorySettings ?? []).filter((c) => c.icon || c.color).map((c) => [c.name, { icon: c.icon, color: c.color }]))}>
+     <CategoryStylesProvider hidden={snapshot.hiddenCategories ?? []} styles={Object.fromEntries((snapshot.categorySettings ?? []).filter((c) => c.icon || c.color).map((c) => [c.name, { icon: c.icon, color: c.color }]))}>
       {plaidMode() !== "off" && <BankAutoSync />}
       <div className="mx-auto min-h-dvh max-w-7xl px-4 pb-40 pt-4 sm:px-6 lg:pb-10">
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">

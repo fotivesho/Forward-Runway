@@ -157,6 +157,8 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
     // recategorized ("all with this name") apply to new ones as they arrive.
     const { data: nameRules } = await supabase.from("corrections").select("match_key, value").eq("user_id", userId).eq("kind", "preference").like("match_key", "category_for:%");
     const ruleFor = new Map((nameRules ?? []).map((r) => [String(r.match_key).slice(13), String((r.value as { category?: string })?.category ?? "")]));
+    const { data: renames } = await supabase.from("corrections").select("match_key, value").eq("user_id", userId).eq("kind", "category_rename");
+    const renamed = new Map((renames ?? []).map((r) => [String(r.match_key), String((r.value as { to?: string })?.to ?? "")]));
     const ruled = (direction: string, description: string) => ruleFor.get(`${direction}:${cleanName(description) || description.trim().toLowerCase()}`) || null;
 
     // Transactions, page by page from the last cursor.
@@ -171,7 +173,7 @@ export async function syncBank(supabase: AppSupabaseClient, userId: string, conn
           return target ? transactionRow(t, target.id, target.kind) : null;
         })
         .filter((x): x is NonNullable<typeof x> => !!x)
-        .map((x) => ({ ...x, user_id: userId, category: ruled(x.direction, x.description) ?? x.category }));
+        .map((x) => ({ ...x, user_id: userId, category: ruled(x.direction, x.description) ?? (x.category && renamed.get(x.category)) ?? x.category }));
       const ext = rows.map((x) => x.external_id);
       const have = new Set<string>();
       for (let i = 0; i < ext.length; i += 500) {
