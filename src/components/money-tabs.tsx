@@ -7,10 +7,10 @@ import { usePathname } from "next/navigation";
 export function MoneyTabs({ base }: { base: "/app" | "/demo" }) {
   const path = usePathname();
   const tabs = [
+    { href: `${base}/spend/trends`, label: "Insights" },
     { href: `${base}/spend`, label: "Month" },
     { href: `${base}/spend/transactions`, label: "Activity" },
     { href: `${base}/spend/bills`, label: "Bills" },
-    { href: `${base}/spend/trends`, label: "Trends" },
   ];
   return (
     <nav aria-label="Money" className="mb-4 hidden rounded-xl border border-line bg-surface p-1 lg:flex">

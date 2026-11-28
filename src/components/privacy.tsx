@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { formatCents } from "@/lib/money";
 
 const HideCtx = createContext(false);
@@ -43,4 +43,27 @@ export function Money({
     return <span className={`tabular ${color} ${className}`}>{text}</span>;
   }
   return <span className={`tabular ${color} ${className}`}>{formatCents(cents, { sign, compact })}</span>;
+}
+
+/** A money amount that counts up to its value when it first appears (still when motion is reduced). */
+export function CountUpMoney({ cents, duration = 650, ...rest }: React.ComponentProps<typeof Money> & { duration?: number }) {
+  const [shown, setShown] = useState(cents);
+  useEffect(() => {
+    if (typeof window === "undefined" || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setShown(cents);
+      return;
+    }
+    let raf = 0;
+    const start = performance.now();
+    const from = Math.round(cents * 0.6);
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / duration);
+      const ease = 1 - Math.pow(1 - k, 3);
+      setShown(Math.round(from + (cents - from) * ease));
+      if (k < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [cents, duration]);
+  return <Money {...rest} cents={shown} />;
 }

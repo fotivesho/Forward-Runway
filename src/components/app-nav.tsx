@@ -12,11 +12,13 @@ const LINKS: Array<{ href: string; label: string; Icon: LucideIcon }> = [
   { href: "/app/settings", label: "Settings", Icon: Settings },
 ];
 const MONEY = [
+  { href: "/spend/trends", label: "Insights" },
   { href: "/spend", label: "Month" },
   { href: "/spend/transactions", label: "Activity" },
   { href: "/spend/bills", label: "Bills" },
-  { href: "/spend/trends", label: "Trends" },
 ];
+/** Where a tab opens: Money opens on what we noticed. */
+const OPENS: Record<string, string> = { "/app/spend": "/app/spend/trends" };
 const MOBILE = ["/app", "/app/plan", "/app/spend", "/app/accounts"];
 
 export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
@@ -35,7 +37,7 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
           {LINKS.map(({ href, label, Icon }) => (
             <li key={href}>
               <Link
-                href={to(href)}
+                href={to(OPENS[href] ?? href)}
                 aria-current={active(href) ? "page" : undefined}
                 className={`flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${active(href) ? "bg-brand text-brand-ink shadow-sm" : "text-muted hover:bg-surface-2 hover:text-ink"}`}
               >
@@ -71,7 +73,7 @@ export function AppNav({ base = "/app" }: { base?: "/app" | "/demo" }) {
             const on = active(href);
             return (
               <li key={href}>
-                <Link href={to(href)} aria-current={on ? "page" : undefined} className="group flex flex-col items-center gap-0.5 py-0.5">
+                <Link href={to(OPENS[href] ?? href)} aria-current={on ? "page" : undefined} className="group flex flex-col items-center gap-0.5 py-0.5">
                   <span className={`flex h-8 w-12 items-center justify-center rounded-full transition ${on ? "bg-brand/20 text-brand" : "text-faint group-hover:text-ink"}`}>
                     <Icon aria-hidden size={20} strokeWidth={on ? 2.3 : 1.9} />
                   </span>

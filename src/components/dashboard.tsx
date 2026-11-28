@@ -14,7 +14,7 @@ import { addDays, diffDays, formatShort, formatWeekday, type ISODate } from "@/l
 import type { Snapshot } from "@/lib/data/snapshot";
 import { buildDashboard } from "@/lib/view/dashboard";
 import { EventCard, QuestionCard, QuickLog } from "./advisor";
-import { Money } from "./privacy";
+import { CountUpMoney, Money } from "./privacy";
 import { Card, EmptyState, StatusPill } from "./ui";
 import { Info } from "./info";
 import { Glyph } from "./icon";
@@ -71,7 +71,7 @@ export function Dashboard({ snapshot, today, nowIso, demo = false }: { snapshot:
               )}
             </div>
             <p className={`font-num mt-3 text-7xl leading-none tracking-tight ${m.lean ? "text-warn" : "text-display"}`}>
-              <Money cents={plan.todayCap.capCents} whole={!!m.lean} />
+              <CountUpMoney cents={plan.todayCap.capCents} whole={!!m.lean} />
             </p>
             <p className="mt-3 text-sm text-faint">
               {m.lean ? (
